@@ -66,6 +66,32 @@ describe('selection', () => {
   });
 });
 
+describe('staying picked up', () => {
+  it('keeps the moved piece selected so the next tap can be the target', () => {
+    const state = play(startLevel(level({ stars: 'e3 e5', par: 2 })), 'e1e3');
+    expect(state.selected).toBe(sq('e3'));
+    expect(legalTargets(state).map(squareName)).toContain('e5');
+  });
+
+  it('lets a whole level be played as target, target, target', () => {
+    // Three taps for three moves, with no re-selecting in between.
+    let state = startLevel(level({ stars: 'a5 e5 e1', fen: '8/8/8/8/8/8/8/R7 w - -', par: 3 }));
+    state = tap(state, sq('a1')); // pick the rook up once
+    for (const target of ['a5', 'e5', 'e1']) state = tap(state, sq(target));
+
+    expect(state.moves).toBe(3);
+    expect(state.phase).toBe('won');
+  });
+
+  it('still lets you switch to your other piece by tapping it', () => {
+    let state = play(startLevel(level({ fen: '8/8/8/8/8/8/8/R6R w - -', stars: 'a5', par: 2 })), 'a1a3');
+    expect(state.selected).toBe(sq('a3'));
+    state = tap(state, sq('h1'));
+    expect(state.selected).toBe(sq('h1'));
+    expect(state.moves).toBe(1);
+  });
+});
+
 describe('collecting stars', () => {
   it('collects only the star you land on, never ones you slide over', () => {
     // The rook passes over e3 on its way to e5. Sliding must not sweep it up,

@@ -98,7 +98,10 @@ export function applyMove(state: GameState, from: Square, to: Square): GameState
     board,
     stars,
     moves,
-    selected: null,
+    // The piece stays picked up after it moves, so a multi-move level is
+    // tap-target, tap-target, tap-target rather than re-selecting in between.
+    // Halves the taps, and halves the chances to mis-tap.
+    selected: to,
     lastMove: { from, to },
     punisher: null,
   };

@@ -48,6 +48,9 @@ only "where can this piece go" and "what does the enemy cover".
   move would be immune to capture and every level's last move would be a
   loophole.
 - **Stars are collected by landing on them**, never by sliding over them.
+- **A piece stays selected after it moves.** A multi-move level is then
+  tap-target, tap-target, tap-target with no re-selecting in between. Tapping
+  another of your own pieces still switches to it.
 - **Over par never fails a level.** It only costs stars.
 - Pieces carry a stable `id` from `parseFen` so the UI can animate one piece
   sliding rather than unmounting and remounting.
