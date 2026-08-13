@@ -1,27 +1,33 @@
 /**
  * Visual constants.
  *
- * The board is the app, so the palette stays warm and quiet and lets the
- * pieces, the stars and the action colours carry everything.
+ * The board is the app. Everything around it — the chrome — is a dark plum
+ * ground that exists to get out of the board's way: a warm wooden board on a
+ * dark surface reads as a lit object on a table, which is the whole idea. The
+ * pieces, the stars and the action colours are the only bright things, and
+ * that is deliberate.
+ *
+ * **The board itself is never restyled from here.** Square colours, the frame
+ * and every danger wash are what a real board looks like and what the Cburnett
+ * artwork was drawn against. They are listed below as constants, not choices.
  */
 
 import { Platform, type ViewStyle } from 'react-native';
 
 export const colors = {
-  background: '#FBF5EA',
+  /** Deep plum. Warm enough not to feel cold, dark enough to rest the eyes. */
+  background: '#221A26',
+  /** Cards, one step up. On dark, elevation is lightness, not shadow. */
+  surface: '#2E2433',
+  /** Inputs, insets, and anything sunk into a card. */
+  surfaceRaised: '#3A2E40',
 
-  // Square colours are not a styling choice — they are what a real board looks
-  // like, and what the Cburnett pieces were drawn against.
+  // ---------------------------------------------------------------------
+  // The board. Not styling — these are what a real board looks like.
+  // ---------------------------------------------------------------------
+
   lightSquare: '#F0D9B5',
   darkSquare: '#B58863',
-
-  /**
-   * Tournament green: the green/buff of a real vinyl tournament board. Used
-   * for actions and progress, which keeps gold meaning exactly one thing.
-   */
-  green: '#3E7C59',
-  greenLight: '#58A97B',
-  greenSoft: 'rgba(62, 124, 89, 0.12)',
 
   /** Square the selected piece is standing on. */
   selected: '#F5CF5B',
@@ -33,64 +39,86 @@ export const colors = {
   /** Legal destinations that hold something worth taking, drawn as a ring. */
   moveRing: 'rgba(20, 60, 40, 0.35)',
 
-  /** Rewards only — never an action, or the reward stops reading as one. */
-  star: '#FFC53D',
-  starEdge: '#E0961A',
-
   /** Tier 2's "they can take you here" tint. */
   danger: 'rgba(216, 42, 42, 0.34)',
   /** The square she was actually taken on — shown at every tier. */
   dangerStrong: 'rgba(216, 42, 42, 0.72)',
-  /**
-   * The same red with no alpha of its own, for places that supply their own —
-   * the glow under a piece that can be taken, drawn as a gradient. Not a new
-   * colour: it is what both tints above are made of.
-   */
+  /** The same red with no alpha of its own, for places that supply their own. */
   dangerInk: '#D82A2A',
 
-  /** Deep wood. The board's surround and the ink on pale buttons. */
+  /** Deep wood. The board's surround, and the ring on a tap that did nothing. */
   walnut: '#6B4E35',
-  walnutPress: '#553D29',
-
   /** The board's surround. */
   frame: '#8A6244',
   frameEdge: '#5C4530',
 
-  /**
-   * Button pastels. Muted and close in lightness so three colours read as a
-   * set rather than as a scatter — the point is that each action is *its own
-   * colour*, not that the screen is colourful.
-   */
-  sky: '#8FB3D9',
-  skyPress: '#7BA0CA',
-  apricot: '#F4C39D',
-  apricotPress: '#E9B187',
+  // ---------------------------------------------------------------------
+  // Ink
+  // ---------------------------------------------------------------------
 
-  text: '#3B3027',
+  /** Cream. 14.5:1 on the ground, 12.7:1 on a card. */
+  text: '#F2EDE4',
+  /** Secondary ink, still clearing AA on all three grounds (7.3 / 6.4 / 5.5). */
+  textSoft: '#B3A99B',
   /**
-   * Secondary ink. Dark enough to clear WCAG AA (4.5:1) on both the page and a
-   * card — 4.80 and 5.12 — because this is not decoration: it carries the
-   * world blurbs and every word of settings, which is the text an *adult* has
-   * to read. A lighter warm grey looked right and was quietly unreadable.
+   * The label on a coloured button, and the tick on a finished square.
+   *
+   * Dark, not cream: cream fails on every accent in the palette (2.5–2.9),
+   * while this clears AA on all of them. Bright fills carry dark type — that
+   * is the whole reason the accents are allowed to stay bright.
    */
-  textSoft: '#7A6A59',
-  /** Warm off-white. Pure white on this cream page reads as a hole, not a card. */
-  surface: '#FFFDF8',
-  border: 'rgba(59, 48, 39, 0.12)',
-  /** Hairline that defines a surface without drawing attention to itself. */
-  surfaceEdge: 'rgba(59, 48, 39, 0.08)',
+  inkOnAccent: '#1B1420',
+
+  // ---------------------------------------------------------------------
+  // Accents. Muted jewels, never acid — the board is the warmest thing here
+  // and nothing on the chrome is allowed to out-shout it.
+  // ---------------------------------------------------------------------
+
+  /** Go. Still green, because green means go and she has already learned it. */
+  green: '#2FA36B',
+  greenPress: '#288C5B',
+  greenShelf: '#1F7049',
+  /** Lighter jade, for confetti and small accents. */
+  greenLight: '#4CC48A',
+  /** Jade at a weight that actually reads on a dark ground. */
+  greenSoft: 'rgba(47, 163, 107, 0.28)',
+
+  /** The open-ended mode. */
+  periwinkle: '#5B8DEF',
+  periwinklePress: '#4A78D8',
+  periwinkleShelf: '#3C63B0',
+
+  /** Back to the beginning. */
+  coral: '#E8785A',
+  coralPress: '#D66647',
+  coralShelf: '#B14F36',
+
+  /** Rewards only — never an action, or the reward stops reading as one. */
+  star: '#FFC53D',
+  starEdge: '#E0961A',
+  /** The two ends of the star's gleam. Same gold, lit from the top left. */
+  starHigh: '#FFE08A',
+  starLow: '#E8A020',
+
+  // ---------------------------------------------------------------------
+  // Edges
+  // ---------------------------------------------------------------------
+
+  /** Hairline that makes a card read as a card on a dark ground. */
+  surfaceEdge: 'rgba(242, 237, 228, 0.12)',
+  /** A little stronger, for an outline standing in for a surface. */
+  border: 'rgba(242, 237, 228, 0.18)',
   /**
-   * The edge of a button, as opposed to the edge of a card.
+   * The edge of a pale control.
    *
    * A card only has to look like a surface; a *control* has to have a findable
-   * boundary, which WCAG puts at 3:1 against what surrounds it. The pale
-   * actions could not do that with their fills — cream on cream is 1.07:1 —
-   * so the outline is what makes them a shape at all. Walnut at this weight
-   * clears 3:1 over all three pale fills against the page.
+   * boundary, which WCAG puts at 3:1. The plain button's fill is the card
+   * colour, so on the ground it is 1.14:1 and invisible — this outline is the
+   * entire reason it is a shape. Cream at this weight clears 3:1.
    */
-  actionEdge: 'rgba(107, 78, 53, 0.65)',
-  /** Warm, not grey — a neutral shadow on a cream page looks like dirt. */
-  shadow: '#2A211A',
+  actionEdge: 'rgba(242, 237, 228, 0.35)',
+  /** Near-black plum. Shadows on a dark ground have to be darker than it. */
+  shadow: '#0D0810',
 } as const;
 
 /**
@@ -101,34 +129,43 @@ export const colors = {
  * different their icons. Filled-versus-outlined does not fix that either; that
  * signals importance, not identity. Colour does.
  *
- * Only `go` is a strong colour. It is the one button she has to be able to
- * find, so it keeps the weight; the others are pastels of similar lightness,
- * which distinguishes them from each other without any of them shouting.
- *
- * The pale three all carry `actionEdge`. Their fills are too close to the page
- * to be a boundary on their own — `plain` is cream on cream — so without the
- * outline they are not shapes, they are smudges. `go` needs none: the green
- * fill is 4.57:1 against the page and draws its own edge.
+ * Every kind carries a `shelf`: the darker block the button face sits on and
+ * sinks onto when pressed. It is the one thing in the app that says "press me"
+ * without a word or a character drawn to say it.
  */
 export const actions = {
   /** Onward: play, next level, next difficulty, another one. */
-  go: { fill: colors.green, press: '#33684A', ink: colors.surface, edge: 'transparent' },
+  go: {
+    fill: colors.green,
+    press: colors.greenPress,
+    shelf: colors.greenShelf,
+    ink: colors.inkOnAccent,
+    edge: 'transparent',
+  },
   /** The open-ended mode: endless, keep playing. */
   free: {
-    fill: colors.sky,
-    press: colors.skyPress,
-    ink: colors.text,
-    edge: colors.actionEdge,
+    fill: colors.periwinkle,
+    press: colors.periwinklePress,
+    shelf: colors.periwinkleShelf,
+    ink: colors.inkOnAccent,
+    edge: 'transparent',
   },
   /** Back to the beginning: start over, retry. */
   again: {
-    fill: colors.apricot,
-    press: colors.apricotPress,
+    fill: colors.coral,
+    press: colors.coralPress,
+    shelf: colors.coralShelf,
+    ink: colors.inkOnAccent,
+    edge: 'transparent',
+  },
+  /** Everything else: hint, back, settings. */
+  plain: {
+    fill: colors.surface,
+    press: colors.surfaceRaised,
+    shelf: '#150F19',
     ink: colors.text,
     edge: colors.actionEdge,
   },
-  /** Everything else: hint, back, settings. */
-  plain: { fill: colors.surface, press: '#F4EEE3', ink: colors.text, edge: colors.actionEdge },
 } as const;
 
 export type ActionKind = keyof typeof actions;
@@ -136,9 +173,14 @@ export type ActionKind = keyof typeof actions;
 export const layout = {
   /** Minimum comfortable tap target for small hands. */
   touchTarget: 64,
+  /**
+   * How far a button stands off its shelf, and so how far it travels when
+   * pressed. Small enough to read as a press rather than a jump.
+   */
+  shelf: 5,
   boardPadding: 12,
   screenPadding: 20,
-  radius: 18,
+  radius: 16,
   gap: 12,
   /**
    * Widest a column of cards is allowed to get.
@@ -173,18 +215,19 @@ export const type = {
 /**
  * Two elevations, and nothing else.
  *
- * Depth is what the app was missing: flat surfaces with no shadow read as
- * unstyled rather than as designed. Restricting it to two levels keeps that
- * from turning into decoration.
+ * On a dark ground a shadow does most of its work by darkening something
+ * already dark, so the real separation comes from the surface steps
+ * (`background` → `surface` → `surfaceRaised`) and the hairline on top. What
+ * is left here is the soft ambient darkness under a raised thing, which still
+ * helps on Android where `elevation` is the only tool available.
  *
- * iOS draws from the shadow* props; Android needs `elevation` and a solid
- * background on the same view.
+ * Controls do not use this at all — they sit on a shelf. See `actions`.
  */
 export const elevation = (level: 'raised' | 'lifted'): ViewStyle => {
   const spec =
     level === 'raised'
-      ? { height: 2, radius: 6, opacity: 0.07, android: 2 }
-      : { height: 5, radius: 14, opacity: 0.11, android: 6 };
+      ? { height: 3, radius: 8, opacity: 0.3, android: 3 }
+      : { height: 8, radius: 18, opacity: 0.42, android: 8 };
 
   return Platform.select<ViewStyle>({
     ios: {

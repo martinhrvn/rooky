@@ -35,7 +35,7 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
       {/* No headers anywhere: navigation is icons and pieces, because the
           player cannot read. Words on screen support meaning, never carry it. */}
       <Stack

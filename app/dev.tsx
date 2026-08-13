@@ -122,7 +122,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: layout.boardPadding,
     paddingVertical: 8,
   },
-  list: { padding: layout.screenPadding, gap: 16, paddingBottom: 40 },
+  list: {
+    padding: layout.screenPadding,
+    gap: 16,
+    paddingBottom: 40,
+    width: '100%',
+    maxWidth: layout.contentWidth,
+    alignSelf: 'center',
+  },
   section: {
     backgroundColor: colors.surface,
     borderRadius: layout.radius,

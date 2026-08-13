@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Path, Polygon } from 'react-native-svg';
 
-import { type ActionKind, actions, colors, elevation, layout } from './theme';
+import { type ActionKind, actions, colors, layout } from './theme';
 
 export type IconName =
   | 'back'
@@ -86,11 +86,12 @@ export function Glyph({ name, size, color = colors.text }: { name: IconName; siz
 }
 
 /**
- * A round control.
+ * A round control, standing on the same shelf as `Button`.
  *
- * Takes the same meaning-based colours as `Button`, so the retry circle on the
- * play screen matches every other "start again" control in the app rather than
- * being a third identical white disc.
+ * Takes the same meaning-based colours, so the retry circle on the play screen
+ * matches every other "start again" control in the app rather than being a
+ * third identical disc — and it sinks when pressed exactly the way the pill
+ * buttons do, so the two read as the same kind of object.
  */
 export function IconButton({
   name,
@@ -114,34 +115,44 @@ export function IconButton({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.button,
-        {
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          backgroundColor: pressed ? action.press : action.fill,
-          borderColor: action.edge,
-        },
-        elevation(prominent && !pressed ? 'lifted' : 'raised'),
-        pressed && styles.pressed,
-      ]}
+      style={{
+        borderRadius: (size + layout.shelf) / 2,
+        backgroundColor: action.shelf,
+      }}
     >
-      <View pointerEvents="none">
-        <Glyph name={name} size={prominent ? 46 : 34} color={action.ink} />
-      </View>
+      {({ pressed }) => (
+        // Padding rather than an offset, for the same reason as `Button`.
+        <View
+          pointerEvents="none"
+          style={{
+            paddingTop: pressed ? layout.shelf : 0,
+            paddingBottom: pressed ? 0 : layout.shelf,
+          }}
+        >
+          <View
+            style={[
+              styles.face,
+              {
+                width: size,
+                height: size,
+                borderRadius: size / 2,
+                backgroundColor: pressed ? action.press : action.fill,
+                borderColor: action.edge,
+              },
+            ]}
+          >
+            <Glyph name={name} size={prominent ? 46 : 34} color={action.ink} />
+          </View>
+        </View>
+      )}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  button: {
-    // Never below the comfortable tap target for small hands.
+  face: {
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-  },
-  pressed: {
-    transform: [{ scale: 0.94 }],
   },
 });

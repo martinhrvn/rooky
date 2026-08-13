@@ -1,5 +1,5 @@
 import { StyleSheet, View } from 'react-native';
-import Svg, { Circle, Line, Path } from 'react-native-svg';
+import Svg, { Circle, Defs, Line, Path, RadialGradient, Stop } from 'react-native-svg';
 
 import type { GoalKind } from '../game/types';
 import { pieceArt } from './pieces';
@@ -30,7 +30,36 @@ import { colors } from './theme';
 export function GoalBadge({ goal, size = 38 }: { goal: GoalKind; size?: number }) {
   return (
     <View style={[styles.badge, { width: size, height: size }]}>
+      {/* Three of these badges are built from *black* pieces, and the chrome is
+          now dark — a black king on a plum bar is a hole, not a picture. The
+          halo gives the silhouette something to stand on without becoming a
+          surface: it has no edge, so it cannot be mistaken for a button, which
+          is the one thing this badge must never look like. */}
+      <Halo size={size * 1.5} />
       <Art goal={goal} size={size} />
+    </View>
+  );
+}
+
+/**
+ * A soft pool of warm light. No edge anywhere in it, by design.
+ *
+ * Drawn larger than the badge and allowed to spill: an edge that lined up with
+ * the artwork would read as a plate the piece is standing on.
+ */
+function Halo({ size }: { size: number }) {
+  return (
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.badge]}>
+      <Svg width={size} height={size} viewBox="0 0 100 100">
+        <Defs>
+          <RadialGradient id="goal-halo" cx="50%" cy="50%" r="50%">
+            <Stop offset="0%" stopColor={colors.lightSquare} stopOpacity={0.5} />
+            <Stop offset="55%" stopColor={colors.lightSquare} stopOpacity={0.22} />
+            <Stop offset="100%" stopColor={colors.lightSquare} stopOpacity={0} />
+          </RadialGradient>
+        </Defs>
+        <Circle cx={50} cy={50} r={50} fill="url(#goal-halo)" />
+      </Svg>
     </View>
   );
 }
@@ -38,7 +67,7 @@ export function GoalBadge({ goal, size = 38 }: { goal: GoalKind; size?: number }
 function Art({ goal, size }: { goal: GoalKind; size: number }) {
   switch (goal) {
     case 'collectAllStars':
-      return <Star size={size * 0.86} />;
+      return <Star size={size * 0.86} id="goal-star" />;
 
     // Take them: the enemy, struck out. The cross is the one mark here that is
     // not already on the board, and it is the most universally understood
@@ -49,7 +78,7 @@ function Art({ goal, size }: { goal: GoalKind; size: number }) {
     case 'collectAndCapture':
       return (
         <View style={styles.pair}>
-          <Star size={size * 0.5} />
+          <Star size={size * 0.5} id="goal-star-pair" />
           <Piece color="b" type="p" size={size * 0.62} mark={<Cross size={size * 0.62} />} />
         </View>
       );
@@ -128,7 +157,7 @@ function Shield({ size }: { size: number }) {
       <Path
         d="M50 5 L92 20 V50 C92 76 73 92 50 97 C27 92 8 76 8 50 V20 Z"
         fill={colors.greenSoft}
-        stroke={colors.green}
+        stroke={colors.greenLight}
         strokeWidth={7}
         strokeLinejoin="round"
       />

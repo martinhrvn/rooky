@@ -64,8 +64,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: colors.surfaceEdge,
-    backgroundColor: colors.background,
+    borderColor: colors.border,
+    // Sunk into the card, not the same dark as the page behind it — an input
+    // filled with the ground colour reads as a hole in the card.
+    backgroundColor: colors.surfaceRaised,
   },
-  pressed: { opacity: 0.7, transform: [{ scale: 0.94 }] },
 });

@@ -2,6 +2,7 @@ import * as Haptics from 'expo-haptics';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 
 import { attackedPieces, capturersOf, dangerFrom, dangerMap } from '../chess/attacks';
 import { type Board as BoardModel, findPieces, movePiece } from '../chess/board';
@@ -324,6 +325,11 @@ export function LevelPlayer({
       </View>
 
       <View style={styles.boardWrap}>
+        {/* The board is the only warm thing on a dark screen, so it gets to
+            look lit rather than pasted on. Sits behind the frame and spills
+            well past it — a glow with a visible edge is just a shape. */}
+        <BoardGlow size={boardSize * 1.6} />
+
         <BoardFrame size={boardSize}>
           {/* Board and celebration share this wrapper so the overlay lines up
               with the squares. Absolute children resolve against the padding
@@ -396,8 +402,33 @@ export function LevelPlayer({
   );
 }
 
+/**
+ * The warm pool of light the board sits in.
+ *
+ * Absolutely positioned and centred behind the frame, so it does not affect
+ * the board's own measurement — that arithmetic has to stay exact, because a
+ * fractional cell leaves squares and pieces rounding independently.
+ */
+function BoardGlow({ size }: { size: number }) {
+  return (
+    <View pointerEvents="none" style={styles.glow}>
+      <Svg width={size} height={size} viewBox="0 0 100 100">
+        <Defs>
+          <RadialGradient id="board-glow" cx="50%" cy="50%" r="50%">
+            <Stop offset="0%" stopColor={colors.lightSquare} stopOpacity={0.16} />
+            <Stop offset="45%" stopColor={colors.lightSquare} stopOpacity={0.08} />
+            <Stop offset="100%" stopColor={colors.lightSquare} stopOpacity={0} />
+          </RadialGradient>
+        </Defs>
+        <Circle cx={50} cy={50} r={50} fill="url(#board-glow)" />
+      </Svg>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
+  glow: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',

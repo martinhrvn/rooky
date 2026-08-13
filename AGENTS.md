@@ -91,18 +91,35 @@ from it, and it is covered by vitest.
 
 ## Design
 
+- **The chrome is dark; the board is not.** Everything around the board is a
+  deep plum ground (`background`, `surface`, `surfaceRaised`), and the board
+  keeps its warm squares, its frame and every danger wash exactly as they were.
+  That contrast *is* the design: a warm board on a dark ground reads as a lit
+  object on a table, and it means the only bright things on screen are the
+  pieces, the stars and the actions. **Never restyle a board colour from
+  `theme.ts`** — those constants are what a real board looks like and what the
+  Cburnett artwork was drawn against.
 - **One colour per meaning, used everywhere without exception.** `actions` in
-  `theme.ts`: green = go on, walnut = play freely, light-square cream = do it
-  again, plain = help/leave. A glyph is a detail inside a shape, not the shape
-  itself, so to a non-reader two same-coloured pills are the same button
-  however different their icons. Filled-vs-outlined does not fix that — that
-  signals importance, not identity.
+  `theme.ts`: jade = go on, periwinkle = play freely, coral = do it again,
+  plain = help/leave. A glyph is a detail inside a shape, not the shape itself,
+  so to a non-reader two same-coloured pills are the same button however
+  different their icons. Filled-vs-outlined does not fix that — that signals
+  importance, not identity.
 - **Gold is rewards only.** If an action is gold it competes with the stars.
-- **Every fill comes from the board** — the tournament green, the dark square,
-  the light square. Nothing new enters the palette, so it cannot drift towards
-  looking like a toy.
-- **Two elevations, `raised` and `lifted`, and nothing else.** Depth is what
-  the app was missing; more levels would turn it into decoration.
+- **Nothing on the chrome may out-shout the board.** The accents are muted
+  jewels, never acid. The palette was pastel once and read as a toddler's toy;
+  it must not now overcorrect into a neon one.
+- **Coloured buttons carry dark labels** (`inkOnAccent`). Cream fails AA on
+  every accent in the palette (2.5–2.9:1) and dark clears it on all of them —
+  which is the entire reason the accents are allowed to stay bright. If you add
+  an accent, check both before shipping it.
+- **Surfaces step up in lightness; controls stand on a shelf.** On a dark
+  ground a shadow mostly darkens something already dark, so separation comes
+  from `background` → `surface` → `surfaceRaised` plus a hairline. Controls
+  ignore that entirely: every button sits a few pixels above a darker block of
+  its own colour and sinks onto it when pressed. The shelf is what says "press
+  me" in an app with no characters drawn to say it, and the button's total
+  height never changes, so pressing never reflows the screen.
 - **The board's cell size must stay a whole number of pixels.** A fractional
   cell leaves squares and the pieces on them rounding independently, which
   shows up as pieces sitting slightly off centre.
@@ -117,7 +134,17 @@ from it, and it is covered by vitest.
   is the first thing to check if new artwork looks off.
 - **Signature element:** progress is drawn as a rank of board squares filling
   in (`src/ui/TierRank.tsx`), not a progress bar. It's on both non-board
-  screens and it's what the app is meant to be remembered by.
+  screens and it's what the app is meant to be remembered by. The squares
+  **butt together with no gap** inside a clipped, hairlined frame — spaced out
+  they were a row of tiles, touching they are a slice cut from the board, and
+  the finished levels form one continuous bar rather than a dotted line.
+- **The "next level" ring is dark, and has to be.** It sits on board squares,
+  where cream is 1.18:1 on the light square and jade is 2.33 light / 1.01 dark.
+  `inkOnAccent` is the only colour in the palette that clears 3:1 on both.
+- **Black pieces need a halo on the chrome.** The Cburnett black set is black
+  fill with a black stroke, so it disappears on the dark ground. `GoalBadge`
+  puts a soft radial behind it — edgeless on purpose, because the badge must
+  never look like a button.
 - **The win celebration must stay skippable mid-flight.** Levels get replayed
   constantly; an unskippable cutscene becomes torture by the fifth attempt.
 - **Nothing she can reach may destroy progress.** "Start over" opens level 1

@@ -98,7 +98,7 @@ function Tick() {
       <Rect x={4} y={4} width={92} height={92} rx={26} fill={colors.green} />
       <Path
         d="M26 52 L44 70 L76 32"
-        stroke={colors.surface}
+        stroke={colors.inkOnAccent}
         strokeWidth={12}
         strokeLinecap="round"
         strokeLinejoin="round"

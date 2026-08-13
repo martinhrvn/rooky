@@ -136,7 +136,9 @@ function CompleteBadge() {
       <Rect x={4} y={4} width={92} height={92} rx={26} fill={colors.green} />
       <Path
         d="M26 52 L44 70 L76 32"
-        stroke={colors.surface}
+        // Dark on jade, like every other tick in the app. `surface` used to be
+        // the light colour here and is now a dark card.
+        stroke={colors.inkOnAccent}
         strokeWidth={12}
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -207,6 +209,8 @@ const styles = StyleSheet.create({
   tiers: { gap: 10 },
   tierRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   tierLabel: { width: 78 },
-  rankStrip: { flex: 1 },
+  // `alignSelf` restores the vertical centring the rank's own frame style
+  // would otherwise override inside this row.
+  rankStrip: { flex: 1, alignSelf: 'center' },
   pressed: { opacity: 0.7, transform: [{ scale: 0.96 }] },
 });

@@ -5,7 +5,7 @@ import { Button } from './Button';
 import { PieceTile } from './PieceTile';
 import { strings } from './strings';
 import { Text } from './Text';
-import { colors, elevation } from './theme';
+import { colors, elevation, layout } from './theme';
 
 /** Most pieces shown in the header before it starts to crowd. */
 const MAX_TILES = 6;
@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
   // siblings rather than as a card and an afterthought.
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 28,
+    borderRadius: layout.radius,
     borderWidth: 1,
     borderColor: colors.surfaceEdge,
     padding: 22,

@@ -76,7 +76,7 @@ export default function SettingsScreen() {
                   pressed && styles.pressed,
                 ]}
               >
-                <Text variant="label" color={tier === maxTier ? colors.surface : colors.text}>
+                <Text variant="label" color={tier === maxTier ? colors.inkOnAccent : colors.text}>
                   {strings.tiers[tier]}
                 </Text>
               </Pressable>
@@ -264,8 +264,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: colors.surfaceEdge,
-    backgroundColor: colors.background,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceRaised,
   },
   version: { alignSelf: 'center', padding: 16 },
   pressed: { opacity: 0.7 },

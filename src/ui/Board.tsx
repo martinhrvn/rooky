@@ -179,7 +179,7 @@ export function Board({
             { width: cell, height: cell, left: xOf(sq, cell), top: yOf(sq, cell) },
           ]}
         >
-          <Star size={cell * 0.62} />
+          <Star size={cell * 0.62} id={`star-${sq}`} />
         </View>
       ))}
 
@@ -420,7 +420,7 @@ function CollectedStar({ square, cell }: { square: Square; cell: number }) {
         style,
       ]}
     >
-      <Star size={cell * 0.62} />
+      <Star size={cell * 0.62} id={`star-collected-${square}`} />
     </Animated.View>
   );
 }

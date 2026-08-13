@@ -3,15 +3,24 @@ import { Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
 
 import { Glyph, type IconName } from './IconButton';
 import { Text } from './Text';
-import { type ActionKind, actions, colors, elevation, layout } from './theme';
+import { type ActionKind, actions, layout } from './theme';
 
 /**
- * An icon and a word, coloured by what the button *means*.
+ * An icon and a word, coloured by what the button *means*, standing on a shelf.
  *
  * The variants are named for meaning rather than rank ("go", not "primary")
  * because the colour is doing real work here, not decoration: to a player who
  * cannot read, two same-coloured pills are the same button however different
  * their glyphs. See `actions` in theme.ts.
+ *
+ * **The shelf is the affordance.** The face sits a few pixels above a darker
+ * block of its own colour and sinks onto it when pressed, so the control looks
+ * like a physical thing before anyone reads a word of it. This is the one
+ * device standing in for the character artwork the app does not have, and it
+ * is why the buttons can be flat colour without looking like flat colour.
+ *
+ * The total height never changes — the face moves inside a fixed box — so
+ * pressing a button never reflows the screen around it.
  */
 export function Button({
   icon,
@@ -45,39 +54,54 @@ export function Button({
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.button,
-        {
-          backgroundColor: pressed ? action.press : action.fill,
-          borderColor: action.edge,
-        },
-        // A real button sinks when pressed rather than fading — dimming a
-        // filled colour just makes it look washed out.
-        elevation(prominent && !pressed ? 'lifted' : 'raised'),
-        pressed && styles.pressed,
-        disabled && styles.disabled,
-        style,
-      ]}
+      style={[styles.shelf, { backgroundColor: action.shelf }, disabled && styles.disabled, style]}
     >
-      <View pointerEvents="none" style={styles.inner}>
-        {iconNode ?? <Glyph name={icon} size={prominent ? 30 : 24} color={action.ink} />}
-        <Text variant="button" color={action.ink}>
-          {label}
-        </Text>
-      </View>
+      {({ pressed }) => (
+        // The travel is padding, not an offset, and the face stays in normal
+        // flow. An absolutely-positioned face has no intrinsic width, so any
+        // button that is not explicitly flexed — "Start over" sitting in a row
+        // beside Play — would collapse to nothing.
+        <View
+          pointerEvents="none"
+          style={{
+            paddingTop: pressed ? layout.shelf : 0,
+            paddingBottom: pressed ? 0 : layout.shelf,
+          }}
+        >
+          <View
+            style={[
+              styles.face,
+              {
+                backgroundColor: pressed ? action.press : action.fill,
+                borderColor: action.edge,
+              },
+            ]}
+          >
+            {iconNode ?? <Glyph name={icon} size={prominent ? 30 : 24} color={action.ink} />}
+            <Text variant="button" color={action.ink}>
+              {label}
+            </Text>
+          </View>
+        </View>
+      )}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  button: {
-    minHeight: layout.touchTarget,
-    paddingHorizontal: 20,
+  /** The block underneath, showing through as the face lifts off it. */
+  shelf: {
+    borderRadius: (layout.touchTarget + layout.shelf) / 2,
+  },
+  face: {
+    height: layout.touchTarget,
     borderRadius: layout.touchTarget / 2,
     borderWidth: 1.5,
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
+    gap: 10,
+    paddingHorizontal: 20,
   },
-  inner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  pressed: { transform: [{ scale: 0.98 }] },
-  disabled: { opacity: 0.4, borderColor: colors.surfaceEdge },
+  disabled: { opacity: 0.4 },
 });

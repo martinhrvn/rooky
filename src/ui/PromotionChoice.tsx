@@ -59,8 +59,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     // Dimmed here, unlike the win celebration: this one is a question and
-    // needs an answer, so the board should recede until she gives one.
-    backgroundColor: 'rgba(59, 48, 39, 0.35)',
+    // needs an answer, so the board should recede until she gives one. Plum
+    // rather than brown, and heavier than it was — the board is the brightest
+    // thing on a dark screen now and takes more to push back.
+    backgroundColor: 'rgba(20, 14, 24, 0.55)',
     borderRadius: 6,
   },
   panel: {
