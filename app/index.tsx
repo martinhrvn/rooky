@@ -1,13 +1,16 @@
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Polygon } from 'react-native-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
 
-import { ALL_LEVELS, WORLDS, nextLevel } from '../src/content';
+import { ALL_LEVELS, WORLDS, nextLevel, worldOf } from '../src/content';
+import { currentWorld } from '../src/progress/selectors';
 import { useCompletedIds, useProgress } from '../src/progress/store';
-import { pieceArt } from '../src/ui/pieces';
-import { StarRating } from '../src/ui/StarRating';
+import { PieceTile } from '../src/ui/PieceTile';
+import { strings } from '../src/ui/strings';
+import { Text } from '../src/ui/Text';
+import { TierRank } from '../src/ui/TierRank';
 import { colors, layout } from '../src/ui/theme';
 
 export default function HomeScreen() {
@@ -18,112 +21,135 @@ export default function HomeScreen() {
   const hydrated = useProgress((s) => s.hydrated);
 
   // Until the avatar picker exists (Phase E), make sure there is somewhere for
-  // results to be recorded. Waiting for hydration avoids creating a duplicate
+  // results to be recorded. Waiting for hydration avoids stacking a second
   // profile on top of a saved one.
   useEffect(() => {
     if (hydrated && profiles.length === 0) createProfile('Player 1', 'wr');
   }, [hydrated, profiles.length, createProfile]);
 
   const resume = nextLevel(completed);
+  const resumeWorld = worldOf(resume) ?? currentWorld(WORLDS, completed);
   const allDone = completed.size >= ALL_LEVELS.length;
+
+  const label = allDone
+    ? strings.home.replay
+    : completed.size === 0
+      ? strings.home.start
+      : strings.home.continue;
+
+  const tierLabel = strings.tiers[resume.tier];
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <View style={styles.hero}>
-        {/* The one control she needs to find: biggest thing on the screen,
-            and it always does the sensible thing. */}
+      <View style={styles.header}>
+        <Text variant="title" color={colors.green}>
+          {strings.appName}
+        </Text>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={allDone ? 'Play again' : 'Continue playing'}
-          onPress={() => router.push(`/play/${resume.id}`)}
-          style={({ pressed }) => [styles.continueButton, pressed && styles.pressed]}
+          accessibilityLabel={strings.home.settings}
+          onPress={() => {}}
+          // Parent-facing, so deliberately small and out of the way.
+          hitSlop={12}
+          style={({ pressed }) => [styles.gear, pressed && styles.pressed]}
         >
-          <Svg width={72} height={72} viewBox="0 0 100 100">
-            <Polygon points="32,20 32,80 80,50" fill={colors.text} />
-          </Svg>
+          <Gear />
         </Pressable>
       </View>
 
-      <ScrollView contentContainerStyle={styles.worlds}>
-        {WORLDS.map((world) => {
-          const Art = pieceArt('w', world.icon);
-          return (
-            <View key={world.key} style={styles.world}>
-              <View style={styles.worldHeader}>
-                <Art width={44} height={44} />
-              </View>
+      <View style={styles.hero}>
+        {/* The one control she has to find. It shows the piece she is about to
+            play, so the screen says what happens next without being read. */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${label}. ${resumeWorld?.title ?? ''}`}
+          onPress={() => router.push(`/play/${resume.id}`)}
+          style={({ pressed }) => [styles.continueTile, pressed && styles.pressed]}
+        >
+          <PieceTile piece={resumeWorld?.icon ?? 'r'} size={168} ringed />
+        </Pressable>
 
-              <View style={styles.grid}>
-                {world.levels.map((level, index) => {
-                  const done = completed.has(level.id);
-                  // Unlocked when it is the first level or the one before it
-                  // is finished. Nothing is ever gated behind a star rating.
-                  const unlocked = index === 0 || completed.has(world.levels[index - 1].id);
-                  return (
-                    <Pressable
-                      key={level.id}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Level ${index + 1}`}
-                      disabled={!unlocked}
-                      onPress={() => router.push(`/play/${level.id}`)}
-                      style={({ pressed }) => [
-                        styles.tile,
-                        done && styles.tileDone,
-                        !unlocked && styles.tileLocked,
-                        pressed && styles.pressed,
-                      ]}
-                    >
-                      {done ? <StarRating earned={3} size={14} /> : null}
-                      <View style={styles.pips}>
-                        {Array.from({ length: index + 1 }, (_, i) => (
-                          <View key={i} style={styles.pip} />
-                        ))}
-                      </View>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
-          );
-        })}
-      </ScrollView>
+        <View style={styles.heroLabel}>
+          <Text variant="display">{label}</Text>
+          {resumeWorld ? (
+            <Text variant="body" color={colors.textSoft}>
+              {resumeWorld.title} · {tierLabel}
+            </Text>
+          ) : null}
+        </View>
+
+        {resumeWorld ? (
+          <TierRank
+            levels={resumeWorld.levels.filter((l) => l.tier === resume.tier)}
+            completedIds={completed}
+            // A progress readout, not a way in — the route to a specific level
+            // is the selector. Continue is the only thing to tap here.
+            interactive={false}
+            squareSize={22}
+          />
+        ) : null}
+      </View>
+
+      <View style={styles.footer}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={strings.home.chooseAPiece}
+          onPress={() => router.push('/pieces')}
+          style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}
+        >
+          <Text variant="button" color={colors.green}>
+            {strings.home.chooseAPiece}
+          </Text>
+        </Pressable>
+      </View>
     </SafeAreaView>
+  );
+}
+
+function Gear() {
+  return (
+    <Svg width={24} height={24} viewBox="0 0 100 100">
+      <Circle cx={50} cy={50} r={14} stroke={colors.textSoft} strokeWidth={9} fill="none" />
+      <Path
+        d="M50 12 L50 24 M50 76 L50 88 M12 50 L24 50 M76 50 L88 50 M23 23 L32 32 M68 68 L77 77 M77 23 L68 32 M32 68 L23 77"
+        stroke={colors.textSoft}
+        strokeWidth={9}
+        strokeLinecap="round"
+      />
+    </Svg>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  hero: { alignItems: 'center', paddingVertical: 20 },
-  continueButton: {
-    width: layout.touchTarget * 2,
-    height: layout.touchTarget * 2,
-    borderRadius: layout.touchTarget,
-    backgroundColor: colors.star,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: layout.screenPadding,
+    paddingVertical: 12,
+  },
+  gear: { padding: 8 },
+  hero: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 20,
   },
-  pressed: { opacity: 0.7, transform: [{ scale: 0.96 }] },
-  worlds: { padding: layout.boardPadding, gap: 20 },
-  world: {
-    backgroundColor: colors.surface,
-    borderRadius: layout.radius,
-    padding: 14,
-    gap: 12,
-  },
-  worldHeader: { flexDirection: 'row', alignItems: 'center' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  tile: {
-    width: layout.touchTarget,
-    height: layout.touchTarget,
-    borderRadius: 14,
-    backgroundColor: colors.lightSquare,
+  continueTile: { borderRadius: 40 },
+  heroLabel: { alignItems: 'center', gap: 4 },
+  footer: {
+    paddingHorizontal: layout.screenPadding,
+    paddingBottom: 20,
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
   },
-  tileDone: { backgroundColor: colors.lastMove },
-  tileLocked: { opacity: 0.35 },
-  // Level number as a row of pips — no numerals anywhere she has to read.
-  pips: { flexDirection: 'row', flexWrap: 'wrap', gap: 3, justifyContent: 'center', maxWidth: 44 },
-  pip: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.darkSquare },
+  secondary: {
+    minHeight: layout.touchTarget,
+    paddingHorizontal: 28,
+    justifyContent: 'center',
+    borderRadius: layout.touchTarget / 2,
+    borderWidth: 2,
+    borderColor: colors.green,
+  },
+  pressed: { opacity: 0.7, transform: [{ scale: 0.97 }] },
 });

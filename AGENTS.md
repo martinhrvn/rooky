@@ -9,11 +9,15 @@ writing any code. Append `.md` to any docs URL to get the Markdown version.
 
 ## The two constraints that decide most arguments
 
-**1. The player cannot read.** The first tester is a four-year-old. The play
-loop — home, level grid, game screen — must contain no text she has to read.
-Controls are icons, kept to a minimum, in fixed positions. Counts are pips, not
-numerals. Parent-facing screens (settings, profile setup) may use words freely;
-a parent typing a name is fine, and setup steps are allowed to assume an adult.
+**1. The player cannot read.** The first tester is a four-year-old. Text may
+*support* meaning but must never be the only thing carrying it — every control
+has to read from its icon, shape, or position alone. Counts are pips, not
+numerals. The play screen stays icon-only because words are noise mid-task; the
+home and selector screens carry titles and labels, because that is where an
+adult helps out.
+
+All user-facing copy lives in `src/ui/strings.ts`, and all text goes through
+`src/ui/Text.tsx` so nothing drifts into an ad-hoc `fontSize`.
 
 **2. Licence hygiene.** The app is MIT and must stay installable on the iOS App
 Store, so nothing copyleft may enter the dependency tree or the level content:
@@ -30,11 +34,25 @@ Store, so nothing copyleft may enter the dependency tree or the level content:
 ```
 src/chess/      pure move generation and attack maps. No React, no I/O.
 src/game/       engine.ts (pure reducer), solver.ts (BFS), types.ts
-src/content/    level data + world ordering
-src/progress/   zustand store persisted to AsyncStorage
-src/ui/         Board, icons, and other presentation
+src/content/    level data, world metadata, ordering
+src/progress/   selectors.ts (pure unlock/progress) + zustand store on AsyncStorage
+src/ui/         Board, Celebration, TierRank, icons, theme, strings
 app/            expo-router screens
 ```
+
+Unlock and completion logic belongs in `src/progress/selectors.ts` as pure
+functions, not inline in a screen — both the home and selector screens read
+from it, and it is covered by vitest.
+
+## Design
+
+- **Gold is rewards only.** Actions and progress use tournament green
+  (`colors.green`); if an action is gold it competes with the stars.
+- **Signature element:** progress is drawn as a rank of board squares filling
+  in (`src/ui/TierRank.tsx`), not a progress bar. It's on both non-board
+  screens and it's what the app is meant to be remembered by.
+- **The win celebration must stay skippable mid-flight.** Levels get replayed
+  constantly; an unskippable cutscene becomes torture by the fifth attempt.
 
 `src/chess/` is hand-rolled rather than a library because nearly every level
 position is **kingless**, which real chess libraries reject, and tiers 1–3 need

@@ -1,9 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
+  Easing,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withSpring,
+  withTiming,
 } from 'react-native-reanimated';
 
 import type { Board as BoardModel } from '../chess/board';
@@ -48,6 +51,7 @@ export function Board({
   const cell = size / 8;
   const targetSet = new Set(targets);
   const starSet = new Set(stars);
+  const collecting = useVanishingStars(stars);
 
   return (
     <View style={[styles.board, { width: size, height: size }]}>
@@ -93,41 +97,25 @@ export function Board({
         </View>
       ))}
 
+      {/* Stars that were just taken, popping on their way out. This is the
+          moment that repeats most in the whole game, so it gets the animation. */}
+      {collecting.map((sq) => (
+        <CollectedStar key={`collected-${sq}`} square={sq} cell={cell} />
+      ))}
+
       {findPieces(board).map((sq) => (
         <PieceView key={board[sq]!.id} piece={board[sq]!} square={sq} cell={cell} />
       ))}
 
       {/* Move hints go above the pieces so a capture target still reads. */}
       {[...targetSet].map((sq) => (
-        <View
+        <MoveHint
           key={`target-${sq}`}
-          pointerEvents="none"
-          style={[
-            styles.centred,
-            { width: cell, height: cell, left: xOf(sq, cell), top: yOf(sq, cell) },
-          ]}
-        >
-          {board[sq] || starSet.has(sq) ? (
-            <View
-              style={{
-                width: cell * 0.88,
-                height: cell * 0.88,
-                borderRadius: cell * 0.44,
-                borderWidth: cell * 0.09,
-                borderColor: colors.moveRing,
-              }}
-            />
-          ) : (
-            <View
-              style={{
-                width: cell * 0.3,
-                height: cell * 0.3,
-                borderRadius: cell * 0.15,
-                backgroundColor: colors.moveDot,
-              }}
-            />
-          )}
-        </View>
+          square={sq}
+          cell={cell}
+          from={selected}
+          isCapture={Boolean(board[sq]) || starSet.has(sq)}
+        />
       ))}
 
       {/* Touch layer on top, so the whole square is tappable rather than just
@@ -150,6 +138,128 @@ export function Board({
         />
       ))}
     </View>
+  );
+}
+
+/**
+ * A legal destination, fading in staggered by how far it is from the piece so
+ * the options fan outward rather than all snapping on together.
+ */
+function MoveHint({
+  square,
+  cell,
+  from,
+  isCapture,
+}: {
+  square: Square;
+  cell: number;
+  from: Square | null;
+  isCapture: boolean;
+}) {
+  const distance =
+    from === null
+      ? 0
+      : Math.max(
+          Math.abs(fileOf(square) - fileOf(from)),
+          Math.abs(rankOf(square) - rankOf(from)),
+        );
+
+  const progress = useSharedValue(0);
+
+  useEffect(() => {
+    progress.value = withDelay(distance * 26, withTiming(1, { duration: 130 }));
+  }, [distance, progress]);
+
+  const style = useAnimatedStyle(() => ({
+    opacity: progress.value,
+    transform: [{ scale: 0.6 + progress.value * 0.4 }],
+  }));
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.centred,
+        { width: cell, height: cell, left: xOf(square, cell), top: yOf(square, cell) },
+        style,
+      ]}
+    >
+      {isCapture ? (
+        <View
+          style={{
+            width: cell * 0.88,
+            height: cell * 0.88,
+            borderRadius: cell * 0.44,
+            borderWidth: cell * 0.09,
+            borderColor: colors.moveRing,
+          }}
+        />
+      ) : (
+        <View
+          style={{
+            width: cell * 0.3,
+            height: cell * 0.3,
+            borderRadius: cell * 0.15,
+            backgroundColor: colors.moveDot,
+          }}
+        />
+      )}
+    </Animated.View>
+  );
+}
+
+/** How long a collected star takes to pop and fade. */
+const COLLECT_MS = 340;
+
+/**
+ * Squares whose star disappeared since the last render, so they can be
+ * animated out after the fact. The board only receives the stars that remain,
+ * so without this a collected star would simply blink out of existence.
+ */
+function useVanishingStars(stars: readonly Square[]): Square[] {
+  const previous = useRef<readonly Square[]>(stars);
+  const [vanishing, setVanishing] = useState<Square[]>([]);
+
+  useEffect(() => {
+    const current = new Set(stars);
+    const gone = previous.current.filter((sq) => !current.has(sq));
+    previous.current = stars;
+    if (gone.length === 0) return;
+
+    setVanishing((v) => [...v, ...gone]);
+    const timer = setTimeout(
+      () => setVanishing((v) => v.filter((sq) => !gone.includes(sq))),
+      COLLECT_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [stars]);
+
+  return vanishing;
+}
+
+function CollectedStar({ square, cell }: { square: Square; cell: number }) {
+  const progress = useSharedValue(0);
+
+  useEffect(() => {
+    progress.value = withTiming(1, { duration: COLLECT_MS, easing: Easing.out(Easing.quad) });
+  }, [progress]);
+
+  const style = useAnimatedStyle(() => ({
+    opacity: 1 - progress.value,
+    transform: [{ scale: 1 + progress.value * 1.1 }, { translateY: -progress.value * cell * 0.5 }],
+  }));
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.centred,
+        { width: cell, height: cell, left: xOf(square, cell), top: yOf(square, cell) },
+        style,
+      ]}
+    >
+      <Star size={cell * 0.62} />
+    </Animated.View>
   );
 }
 

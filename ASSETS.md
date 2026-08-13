@@ -25,6 +25,21 @@ which stays MIT. In practice that means:
 - Replacing the set with a public-domain one would remove this obligation
   entirely, if that is ever preferable.
 
+## Typeface — Fredoka
+
+| | |
+|---|---|
+| **Family** | Fredoka |
+| **Author** | The Fredoka Project Authors |
+| **Licence** | [SIL Open Font License 1.1](https://scripts.sil.org/OFL) |
+| **Source** | `@expo-google-fonts/fredoka` (weights 400, 500, 600) |
+
+OFL is permissive and does not affect the app's MIT licence. The only real
+obligations are keeping the licence text with the font files (npm does this for
+us, in `node_modules/@expo-google-fonts/fredoka/LICENSE_FONT`) and not selling
+the font on its own. Reserved Font Name rules apply if you ever modify it —
+don't ship a modified build still called Fredoka.
+
 ## What is deliberately *not* used
 
 - **[lila](https://github.com/lichess-org/lila) level data** (AGPL-3.0) — we follow

@@ -1,17 +1,28 @@
+import type { PieceType } from '../chess/types';
 import { toLevel } from '../game/engine';
-import type { Level, LevelData, WorldKey } from '../game/types';
+import type { Level, LevelData, Tier, WorldKey } from '../game/types';
 import { rookLevels } from './levels/rook';
 
 export interface World {
   readonly key: WorldKey;
-  /** The piece shown on the world's tile, and the one the world is about. */
-  readonly icon: 'r' | 'b' | 'q' | 'k' | 'n' | 'p';
+  /** The piece the world is about, and the one shown on its tile. */
+  readonly icon: PieceType;
+  readonly title: string;
+  /** One line on what this piece does. Supports the picture, never replaces it. */
+  readonly blurb: string;
   readonly levels: readonly Level[];
 }
 
-const world = (key: WorldKey, icon: World['icon'], levels: readonly LevelData[]): World => ({
-  key,
-  icon,
+interface WorldSpec {
+  key: WorldKey;
+  icon: PieceType;
+  title: string;
+  blurb: string;
+  levels: readonly LevelData[];
+}
+
+const world = ({ levels, ...rest }: WorldSpec): World => ({
+  ...rest,
   levels: levels.map(toLevel),
 });
 
@@ -19,8 +30,34 @@ const world = (key: WorldKey, icon: World['icon'], levels: readonly LevelData[])
  * Canonical world order: rook (simplest lines) first, queen straight after
  * bishop because it is their union, knight late because it is the hardest to
  * internalise, pawn last because it has the most special cases.
+ *
+ * Worlds with no levels yet still appear, shown locked. Seeing what is coming
+ * is motivating, and hiding them would make the app look finished when it
+ * isn't.
  */
-export const WORLDS: readonly World[] = [world('rook', 'r', rookLevels)];
+export const WORLDS: readonly World[] = [
+  world({
+    key: 'rook',
+    icon: 'r',
+    title: 'The Rook',
+    blurb: 'Moves in straight lines',
+    levels: rookLevels,
+  }),
+  world({ key: 'bishop', icon: 'b', title: 'The Bishop', blurb: 'Moves on diagonals', levels: [] }),
+  world({
+    key: 'queen',
+    icon: 'q',
+    title: 'The Queen',
+    blurb: 'Lines and diagonals, both',
+    levels: [],
+  }),
+  world({ key: 'king', icon: 'k', title: 'The King', blurb: 'One step, any way', levels: [] }),
+  world({ key: 'knight', icon: 'n', title: 'The Knight', blurb: 'Jumps in an L', levels: [] }),
+  world({ key: 'pawn', icon: 'p', title: 'The Pawn', blurb: 'Forward, but takes crossways', levels: [] }),
+];
+
+/** Tiers in the order they are played inside a world. */
+export const TIERS: readonly Tier[] = [1, 2, 3];
 
 /** Every level in play order — the sequence `Continue` walks. */
 export const ALL_LEVELS: readonly Level[] = WORLDS.flatMap((w) => w.levels);
@@ -29,8 +66,11 @@ const BY_ID = new Map(ALL_LEVELS.map((level) => [level.id, level]));
 
 export const levelById = (id: string): Level | undefined => BY_ID.get(id);
 
-export const worldByKey = (key: string): World | undefined =>
-  WORLDS.find((w) => w.key === key);
+export const worldByKey = (key: string): World | undefined => WORLDS.find((w) => w.key === key);
+
+/** The levels of one tier within a world, in play order. */
+export const tierLevels = (world: World, tier: Tier): readonly Level[] =>
+  world.levels.filter((level) => level.tier === tier);
 
 /**
  * What `Continue` opens: the first level with no recorded result, falling back
@@ -47,3 +87,6 @@ export function levelAfter(id: string): Level | undefined {
   const index = ALL_LEVELS.findIndex((level) => level.id === id);
   return index >= 0 ? ALL_LEVELS[index + 1] : undefined;
 }
+
+/** The world a level belongs to. */
+export const worldOf = (level: Level): World | undefined => worldByKey(level.world);
