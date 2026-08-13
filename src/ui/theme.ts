@@ -42,17 +42,23 @@ export const colors = {
   /** The square she was actually taken on — shown at every tier. */
   dangerStrong: 'rgba(216, 42, 42, 0.72)',
 
-  /**
-   * Deep wood: the dark square darkened until off-white text sits on it
-   * legibly. Not a new hue — it is already the colour she looks at all game,
-   * so it cannot clash with anything.
-   */
+  /** Deep wood. The board's surround and the ink on pale buttons. */
   walnut: '#6B4E35',
   walnutPress: '#553D29',
 
   /** The board's surround. */
   frame: '#8A6244',
   frameEdge: '#5C4530',
+
+  /**
+   * Button pastels. Muted and close in lightness so three colours read as a
+   * set rather than as a scatter — the point is that each action is *its own
+   * colour*, not that the screen is colourful.
+   */
+  sky: '#8FB3D9',
+  skyPress: '#7BA0CA',
+  apricot: '#F4C39D',
+  apricotPress: '#E9B187',
 
   text: '#3B3027',
   textSoft: '#8A7B6B',
@@ -73,21 +79,26 @@ export const colors = {
  * different their icons. Filled-versus-outlined does not fix that either; that
  * signals importance, not identity. Colour does.
  *
- * All three fills come from the board itself, so nothing new enters the
- * palette and it cannot drift towards looking like a toy.
+ * Only `go` is a strong colour. It is the one button she has to be able to
+ * find, so it keeps the weight; the others are pastels of similar lightness,
+ * which distinguishes them from each other without any of them shouting.
  */
 export const actions = {
   /** Onward: play, next level, next difficulty, another one. */
   go: { fill: colors.green, press: '#33684A', ink: colors.surface, edge: 'transparent' },
   /** The open-ended mode: endless, keep playing. */
-  free: { fill: colors.walnut, press: colors.walnutPress, ink: colors.surface, edge: 'transparent' },
+  free: {
+    fill: colors.sky,
+    press: colors.skyPress,
+    ink: colors.text,
+    edge: 'rgba(59, 48, 39, 0.16)',
+  },
   /** Back to the beginning: start over, retry. */
   again: {
-    fill: colors.lightSquare,
-    press: '#E3C79C',
-    ink: colors.walnut,
-    // Cream is too close to the page in value to read as a button unaided.
-    edge: 'rgba(107, 78, 53, 0.45)',
+    fill: colors.apricot,
+    press: colors.apricotPress,
+    ink: colors.text,
+    edge: 'rgba(59, 48, 39, 0.16)',
   },
   /** Everything else: hint, back, settings. */
   plain: { fill: colors.surface, press: '#F4EEE3', ink: colors.text, edge: colors.surfaceEdge },

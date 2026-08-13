@@ -357,7 +357,10 @@ function CapturedPiece({ piece, square, cell }: { piece: Piece; square: Square; 
         style,
       ]}
     >
-      <Art width={cell * 0.86} height={cell * 0.86} />
+      {/* Fills the square. The Cburnett artwork already carries its own
+          margin — its ink covers about 60% of the 45-unit box — so scaling it
+          down again would leave the pieces looking undersized. */}
+      <Art width={cell} height={cell} />
     </Animated.View>
   );
 }
@@ -384,7 +387,10 @@ function PieceView({ piece, square, cell }: { piece: Piece; square: Square; cell
       pointerEvents="none"
       style={[{ position: 'absolute', width: cell, height: cell }, styles.centre, style]}
     >
-      <Art width={cell * 0.86} height={cell * 0.86} />
+      {/* Fills the square. The Cburnett artwork already carries its own
+          margin — its ink covers about 60% of the 45-unit box — so scaling it
+          down again would leave the pieces looking undersized. */}
+      <Art width={cell} height={cell} />
     </Animated.View>
   );
 }

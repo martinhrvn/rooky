@@ -46,7 +46,7 @@ export function PieceTile({
         dimmed && styles.dimmed,
       ]}
     >
-      <Art width={size * 0.74} height={size * 0.74} />
+      <Art width={size * 0.9} height={size * 0.9} />
     </View>
   );
 }
