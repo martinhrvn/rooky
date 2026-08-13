@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withDelay,
   withRepeat,
@@ -14,7 +15,7 @@ import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 
 import type { Board as BoardModel } from '../chess/board';
 import { findPieces } from '../chess/board';
-import { type Piece, type Square, fileOf, rankOf, squareName } from '../chess/types';
+import { type Piece, type PieceType, type Square, fileOf, rankOf, squareName } from '../chess/types';
 import type { Move } from '../game/types';
 import { pieceArt } from './pieces';
 import { Star } from './Star';
@@ -47,8 +48,69 @@ export interface BoardProps {
   lastMove: Move | null;
   /** Board edge length in px. */
   size: number;
+  /**
+   * The square of a tap that changed nothing, and a counter that goes up on
+   * every such tap so a repeat replays the answer rather than being swallowed.
+   */
+  nudge?: { square: Square; tick: number } | null;
   onTapSquare: (sq: Square) => void;
 }
+
+const PIECE_NAMES: Record<PieceType, string> = {
+  k: 'king',
+  q: 'queen',
+  r: 'rook',
+  b: 'bishop',
+  n: 'knight',
+  p: 'pawn',
+};
+
+/**
+ * A square, said out loud.
+ *
+ * The hit layer used to be sixty-four buttons called "a1" through "h8", which
+ * is the board's coordinates and none of its content: what stands there, what
+ * it can do, and what is aiming at it were all carried by colour alone.
+ *
+ * It says exactly what the squares themselves say and no more — the danger set
+ * is already null on tiers 1 and 3, so this cannot hand a screen-reader user
+ * the help that tier 3 exists to withhold.
+ */
+function describeSquare(
+  sq: Square,
+  board: BoardModel,
+  starSet: ReadonlySet<Square>,
+  targetSet: ReadonlySet<Square>,
+  selected: Square | null,
+  danger: ReadonlySet<Square> | null | undefined,
+  threatened: ReadonlySet<Square> | null | undefined,
+): string {
+  const parts = [squareName(sq)];
+  const piece = board[sq];
+
+  if (piece) parts.push(`${piece.color === 'w' ? 'your' : 'their'} ${PIECE_NAMES[piece.type]}`);
+  if (starSet.has(sq)) parts.push('star');
+  if (selected === sq) parts.push('picked up');
+  if (targetSet.has(sq)) parts.push(piece || starSet.has(sq) ? 'can take this' : 'can move here');
+
+  // The ring on a piece and the wash on a square are two different facts, and
+  // stay two different words.
+  if (threatened?.has(sq)) parts.push('in danger');
+  else if (danger?.has(sq)) parts.push('they cover this square');
+
+  return parts.join(', ');
+}
+
+/**
+ * Everything drawn under the hit layer is decoration as far as a screen reader
+ * is concerned: the pieces, the stars, the glows and the hints are all already
+ * said by the label on the button covering that square. Without this they
+ * become a second, unordered pass over the same board.
+ */
+const DECORATIVE = {
+  accessibilityElementsHidden: true,
+  importantForAccessibility: 'no-hide-descendants',
+} as const;
 
 /** Screen position of a square's top-left corner, white at the bottom. */
 const xOf = (sq: Square, cell: number) => fileOf(sq) * cell;
@@ -66,6 +128,7 @@ export function Board({
   doomed,
   lastMove,
   size,
+  nudge,
   onTapSquare,
 }: BoardProps) {
   const cell = size / 8;
@@ -110,6 +173,7 @@ export function Board({
         <View
           key={`star-${sq}`}
           pointerEvents="none"
+          {...DECORATIVE}
           style={[
             styles.centred,
             { width: cell, height: cell, left: xOf(sq, cell), top: yOf(sq, cell) },
@@ -141,6 +205,7 @@ export function Board({
         <View
           key={`threat-${sq}`}
           pointerEvents="none"
+          {...DECORATIVE}
           style={[
             styles.centred,
             { width: cell, height: cell, left: xOf(sq, cell), top: yOf(sq, cell) },
@@ -165,6 +230,11 @@ export function Board({
         />
       ))}
 
+      {/* A tap that did nothing, answered. Above the pieces so it reads as
+          something the board did, under the hit layer so it cannot eat the
+          next tap. */}
+      {nudge ? <TapNudge key={nudge.tick} square={nudge.square} cell={cell} /> : null}
+
       {/* Touch layer on top, so the whole square is tappable rather than just
           the piece inside it. Board squares can't reach the 64dp target we use
           for buttons (eight of them have to fit across the screen), so making
@@ -173,7 +243,15 @@ export function Board({
         <Pressable
           key={`hit-${sq}`}
           accessibilityRole="button"
-          accessibilityLabel={squareName(sq)}
+          accessibilityLabel={describeSquare(
+            sq,
+            board,
+            starSet,
+            targetSet,
+            selected,
+            danger,
+            threatened,
+          )}
           onPress={() => onTapSquare(sq)}
           style={{
             position: 'absolute',
@@ -260,6 +338,7 @@ function MoveHint({
   return (
     <Animated.View
       pointerEvents="none"
+      {...DECORATIVE}
       style={[
         styles.centred,
         { width: cell, height: cell, left: xOf(square, cell), top: yOf(square, cell) },
@@ -334,6 +413,7 @@ function CollectedStar({ square, cell }: { square: Square; cell: number }) {
   return (
     <Animated.View
       pointerEvents="none"
+      {...DECORATIVE}
       style={[
         styles.centred,
         { width: cell, height: cell, left: xOf(square, cell), top: yOf(square, cell) },
@@ -351,14 +431,75 @@ function CollectedStar({ square, cell }: { square: Square; cell: number }) {
  */
 function DoomedSquare() {
   const pulse = useSharedValue(0);
+  const reduced = useReducedMotion();
 
   useEffect(() => {
+    // Held at full strength instead of breathing. The square still has to say
+    // *here* — in tier 3 it is the only thing that does — so what goes is the
+    // repetition, not the mark.
+    if (reduced) {
+      pulse.value = 1;
+      return;
+    }
     pulse.value = withRepeat(withTiming(1, { duration: 420 }), -1, true);
-  }, [pulse]);
+  }, [pulse, reduced]);
 
   const style = useAnimatedStyle(() => ({ opacity: 0.45 + pulse.value * 0.55 }));
 
   return <Animated.View style={[styles.fill, { backgroundColor: colors.dangerStrong }, style]} />;
+}
+
+/** How long the answer to a tap that did nothing takes to fade. */
+const NUDGE_MS = 260;
+
+/**
+ * The board's reply to a tap that changed nothing — an empty square with no
+ * piece picked up, which the rules quite correctly ignore.
+ *
+ * Silence is the worst possible answer for someone who presses constantly and
+ * cannot read: it is indistinguishable from a broken screen. A ring that
+ * blooms and goes says "I heard that, and it was nothing" without claiming a
+ * move happened.
+ *
+ * Deliberately visual only. The haptics already mean "that worked" — a buzz
+ * here would say the opposite of the truth.
+ */
+function TapNudge({ square, cell }: { square: Square; cell: number }) {
+  const progress = useSharedValue(0);
+  const reduced = useReducedMotion();
+
+  useEffect(() => {
+    progress.value = withTiming(1, { duration: NUDGE_MS, easing: Easing.out(Easing.quad) });
+  }, [progress]);
+
+  const style = useAnimatedStyle(() => ({
+    opacity: 0.5 * (1 - progress.value),
+    // Reduced motion keeps the fade and drops the bloom: the fade is what
+    // carries the answer, the scale was only ever the flourish.
+    transform: [{ scale: reduced ? 1 : 0.55 + progress.value * 0.45 }],
+  }));
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      {...DECORATIVE}
+      style={[
+        styles.centred,
+        { width: cell, height: cell, left: xOf(square, cell), top: yOf(square, cell) },
+        style,
+      ]}
+    >
+      <View
+        style={{
+          width: cell * 0.8,
+          height: cell * 0.8,
+          borderRadius: cell * 0.4,
+          borderWidth: cell * 0.06,
+          borderColor: colors.walnut,
+        }}
+      />
+    </Animated.View>
+  );
 }
 
 /** How long a captured piece takes to shrink away. */
@@ -416,6 +557,7 @@ function CapturedPiece({ piece, square, cell }: { piece: Piece; square: Square; 
   return (
     <Animated.View
       pointerEvents="none"
+      {...DECORATIVE}
       style={[
         styles.centred,
         { width: cell, height: cell, left: xOf(square, cell), top: yOf(square, cell) },
@@ -450,6 +592,7 @@ function PieceView({ piece, square, cell }: { piece: Piece; square: Square; cell
   return (
     <Animated.View
       pointerEvents="none"
+      {...DECORATIVE}
       style={[{ position: 'absolute', width: cell, height: cell }, styles.centre, style]}
     >
       {/* Fills the square. The Cburnett artwork already carries its own

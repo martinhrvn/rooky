@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 
@@ -44,14 +44,20 @@ export default function HomeScreen() {
   if (profiles.length === 0) {
     return (
       <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-        <View style={styles.body}>
+        {/* The card is centred in the screen, so on a small phone the keyboard
+            comes up straight over the button that submits it. This is also the
+            only form in the app a parent meets before anything else works. */}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.body}
+        >
           <View style={styles.card}>
             <Text variant="display" align="center">
               {strings.profiles.title}
             </Text>
             <ProfileForm onCreate={createProfile} />
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     );
   }
@@ -199,7 +205,17 @@ const styles = StyleSheet.create({
   chip: { borderRadius: 24 },
   wordmark: { flex: 1 },
   gear: { padding: 8 },
-  body: { flex: 1, justifyContent: 'center', padding: layout.screenPadding },
+  body: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: layout.screenPadding,
+    // Held to a phone's width and centred. The app ships for tablets, and a
+    // card stretched across a 1024pt iPad is an avatar at one end, a chevron at
+    // the other, and a great deal of nothing in between.
+    width: '100%',
+    maxWidth: layout.contentWidth,
+    alignSelf: 'center',
+  },
   card: {
     backgroundColor: colors.surface,
     borderRadius: 28,

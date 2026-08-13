@@ -170,7 +170,16 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   headerText: { gap: 2 },
-  list: { padding: layout.screenPadding, gap: 16, paddingBottom: 40 },
+  list: {
+    padding: layout.screenPadding,
+    gap: 16,
+    paddingBottom: 40,
+    // See `contentWidth` — cards stop growing at a phone's width on a tablet
+    // rather than stretching into bands.
+    width: '100%',
+    maxWidth: layout.contentWidth,
+    alignSelf: 'center',
+  },
   card: {
     backgroundColor: colors.surface,
     borderRadius: layout.radius,

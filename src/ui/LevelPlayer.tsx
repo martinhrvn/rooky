@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { attackedPieces, capturersOf, dangerFrom, dangerMap } from '../chess/attacks';
 import { type Board as BoardModel, findPieces, movePiece } from '../chess/board';
+import type { Square } from '../chess/types';
 import { legalTargets, promote, rate, restart, rewind, startLevel, tap } from '../game/engine';
 import { isDeadEnd } from '../game/solver';
 import type { Level } from '../game/types';
@@ -107,6 +108,12 @@ export function LevelPlayer({
   const [skipped, setSkipped] = useState(false);
   /** Board shown mid-punishment, with the enemy already on her square. */
   const [punished, setPunished] = useState<BoardModel | null>(null);
+  /**
+   * The last tap that changed nothing. `tick` rises on every one of them, so
+   * pressing the same empty square four times in a row plays the answer four
+   * times rather than once.
+   */
+  const [nudge, setNudge] = useState<{ square: Square; tick: number } | null>(null);
   /** When the current win happened, so auto-advance can time from it. */
   const wonAt = useRef<number | null>(null);
 
@@ -200,17 +207,30 @@ export function LevelPlayer({
     setState((s) => restart(s));
     setShowHint(false);
     setSkipped(false);
+    setNudge(null);
   }, []);
 
-  const onTapSquare = useCallback((sq: number) => {
-    setState((s) => {
-      const next = tap(s, sq);
-      // A star just came off the board — the most-repeated moment in the game.
-      if (next.stars.length < s.stars.length) buzz(Haptics.ImpactFeedbackStyle.Light);
-      else if (next.moves > s.moves) buzz(Haptics.ImpactFeedbackStyle.Soft);
-      return next;
-    });
-  }, []);
+  const onTapSquare = useCallback(
+    (sq: number) => {
+      setState((s) => {
+        const next = tap(s, sq);
+        // A star just came off the board — the most-repeated moment in the game.
+        if (next.stars.length < s.stars.length) buzz(Haptics.ImpactFeedbackStyle.Light);
+        else if (next.moves > s.moves) buzz(Haptics.ImpactFeedbackStyle.Soft);
+        return next;
+      });
+
+      // A tap the rules ignore entirely — an empty square with nothing picked
+      // up — still gets an answer, or the screen reads as broken to someone who
+      // cannot check whether she did something wrong. `tap` is pure, so asking
+      // it twice is free; it is asked out here rather than inside the updater
+      // above because an updater must not have side effects of its own.
+      if (state.phase === 'playing' && tap(state, sq) === state) {
+        setNudge((prev) => ({ square: sq, tick: (prev?.tick ?? 0) + 1 }));
+      }
+    },
+    [state],
+  );
 
   /** The hint takes itself back down, so it can never become the new normal. */
   useEffect(() => {
@@ -320,6 +340,7 @@ export function LevelPlayer({
               doomed={state.phase === 'lost' ? (state.punisher?.to ?? null) : null}
               lastMove={state.lastMove}
               size={boardSize}
+              nudge={nudge}
               onTapSquare={onTapSquare}
             />
 

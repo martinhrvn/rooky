@@ -67,12 +67,28 @@ export const colors = {
   apricotPress: '#E9B187',
 
   text: '#3B3027',
-  textSoft: '#8A7B6B',
+  /**
+   * Secondary ink. Dark enough to clear WCAG AA (4.5:1) on both the page and a
+   * card — 4.80 and 5.12 — because this is not decoration: it carries the
+   * world blurbs and every word of settings, which is the text an *adult* has
+   * to read. A lighter warm grey looked right and was quietly unreadable.
+   */
+  textSoft: '#7A6A59',
   /** Warm off-white. Pure white on this cream page reads as a hole, not a card. */
   surface: '#FFFDF8',
   border: 'rgba(59, 48, 39, 0.12)',
   /** Hairline that defines a surface without drawing attention to itself. */
   surfaceEdge: 'rgba(59, 48, 39, 0.08)',
+  /**
+   * The edge of a button, as opposed to the edge of a card.
+   *
+   * A card only has to look like a surface; a *control* has to have a findable
+   * boundary, which WCAG puts at 3:1 against what surrounds it. The pale
+   * actions could not do that with their fills — cream on cream is 1.07:1 —
+   * so the outline is what makes them a shape at all. Walnut at this weight
+   * clears 3:1 over all three pale fills against the page.
+   */
+  actionEdge: 'rgba(107, 78, 53, 0.65)',
   /** Warm, not grey — a neutral shadow on a cream page looks like dirt. */
   shadow: '#2A211A',
 } as const;
@@ -88,6 +104,11 @@ export const colors = {
  * Only `go` is a strong colour. It is the one button she has to be able to
  * find, so it keeps the weight; the others are pastels of similar lightness,
  * which distinguishes them from each other without any of them shouting.
+ *
+ * The pale three all carry `actionEdge`. Their fills are too close to the page
+ * to be a boundary on their own — `plain` is cream on cream — so without the
+ * outline they are not shapes, they are smudges. `go` needs none: the green
+ * fill is 4.57:1 against the page and draws its own edge.
  */
 export const actions = {
   /** Onward: play, next level, next difficulty, another one. */
@@ -97,17 +118,17 @@ export const actions = {
     fill: colors.sky,
     press: colors.skyPress,
     ink: colors.text,
-    edge: 'rgba(59, 48, 39, 0.16)',
+    edge: colors.actionEdge,
   },
   /** Back to the beginning: start over, retry. */
   again: {
     fill: colors.apricot,
     press: colors.apricotPress,
     ink: colors.text,
-    edge: 'rgba(59, 48, 39, 0.16)',
+    edge: colors.actionEdge,
   },
   /** Everything else: hint, back, settings. */
-  plain: { fill: colors.surface, press: '#F4EEE3', ink: colors.text, edge: colors.surfaceEdge },
+  plain: { fill: colors.surface, press: '#F4EEE3', ink: colors.text, edge: colors.actionEdge },
 } as const;
 
 export type ActionKind = keyof typeof actions;
@@ -119,6 +140,16 @@ export const layout = {
   screenPadding: 20,
   radius: 18,
   gap: 12,
+  /**
+   * Widest a column of cards is allowed to get.
+   *
+   * The app supports tablets, and every non-board screen is a stack of cards
+   * with an icon at one end. Left to fill an iPad each one becomes a thin band
+   * with its contents pushed to opposite edges — so they stop growing at about
+   * a large phone's width and centre instead. The board is unaffected: it is
+   * already capped by its own `height * 0.68`.
+   */
+  contentWidth: 560,
 } as const;
 
 export const fonts = {

@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withDelay,
   withSpring,
@@ -40,6 +41,8 @@ export function Celebration({
   skipped: boolean;
   onSkip: () => void;
 }) {
+  const reduced = useReducedMotion();
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -49,14 +52,28 @@ export function Celebration({
     >
       {/* No scrim. Washing the board out fought the whole point of keeping the
           celebration board-anchored — she should be able to see the position
-          she just finished. The stars carry themselves instead. */}
-      {Array.from({ length: CONFETTI_COUNT }, (_, i) => (
-        <Confetti key={i} index={i} size={size} skipped={skipped} />
-      ))}
+          she just finished. The stars carry themselves instead.
+
+          Under reduced motion there is no confetti at all: twenty-two sprites
+          spinning through 540° is the single most vestibular thing in the app,
+          and it is also the one part of the celebration that carries no
+          information. The stars say what she earned, and they still arrive —
+          they simply arrive already there. */}
+      {reduced
+        ? null
+        : Array.from({ length: CONFETTI_COUNT }, (_, i) => (
+            <Confetti key={i} index={i} size={size} skipped={skipped} />
+          ))}
 
       <View style={styles.stars}>
         {[0, 1, 2].map((i) => (
-          <RewardStar key={i} index={i} filled={i < earned} size={size * 0.2} skipped={skipped} />
+          <RewardStar
+            key={i}
+            index={i}
+            filled={i < earned}
+            size={size * 0.2}
+            skipped={skipped || reduced}
+          />
         ))}
       </View>
     </Pressable>

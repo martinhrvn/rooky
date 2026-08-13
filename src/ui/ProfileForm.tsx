@@ -34,8 +34,14 @@ export function ProfileForm({
       <TextInput
         value={name}
         onChangeText={setName}
+        // The placeholder disappears the moment anything is typed, so it names
+        // the field for a sighted parent and nobody else.
+        accessibilityLabel={strings.profiles.namePlaceholder}
         placeholder={strings.profiles.namePlaceholder}
         placeholderTextColor={colors.textSoft}
+        autoCapitalize="words"
+        autoCorrect={false}
+        returnKeyType="done"
         style={styles.input}
       />
 

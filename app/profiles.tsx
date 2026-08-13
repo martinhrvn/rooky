@@ -40,7 +40,10 @@ export default function ProfilesScreen() {
         <Text variant="title">{strings.profiles.switcher}</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.list}>
+      {/* Without this the first tap while the add-a-player keyboard is up is
+          eaten by dismissing it, so adding someone takes two presses on the
+          same button. */}
+      <ScrollView contentContainerStyle={styles.list} keyboardShouldPersistTaps="handled">
         {profiles.map((profile) => {
           const active = profile.id === activeProfileId;
           return (
@@ -114,7 +117,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: layout.boardPadding,
     paddingVertical: 8,
   },
-  list: { padding: layout.screenPadding, gap: 12, paddingBottom: 40 },
+  list: {
+    padding: layout.screenPadding,
+    gap: 12,
+    paddingBottom: 40,
+    width: '100%',
+    maxWidth: layout.contentWidth,
+    alignSelf: 'center',
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

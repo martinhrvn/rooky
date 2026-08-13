@@ -13,7 +13,17 @@ export function MoveDots({ moves, par }: { moves: number; par: number }) {
   const total = Math.max(par, moves);
 
   return (
-    <View style={styles.row}>
+    // One element rather than a row of anonymous dots: read out square by
+    // square this is nothing at all, and it is the only progress the play
+    // screen reports. The pips stay the visual answer — this is the same fact
+    // said in the one form a non-reader will never need.
+    <View
+      accessible
+      accessibilityRole="progressbar"
+      accessibilityLabel={`${moves} of ${par} moves`}
+      accessibilityValue={{ min: 0, max: par, now: moves }}
+      style={styles.row}
+    >
       {Array.from({ length: total }, (_, i) => {
         const used = i < moves;
         const overPar = i >= par;

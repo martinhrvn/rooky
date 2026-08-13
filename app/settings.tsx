@@ -5,7 +5,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { TIERS } from '../src/content';
-import { AVATARS } from '../src/progress/schema';
+import { AVATARS, avatarById } from '../src/progress/schema';
 import { useActiveProfile, useMaxTier, useProgress } from '../src/progress/store';
 import { AvatarPicker } from '../src/ui/AvatarPicker';
 import { Button } from '../src/ui/Button';
@@ -59,7 +59,9 @@ export default function SettingsScreen() {
         <Text variant="title">{strings.settings.title}</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.list}>
+      {/* The name field lives on this screen, so without this the first tap on
+          a face or a button while the keyboard is up only dismisses it. */}
+      <ScrollView contentContainerStyle={styles.list} keyboardShouldPersistTaps="handled">
         <Section title={strings.settings.difficulty} help={strings.settings.difficultyHelp}>
           <View style={styles.choices}>
             {TIERS.map((tier) => (
@@ -92,13 +94,16 @@ export default function SettingsScreen() {
             value={profile?.avatarId ?? AVATARS[0].id}
             onChange={(avatarId) => profile && setProfileAvatar(profile.id, avatarId)}
           />
-          <TextInput
-            value={profile?.name ?? ''}
-            onChangeText={(name) => profile && renameProfile(profile.id, name)}
-            placeholder={strings.settings.namePlaceholder}
-            placeholderTextColor={colors.textSoft}
-            style={styles.input}
-          />
+          {profile ? (
+            <NameField
+              // Keyed by profile, so switching player replaces the field rather
+              // than leaving the previous player's draft in it.
+              key={profile.id}
+              value={profile.name}
+              fallback={avatarById(profile.avatarId).name}
+              onCommit={(name) => renameProfile(profile.id, name)}
+            />
+          ) : null}
         </Section>
 
         <Section title={strings.settings.startOver} help={strings.settings.startOverHelp}>
@@ -150,6 +155,50 @@ export default function SettingsScreen() {
   );
 }
 
+/**
+ * The player's name, written back when the field is left rather than on every
+ * keystroke.
+ *
+ * Two things go wrong with a per-character write. It persists every half-typed
+ * name to storage, and — worse — clearing the field to retype leaves the
+ * profile genuinely called nothing, which then shows as a blank row in the
+ * switcher a child uses to find herself. Falling back to the avatar's own name
+ * is the same rule the create form already follows: pick the fox and you are
+ * Fox until someone says otherwise.
+ */
+function NameField({
+  value,
+  fallback,
+  onCommit,
+}: {
+  value: string;
+  fallback: string;
+  onCommit: (name: string) => void;
+}) {
+  const [draft, setDraft] = useState(value);
+
+  return (
+    <TextInput
+      value={draft}
+      onChangeText={setDraft}
+      onBlur={() => {
+        const next = draft.trim() || fallback;
+        setDraft(next);
+        if (next !== value) onCommit(next);
+      }}
+      // The placeholder is never seen here — the field arrives filled in — so
+      // it cannot be the label. Without this the input has no name at all.
+      accessibilityLabel={strings.settings.player}
+      placeholder={strings.settings.namePlaceholder}
+      placeholderTextColor={colors.textSoft}
+      autoCapitalize="words"
+      autoCorrect={false}
+      returnKeyType="done"
+      style={styles.input}
+    />
+  );
+}
+
 function Section({
   title,
   help,
@@ -181,7 +230,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: layout.boardPadding,
     paddingVertical: 8,
   },
-  list: { padding: layout.screenPadding, gap: 16, paddingBottom: 40 },
+  list: {
+    padding: layout.screenPadding,
+    gap: 16,
+    paddingBottom: 40,
+    width: '100%',
+    maxWidth: layout.contentWidth,
+    alignSelf: 'center',
+  },
   section: {
     backgroundColor: colors.surface,
     borderRadius: layout.radius,
