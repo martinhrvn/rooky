@@ -1,10 +1,14 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Pressable, ScrollView, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import type { Level } from '../game/types';
 import { colors } from './theme';
 
 const TICK = 'M20 52 L40 72 L80 26';
+
+/** Space between squares. Needed as a number to scroll by whole squares. */
+const GAP = 5;
 
 /**
  * A tier's levels drawn as a rank of board squares.
@@ -13,6 +17,12 @@ const TICK = 'M20 52 L40 72 L80 26';
  * the way across a rank, rather than as a progress bar. Squares alternate light
  * and dark exactly as they do on the board, completed ones carry a green tick,
  * and the next one to play is ringed.
+ *
+ * The rank **scrolls sideways and never wraps**. Ten levels of squares are
+ * wider than a card on a phone, and a rank that wraps onto a second line stops
+ * being a rank — the one thing this component exists to look like. A square cut
+ * off at the edge is also its own invitation to push it, which no other
+ * affordance here would be to a non-reader.
  */
 export function TierRank({
   levels,
@@ -21,6 +31,7 @@ export function TierRank({
   onPickLevel,
   squareSize = 30,
   interactive = true,
+  style,
 }: {
   levels: readonly Level[];
   completedIds: ReadonlySet<string>;
@@ -33,6 +44,12 @@ export function TierRank({
    * read as "locked" when they are simply not the way to start a level.
    */
   interactive?: boolean;
+  /**
+   * Applied to the scrolling strip. A caller that puts the rank in a row has to
+   * pass `flex: 1`, or the strip takes its content's full width and spills out
+   * of the card instead of scrolling inside it.
+   */
+  style?: StyleProp<ViewStyle>;
 }) {
   // The next level to play is the first unfinished one that is actually
   // reachable. Read-only strips ignore the lock check, so the home screen
@@ -41,8 +58,54 @@ export function TierRank({
     (level) => !completedIds.has(level.id) && (!interactive || isUnlocked(level)),
   );
 
+  const scroller = useRef<ScrollView>(null);
+  const touched = useRef(false);
+
+  /**
+   * Opens on the square she is meant to play next, one square in from the left
+   * so the ones she has already finished are still visible behind it.
+   *
+   * Without this a rank shows nothing but ticks by the middle of a world, which
+   * reads as "there is nothing to do here" — the exact opposite of what the
+   * ring is for.
+   *
+   * Called from both layout and content-size, because either one alone can run
+   * while the other measurement is still missing and the scroll then goes
+   * nowhere. Stops as soon as she drags it herself: past that point where the
+   * strip sits is her business, not ours.
+   */
+  const settle = () => {
+    if (touched.current || nextIndex < 1) return;
+    scroller.current?.scrollTo({ x: (nextIndex - 1) * (squareSize + GAP), animated: false });
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(settle, [nextIndex, squareSize]);
+
   return (
-    <View style={styles.rank}>
+    <ScrollView
+      ref={scroller}
+      horizontal
+      onContentSizeChange={settle}
+      onLayout={settle}
+      onScrollBeginDrag={() => {
+        touched.current = true;
+      }}
+      showsHorizontalScrollIndicator={false}
+      // Height comes from the squares: a horizontal ScrollView has none of its
+      // own.
+      //
+      // `minWidth: 0` is what makes the strip scroll rather than spill. On the
+      // web a flex item will not shrink below its content — ten squares — so
+      // without it the caller's `flex: 1` is ignored, the row grows past the
+      // card, and there is nothing to scroll because nothing overflows.
+      //
+      // No flex of any kind is set here: a `flexGrow` on the component and a
+      // `flex` from the caller both survive the style flatten, and the
+      // shorthand loses, which collapses the strip to nothing instead.
+      style={[{ height: squareSize, minWidth: 0 }, style]}
+      contentContainerStyle={styles.rank}
+    >
       {levels.map((level, index) => {
         const done = completedIds.has(level.id);
         const unlocked = isUnlocked(level);
@@ -87,15 +150,15 @@ export function TierRank({
           </Pressable>
         );
       })}
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   rank: {
     flexDirection: 'row',
-    gap: 5,
-    flexWrap: 'wrap',
+    gap: GAP,
+    alignItems: 'center',
   },
   square: {
     alignItems: 'center',

@@ -113,6 +113,10 @@ function WorldCard({
                   completedIds={completedIds}
                   isUnlocked={(level) => unlocked && isLevelUnlocked(world, level, completedIds)}
                   onPickLevel={onPlay}
+                  // Takes the space left between the tier's name and its count,
+                  // and scrolls inside it. Without the flex the strip is as
+                  // wide as ten squares and hangs off the side of the card.
+                  style={styles.rankStrip}
                 />
                 <Text variant="label" color={colors.textSoft}>
                   {counted.done}/{counted.total}
@@ -194,5 +198,6 @@ const styles = StyleSheet.create({
   tiers: { gap: 10 },
   tierRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   tierLabel: { width: 78 },
+  rankStrip: { flex: 1 },
   pressed: { opacity: 0.7, transform: [{ scale: 0.96 }] },
 });
