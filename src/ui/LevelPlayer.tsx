@@ -4,7 +4,8 @@ import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { attackMap } from '../chess/attacks';
-import { legalTargets, rate, restart, startLevel, tap } from '../game/engine';
+import { type Board as BoardModel, movePiece } from '../chess/board';
+import { legalTargets, rate, restart, rewind, startLevel, tap } from '../game/engine';
 import type { Level } from '../game/types';
 import { Board } from './Board';
 import { Celebration } from './Celebration';
@@ -18,6 +19,16 @@ const ATTEMPTS_BEFORE_HINT = 3;
 
 /** Long enough to enjoy the win, short enough not to become a wait. */
 const AUTO_ADVANCE_MS = 1800;
+
+/**
+ * Beat between her piece landing on the fatal square and the enemy setting off
+ * to take it. Without this the two happen at once and read as one confusing
+ * blur rather than as cause and effect.
+ */
+const PUNISH_DELAY_MS = 380;
+
+/** How long the taken position stays up before the board steps back. */
+const REWIND_DELAY_MS = 950;
 
 /** Once she has tapped through the celebration, she is telling us to get on with it. */
 const AUTO_ADVANCE_AFTER_SKIP_MS = 450;
@@ -71,6 +82,8 @@ export function LevelPlayer({
   const [attempts, setAttempts] = useState(0);
   const [showHint, setShowHint] = useState(false);
   const [skipped, setSkipped] = useState(false);
+  /** Board shown mid-punishment, with the enemy already on her square. */
+  const [punished, setPunished] = useState<BoardModel | null>(null);
   /** When the current win happened, so auto-advance can time from it. */
   const wonAt = useRef<number | null>(null);
 
@@ -106,7 +119,33 @@ export function LevelPlayer({
     return () => clearTimeout(timer);
   }, [state.phase, skipped, onAutoAdvance]);
 
+  /**
+   * Getting taken, played out rather than announced.
+   *
+   * Never flash "wrong": she watches the enemy travel in and take her piece,
+   * because seeing the consequence is the entire lesson of tier 2. Then the
+   * board steps back a single move, so she keeps everything she already got
+   * right and only retries the mistake.
+   */
+  useEffect(() => {
+    if (state.phase !== 'lost' || !state.punisher) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+
+    const { from, to } = state.punisher;
+    const strike = setTimeout(() => setPunished(movePiece(state.board, from, to)), PUNISH_DELAY_MS);
+    const back = setTimeout(() => {
+      setPunished(null);
+      setState(rewind);
+    }, REWIND_DELAY_MS);
+
+    return () => {
+      clearTimeout(strike);
+      clearTimeout(back);
+    };
+  }, [state.phase, state.punisher, state.board]);
+
   const retry = useCallback(() => {
+    setPunished(null);
     setState((s) => restart(s));
     setShowHint(false);
     setSkipped(false);
@@ -131,6 +170,7 @@ export function LevelPlayer({
   );
 
   const targets = useMemo(() => legalTargets(state), [state]);
+  const board = punished ?? state.board;
 
   const boardSize = Math.min(width - layout.boardPadding * 2, height * 0.68);
   const hintTargets = showHint ? level.hint.map((h) => h.to) : [];
@@ -147,11 +187,12 @@ export function LevelPlayer({
       <View style={styles.boardWrap}>
         <View>
           <Board
-            board={state.board}
+            board={board}
             stars={state.stars}
             selected={state.selected}
             targets={state.phase === 'playing' ? targets : hintTargets}
             danger={danger}
+            doomed={state.phase === 'lost' ? (state.punisher?.to ?? null) : null}
             lastMove={state.lastMove}
             size={boardSize}
             onTapSquare={onTapSquare}

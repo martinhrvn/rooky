@@ -65,4 +65,18 @@ export interface GameState {
    * happen is the entire lesson of tier 2.
    */
   readonly punisher: Move | null;
+  /**
+   * Where `rewind` goes back to. Written only when a move loses.
+   *
+   * Being taken steps the board back one move rather than restarting the
+   * level: she still sees the consequence, but doesn't have to redo the moves
+   * she already got right.
+   */
+  readonly undo: Snapshot | null;
 }
+
+/** The parts of a turn that a rewind puts back. */
+export type Snapshot = Pick<
+  GameState,
+  'board' | 'stars' | 'moves' | 'selected' | 'lastMove'
+>;

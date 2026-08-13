@@ -2,6 +2,7 @@ import type { PieceType } from '../chess/types';
 import { toLevel } from '../game/engine';
 import type { Level, LevelData, Tier, WorldKey } from '../game/types';
 import { rookLevels } from './levels/rook';
+import { mirrorLevel } from './mirror';
 
 export interface World {
   readonly key: WorldKey;
@@ -21,9 +22,27 @@ interface WorldSpec {
   levels: readonly LevelData[];
 }
 
+/**
+ * Tier 3 is tier 2 mirrored left-to-right.
+ *
+ * The lesson and the difficulty are held identical, so "no help" is the only
+ * variable that changed — but it looks different enough that she can't coast
+ * on remembering the answer. Derived here rather than authored twice, so the
+ * two tiers can never drift apart.
+ */
+const withMirroredTier3 = (levels: readonly LevelData[]): LevelData[] => {
+  const tier2 = levels.filter((level) => level.tier === 2);
+  return [
+    ...levels,
+    ...tier2.map((level, i) =>
+      mirrorLevel(level, 3, `${level.world}-t3-${String(i + 1).padStart(2, '0')}`),
+    ),
+  ];
+};
+
 const world = ({ levels, ...rest }: WorldSpec): World => ({
   ...rest,
-  levels: levels.map(toLevel),
+  levels: withMirroredTier3(levels).map(toLevel),
 });
 
 /**

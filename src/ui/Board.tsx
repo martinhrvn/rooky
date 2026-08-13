@@ -5,6 +5,7 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withDelay,
+  withRepeat,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
@@ -26,6 +27,12 @@ export interface BoardProps {
   targets: readonly Square[];
   /** Squares the enemy covers. `null` hides the overlay (tiers 1 and 3). */
   danger: ReadonlySet<Square> | null;
+  /**
+   * The square she was just taken on. Pulses red regardless of tier — in tier
+   * 3 the overlay is hidden, so this is the only thing that says *where* the
+   * mistake was.
+   */
+  doomed?: Square | null;
   lastMove: Move | null;
   /** Board edge length in px. */
   size: number;
@@ -44,6 +51,7 @@ export function Board({
   selected,
   targets,
   danger,
+  doomed,
   lastMove,
   size,
   onTapSquare,
@@ -52,6 +60,7 @@ export function Board({
   const targetSet = new Set(targets);
   const starSet = new Set(stars);
   const collecting = useVanishingStars(stars);
+  const captured = useCapturedPieces(board);
 
   return (
     <View style={[styles.board, { width: size, height: size }]}>
@@ -79,6 +88,7 @@ export function Board({
             {danger?.has(sq) ? (
               <View style={[styles.fill, { backgroundColor: colors.danger }]} />
             ) : null}
+            {doomed === sq ? <DoomedSquare /> : null}
           </View>
         );
       })}
@@ -101,6 +111,13 @@ export function Board({
           moment that repeats most in the whole game, so it gets the animation. */}
       {collecting.map((sq) => (
         <CollectedStar key={`collected-${sq}`} square={sq} cell={cell} />
+      ))}
+
+      {/* Pieces taken since the last render, shrinking away where they stood.
+          Covers both directions: enemies she captures, and her own piece when
+          it gets taken. */}
+      {captured.map(({ piece, square }) => (
+        <CapturedPiece key={`captured-${piece.id}`} piece={piece} square={square} cell={cell} />
       ))}
 
       {findPieces(board).map((sq) => (
@@ -259,6 +276,88 @@ function CollectedStar({ square, cell }: { square: Square; cell: number }) {
       ]}
     >
       <Star size={cell * 0.62} />
+    </Animated.View>
+  );
+}
+
+/**
+ * The square she was taken on, pulsing. Runs while the enemy is on its way in,
+ * so the eye is already on the right square when the capture lands.
+ */
+function DoomedSquare() {
+  const pulse = useSharedValue(0);
+
+  useEffect(() => {
+    pulse.value = withRepeat(withTiming(1, { duration: 420 }), -1, true);
+  }, [pulse]);
+
+  const style = useAnimatedStyle(() => ({ opacity: 0.45 + pulse.value * 0.55 }));
+
+  return <Animated.View style={[styles.fill, { backgroundColor: colors.dangerStrong }, style]} />;
+}
+
+/** How long a captured piece takes to shrink away. */
+const CAPTURE_MS = 300;
+
+interface Placed {
+  readonly piece: Piece;
+  readonly square: Square;
+}
+
+/**
+ * Pieces that were on the board last render and are gone now.
+ *
+ * Piece ids are stable for a whole level, so a missing id means captured. The
+ * board only ever holds what survives, so without this a taken piece simply
+ * blinks out — and in tiers 2 and 3 that capture *is* the lesson.
+ */
+function useCapturedPieces(board: BoardModel): Placed[] {
+  const previous = useRef<Placed[]>([]);
+  const [captured, setCaptured] = useState<Placed[]>([]);
+
+  useEffect(() => {
+    const current = findPieces(board).map((square) => ({ piece: board[square]!, square }));
+    const live = new Set(current.map((p) => p.piece.id));
+    const gone = previous.current.filter((p) => !live.has(p.piece.id));
+    previous.current = current;
+    if (gone.length === 0) return;
+
+    setCaptured((c) => [...c, ...gone]);
+    const goneIds = new Set(gone.map((p) => p.piece.id));
+    const timer = setTimeout(
+      () => setCaptured((c) => c.filter((p) => !goneIds.has(p.piece.id))),
+      CAPTURE_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [board]);
+
+  return captured;
+}
+
+function CapturedPiece({ piece, square, cell }: { piece: Piece; square: Square; cell: number }) {
+  const progress = useSharedValue(0);
+
+  useEffect(() => {
+    progress.value = withTiming(1, { duration: CAPTURE_MS, easing: Easing.in(Easing.quad) });
+  }, [progress]);
+
+  const style = useAnimatedStyle(() => ({
+    opacity: 1 - progress.value,
+    transform: [{ scale: 1 - progress.value * 0.6 }],
+  }));
+
+  const Art = pieceArt(piece.color, piece.type);
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.centred,
+        { width: cell, height: cell, left: xOf(square, cell), top: yOf(square, cell) },
+        style,
+      ]}
+    >
+      <Art width={cell * 0.86} height={cell * 0.86} />
     </Animated.View>
   );
 }

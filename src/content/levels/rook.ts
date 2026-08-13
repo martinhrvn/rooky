@@ -101,4 +101,73 @@ export const rookLevels: readonly LevelData[] = [
     goal: 'collectAllStars',
     par: 4,
   },
+
+  // ── Tier 2: the stars become real pieces, and the squares they cover are
+  // tinted red. Enemies never move; the danger is entirely about where you
+  // choose to land.
+  {
+    id: 'rook-t2-01',
+    world: 'rook',
+    tier: 2,
+    // Two loose pawns, neither defending the other. Just take them, so the
+    // new idea here is only "the stars bite back now".
+    fen: '8/8/8/p2p4/8/8/8/R7 w - -',
+    goal: 'captureAll',
+    par: 2,
+    hint: [
+      ['a1', 'a5'],
+      ['a5', 'd5'],
+    ],
+  },
+  {
+    id: 'rook-t2-02',
+    world: 'rook',
+    tier: 2,
+    // The pawn on d5 is guarded by the knight on f4, so the obvious capture
+    // straight down the file loses. Take the guard first.
+    //
+    // The guard is a knight rather than a rook on purpose: a knight paints
+    // eight scattered red squares, which reads as a shape. A rook guard would
+    // tint two entire lines — and worse, would cover every approach to itself,
+    // making it uncapturable. The solver caught exactly that.
+    fen: '8/8/8/3p4/5n2/8/8/3R4 w - -',
+    goal: 'captureAll',
+    par: 4,
+    hint: [
+      ['d1', 'd4'],
+      ['d4', 'f4'],
+    ],
+  },
+  {
+    id: 'rook-t2-03',
+    world: 'rook',
+    tier: 2,
+    // The black rook covers the whole a-file and the whole eighth rank, which
+    // is every route out of the corner. Take the knight first and you strand
+    // yourself with nowhere safe to stand — this one has to be taken in order.
+    fen: 'r7/8/8/8/7n/8/8/R7 w - -',
+    goal: 'captureAll',
+    par: 3,
+  },
+  {
+    id: 'rook-t2-04',
+    world: 'rook',
+    tier: 2,
+    // Level one's two loose pawns, now with a knight guarding the far one.
+    // The near pawn is free the whole time, so the trap is grabbing the
+    // guarded one on the way past.
+    fen: '8/8/8/p2p4/5n2/8/8/R7 w - -',
+    goal: 'captureAll',
+    par: 5,
+  },
+  {
+    id: 'rook-t2-05',
+    world: 'rook',
+    tier: 2,
+    // Everything at once: the rook has to go first to open the board up, and
+    // the remaining two are then a route-planning problem.
+    fen: 'r7/2p5/8/8/7n/8/8/R7 w - -',
+    goal: 'captureAll',
+    par: 5,
+  },
 ];

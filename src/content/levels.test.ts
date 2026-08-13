@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { findPieces, parseFen } from '../chess/board';
 import { squareName } from '../chess/types';
 import { solve } from '../game/solver';
 import { ALL_LEVELS } from './index';
@@ -12,6 +13,17 @@ describe('level content', () => {
 
   it('is not empty', () => {
     expect(ALL_LEVELS.length).toBeGreaterThan(0);
+  });
+
+  it('runs in tier order, which is what Continue walks', () => {
+    const tiers = ALL_LEVELS.map((level) => level.tier);
+    expect(tiers).toEqual([...tiers].sort((a, b) => a - b));
+  });
+
+  it('gives every capture level real enemies to take', () => {
+    for (const level of ALL_LEVELS.filter((l) => l.goal === 'captureAll')) {
+      expect(findPieces(parseFen(level.fen).board, 'b').length, level.id).toBeGreaterThan(0);
+    }
   });
 
   describe.each(ALL_LEVELS.map((level) => [level.id, level] as const))('%s', (_id, level) => {

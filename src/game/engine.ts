@@ -8,7 +8,7 @@ import { attackers } from '../chess/attacks';
 import { type Board, findPieces, movePiece, parseFen, pieceAt } from '../chess/board';
 import { destinations } from '../chess/moves';
 import { type Square, parseSquare, parseSquares } from '../chess/types';
-import type { GameState, Level, LevelData } from './types';
+import type { GameState, Level, LevelData, Snapshot } from './types';
 
 /** Resolves the readable square names in level data into indices. */
 export function toLevel(data: LevelData): Level {
@@ -30,10 +30,37 @@ export function startLevel(level: Level): GameState {
     phase: 'playing',
     lastMove: null,
     punisher: null,
+    undo: null,
   };
 }
 
 export const restart = (state: GameState): GameState => startLevel(state.level);
+
+const snapshot = ({ board, stars, moves, selected, lastMove }: GameState): Snapshot => ({
+  board,
+  stars,
+  moves,
+  selected,
+  lastMove,
+});
+
+/**
+ * Takes back the move that got her taken, once the UI has shown the capture.
+ *
+ * The failed move does not count — as far as the move counter is concerned it
+ * never happened. The piece is left selected, so she can try a different
+ * square straight away.
+ */
+export function rewind(state: GameState): GameState {
+  if (!state.undo) return state;
+  return {
+    ...state,
+    ...state.undo,
+    phase: 'playing',
+    punisher: null,
+    undo: null,
+  };
+}
 
 /**
  * Where the currently selected piece may go. Empty when nothing is selected or
@@ -89,6 +116,7 @@ export function tap(state: GameState, sq: Square): GameState {
 }
 
 export function applyMove(state: GameState, from: Square, to: Square): GameState {
+  const before = snapshot(state);
   const board = movePiece(state.board, from, to);
   const stars = state.stars.filter((star) => star !== to);
   const moves = state.moves + 1;
@@ -104,6 +132,7 @@ export function applyMove(state: GameState, from: Square, to: Square): GameState
     selected: to,
     lastMove: { from, to },
     punisher: null,
+    undo: null,
   };
 
   // Danger is resolved BEFORE the goal: grabbing the last star on a square the
@@ -113,7 +142,8 @@ export function applyMove(state: GameState, from: Square, to: Square): GameState
   // already under attack when the level loaded would be unfair and unteachable.
   const threats = attackers(board, to, 'b');
   if (threats.length > 0) {
-    return { ...base, phase: 'lost', punisher: { from: threats[0], to } };
+    // Transient: the UI animates the capture, then calls `rewind`.
+    return { ...base, phase: 'lost', punisher: { from: threats[0], to }, undo: before };
   }
 
   if (isGoalMet(board, stars, state.level.goal)) {

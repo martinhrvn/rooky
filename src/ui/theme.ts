@@ -37,6 +37,8 @@ export const colors = {
 
   /** Tier 2's "they can take you here" tint. */
   danger: 'rgba(216, 42, 42, 0.34)',
+  /** The square she was actually taken on — shown at every tier. */
+  dangerStrong: 'rgba(216, 42, 42, 0.72)',
 
   text: '#3B3027',
   textSoft: '#8A7B6B',

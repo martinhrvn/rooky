@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { findPieces, pieceAt } from '../chess/board';
 import { parseSquare, squareName } from '../chess/types';
-import { applyMove, legalTargets, rate, restart, startLevel, tap, toLevel } from './engine';
+import { applyMove, legalTargets, rate, restart, rewind, startLevel, tap, toLevel } from './engine';
 import type { GameState, LevelData } from './types';
 
 const sq = parseSquare;
@@ -134,15 +134,27 @@ describe('capture goals', () => {
 });
 
 describe('danger', () => {
+  /**
+   * Black rook on h5 covers rank 5 and the h-file. a1 is deliberately safe, so
+   * the staging move e1-a1 is not itself fatal and each test fails for the one
+   * reason it is testing.
+   */
+  const THREAT = '8/8/8/7r/8/8/8/4R3 w - -';
+
   it('loses when you land where an enemy covers, and names the punisher', () => {
-    // Black rook on a8 covers the whole a-file; stepping onto a5 gets taken.
     const state = play(
-      startLevel(level({ fen: 'r7/8/8/8/8/8/8/4R3 w - -', stars: 'a5 h1', tier: 2, par: 2 })),
+      startLevel(level({ fen: THREAT, stars: 'a5 b1', tier: 2, par: 2 })),
       'e1a1',
       'a1a5',
     );
     expect(state.phase).toBe('lost');
-    expect(state.punisher).toEqual({ from: sq('a8'), to: sq('a5') });
+    expect(state.punisher).toEqual({ from: sq('h5'), to: sq('a5') });
+  });
+
+  it('does not punish the safe staging move', () => {
+    expect(play(startLevel(level({ fen: THREAT, stars: 'a5 b1', tier: 2 })), 'e1a1').phase).toBe(
+      'playing',
+    );
   });
 
   it('still takes you when the winning move lands in danger', () => {
@@ -150,7 +162,7 @@ describe('danger', () => {
     // checked before the threat, the final move would be immune to danger and
     // tier 2 would have a loophole on every level's last move.
     const state = play(
-      startLevel(level({ fen: 'r7/8/8/8/8/8/8/4R3 w - -', stars: 'a5', tier: 2, par: 2 })),
+      startLevel(level({ fen: THREAT, stars: 'a5', tier: 2, par: 2 })),
       'e1a1',
       'a1a5',
     );
@@ -185,6 +197,59 @@ describe('danger', () => {
 
     const intoDanger = level({ fen: '8/4p3/8/8/8/8/8/3R4 w - -', stars: 'd6', tier: 2, par: 1 });
     expect(play(startLevel(intoDanger), 'd1d6').phase).toBe('lost');
+  });
+
+  it('rewinds the losing move without counting it', () => {
+    const lost = play(
+      startLevel(level({ fen: THREAT, stars: 'a5 b1', tier: 2, par: 2 })),
+      'e1a1',
+      'a1a5',
+    );
+    expect(lost.phase).toBe('lost');
+    expect(lost.moves).toBe(2);
+
+    const back = rewind(lost);
+    expect(back.phase).toBe('playing');
+    // The move never happened, so it costs her nothing on the counter.
+    expect(back.moves).toBe(1);
+    expect(pieceAt(back.board, sq('a1'))).toMatchObject({ color: 'w', type: 'r' });
+    expect(pieceAt(back.board, sq('a5'))).toBeNull();
+    expect(back.punisher).toBeNull();
+  });
+
+  it('leaves the piece selected after a rewind, so she can try another square', () => {
+    const lost = play(
+      startLevel(level({ fen: THREAT, stars: 'a5 b1', tier: 2, par: 2 })),
+      'e1a1',
+      'a1a5',
+    );
+    expect(rewind(lost).selected).toBe(sq('a1'));
+  });
+
+  it('puts collected stars back when the fatal move had taken one', () => {
+    const lost = play(
+      startLevel(level({ fen: THREAT, stars: 'a5 b1', tier: 2, par: 2 })),
+      'e1a1',
+      'a1a5',
+    );
+    expect(lost.stars).toHaveLength(1);
+    expect(rewind(lost).stars).toHaveLength(2);
+  });
+
+  it('can still be won after several rewinds', () => {
+    // Try the fatal square three times, then find the safe one.
+    let state = startLevel(level({ fen: THREAT, stars: 'e6', tier: 2, par: 1 }));
+    for (let i = 0; i < 3; i++) {
+      state = rewind(play(state, 'e1e5'));
+    }
+    state = play(state, 'e1e6');
+    expect(state.phase).toBe('won');
+    expect(state.moves).toBe(1);
+  });
+
+  it('does nothing when there is nothing to take back', () => {
+    const state = startLevel(level());
+    expect(rewind(state)).toBe(state);
   });
 
   it('freezes the level once it is over', () => {

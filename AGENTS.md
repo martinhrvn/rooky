@@ -71,11 +71,19 @@ in where levels come from and what happens on a win:
   about with a piece than fail the same puzzle again.
 
 `generator.ts` builds levels by **random walk**, not by random placement plus
-search. Drop the piece, take N legal moves, star every square it lands on. That
-makes the level winnable by construction and `par` exactly N — each star needs
-its own landing, so no line can beat N, and the walk achieves it. No solver call
-is needed at runtime, which matters because this runs on a phone between
-levels. The solver checks the property in `generator.test.ts` instead.
+search. Drop the piece, take N legal moves, and make every square it lands on a
+target. That makes the level winnable by construction and `par` exactly N —
+each target needs its own landing, so no line can beat N, and the walk achieves
+it. No solver call is needed at runtime, which matters because this runs on a
+phone between levels. The solver checks the property in `generator.test.ts`.
+
+For tiers 2 and 3 the targets become real enemies, which adds two conditions
+the walk must survive: enemies standing on later landing squares can **block**
+the slides the walk depends on, and each capture must be safe against the
+enemies *still on the board* at that moment. Capture walks step by
+`attackedFrom` rather than `destinations`, because a pawn pushes straight but
+takes diagonally — walking a pawn by its pushes yields a path it could never
+capture along.
 
 `src/chess/` is hand-rolled rather than a library because nearly every level
 position is **kingless**, which real chess libraries reject, and tiers 1–3 need
@@ -85,6 +93,17 @@ only "where can this piece go" and "what does the enemy cover".
 
 - **Pseudo-legal is intentional.** Moves that walk into danger are never
   filtered out — the consequence *is* the lesson.
+- **Getting taken rewinds one move, it does not restart the level.** She
+  watches the enemy come and take her piece, then the board steps back and the
+  failed move doesn't count. Never flash "wrong" — play the capture out.
+- **Tier 3 is tier 2 mirrored**, derived in `src/content/index.ts` rather than
+  authored twice. Holding the difficulty identical means "no help" is the only
+  variable that changed, while the flip stops her replaying from memory.
+- **Rook and queen guards are a trap when authoring capture levels.** A rook
+  guarding a piece along a line also covers every approach square to itself,
+  so it can never be taken and the level is unsolvable. The solver caught two
+  of these. Prefer knights: eight scattered red squares read as a shape rather
+  than tinting two whole lines.
 - **Danger is resolved before the goal** in `applyMove`. Otherwise the winning
   move would be immune to capture and every level's last move would be a
   loophole.

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import type { PieceType } from '../chess/types';
 import { findPieces, parseFen } from '../chess/board';
+import { type PieceType, squareName } from '../chess/types';
+import { applyMove, startLevel } from './engine';
 import { generateLevel, generateLevelOrEasier } from './generator';
 import { hashString, makeRng, sample } from './random';
 import { solve } from './solver';
@@ -132,5 +133,79 @@ describe('generateLevel', () => {
         expect(level, `${piece} at difficulty ${difficulty}`).not.toBeNull();
       }
     }
+  });
+
+});
+
+describe('generated capture levels (tiers 2 and 3)', () => {
+  const pieces: PieceType[] = ['r', 'b', 'q', 'k', 'n', 'p'];
+
+  const capture = (piece: PieceType, difficulty: number, seed: number, tier: 2 | 3 = 2) =>
+    generateLevelOrEasier({
+      world: 'rook',
+      piece,
+      tier,
+      difficulty,
+      rng: makeRng(seed),
+      index: 0,
+    });
+
+  it.each(pieces)('produces a winnable capture level for %s', (piece) => {
+    const level = capture(piece, 2, 31);
+    expect(level, `no capture level generated for ${piece}`).not.toBeNull();
+    expect(level!.goal).toBe('captureAll');
+    expect(level!.stars).toHaveLength(0);
+    expect(solve(level!)).not.toBeNull();
+  });
+
+  it.each(pieces)('declares par equal to the number of enemies for %s', (piece) => {
+    for (let seed = 0; seed < 8; seed++) {
+      const level = capture(piece, 2, seed);
+      if (!level) continue;
+      const enemies = findPieces(parseFen(level.fen).board, 'b').length;
+      expect(level.par).toBe(enemies);
+      expect(solve(level)!.length).toBe(level.par);
+    }
+  });
+
+  it('never lets a capture land on a square the remaining enemies cover', () => {
+    // The property that is easiest to get subtly wrong: safety has to be
+    // judged against the enemies still on the board at that moment, since
+    // taking one removes its cover.
+    for (let seed = 0; seed < 20; seed++) {
+      const level = capture('r', 3, seed);
+      if (!level) continue;
+
+      let state = startLevel(level);
+      for (const move of solve(level)!.moves) {
+        state = applyMove(state, move.from, move.to);
+        expect(state.phase, `level ${level.fen} lost on ${squareName(move.to)}`).not.toBe('lost');
+      }
+      expect(state.phase).toBe('won');
+    }
+  });
+
+  it('never places a pawn on the first or last rank', () => {
+    for (let seed = 0; seed < 20; seed++) {
+      const level = capture('r', 4, seed);
+      if (!level) continue;
+      const board = parseFen(level.fen).board;
+      for (const sq of findPieces(board, 'b')) {
+        if (board[sq]!.type !== 'p') continue;
+        expect(sq >> 3).toBeGreaterThanOrEqual(1);
+        expect(sq >> 3).toBeLessThanOrEqual(6);
+      }
+    }
+  });
+
+  it('keeps capture levels shorter than star levels at the same difficulty', () => {
+    // Each capture is a harder decision than each star, so the target count
+    // ramps more slowly.
+    expect(capture('r', 8, 3)!.par).toBeLessThan(gen('r', 8, 3)!.par);
+  });
+
+  it('generates the same shape for tier 3, which is tier 2 without the overlay', () => {
+    expect(capture('r', 2, 77, 3)!.goal).toBe('captureAll');
+    expect(capture('r', 2, 77, 3)!.tier).toBe(3);
   });
 });
