@@ -12,6 +12,7 @@ const sample: LevelData = {
   id: 'sample',
   world: 'rook',
   tier: 2,
+  teaches: 'test fixture',
   fen: '8/8/8/3p4/5n2/8/8/3R4 w - -',
   goal: 'captureAll',
   par: 4,

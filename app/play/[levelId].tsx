@@ -2,11 +2,21 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { isLastOfTier, levelAfter, levelById, nextTierWithLevels, tierLevels, worldOf } from '../../src/content';
+import type { PieceType } from '../../src/chess/types';
+import {
+  isLastOfTier,
+  levelAfter,
+  levelById,
+  nextTierWithLevels,
+  nextWorldWithLevels,
+  tierLevels,
+  worldOf,
+} from '../../src/content';
 import { useProgress } from '../../src/progress/store';
 import { Button } from '../../src/ui/Button';
 import { IconButton } from '../../src/ui/IconButton';
 import { LevelPlayer } from '../../src/ui/LevelPlayer';
+import { pieceArt } from '../../src/ui/pieces';
 import { strings } from '../../src/ui/strings';
 import { colors } from '../../src/ui/theme';
 
@@ -35,6 +45,10 @@ function Play({ levelId }: { levelId: string }) {
   const tierDone = isLastOfTier(level);
   const upcomingTier = world ? nextTierWithLevels(world, level.tier) : undefined;
 
+  // Finishing the hardest tier finishes the piece, so the way on is the next
+  // piece rather than the next difficulty.
+  const upcomingWorld = world && !upcomingTier ? nextWorldWithLevels(world) : undefined;
+
   const wonActions =
     tierDone && world ? (
       <View style={styles.choices}>
@@ -44,6 +58,18 @@ function Play({ levelId }: { levelId: string }) {
             label={strings.tierDone.nextTier}
             kind="go"
             onPress={() => router.replace(`/play/${tierLevels(world, upcomingTier)[0].id}`)}
+          />
+        ) : null}
+
+        {upcomingWorld ? (
+          <Button
+            icon="levelUp"
+            // The piece itself, not an arrow: she cannot read "Next piece",
+            // but a bishop on the button says where she is going.
+            iconNode={<NextPieceArt piece={upcomingWorld.icon} />}
+            label={strings.tierDone.nextPiece}
+            kind="go"
+            onPress={() => router.replace(`/play/${upcomingWorld.levels[0].id}`)}
           />
         ) : null}
         <Button
@@ -77,6 +103,11 @@ function Play({ levelId }: { levelId: string }) {
       wonActions={wonActions}
     />
   );
+}
+
+function NextPieceArt({ piece }: { piece: PieceType }) {
+  const Art = pieceArt('w', piece);
+  return <Art width={34} height={34} />;
 }
 
 const styles = StyleSheet.create({

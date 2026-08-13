@@ -19,10 +19,23 @@ export type GoalKind = 'collectAllStars' | 'captureAll' | 'collectAndCapture';
  * because data-only levels can be fed to the BFS solver in `solver.ts` — which
  * is what proves every level is winnable and that its `par` is truthful.
  */
+/** What a pawn may become on the last rank. */
+export type PromotionType = 'q' | 'r' | 'b' | 'n';
+
 export interface LevelData {
   readonly id: string;
   readonly world: WorldKey;
   readonly tier: Tier;
+  /**
+   * What this position is *for*, in one line — "two loose pawns, neither
+   * protecting the other", "needs a move in the middle to reach the right
+   * file".
+   *
+   * Authoring metadata rather than player-facing copy. Required on purpose:
+   * being made to say what a level teaches is what stops three levels quietly
+   * teaching the same thing.
+   */
+  readonly teaches: string;
   /** The player is always white. */
   readonly fen: string;
   readonly stars?: string | readonly SquareName[];
@@ -43,7 +56,11 @@ export interface Level extends Omit<LevelData, 'stars' | 'hint'> {
   readonly hint: readonly { from: Square; to: Square }[];
 }
 
-export type Phase = 'playing' | 'won' | 'lost';
+/**
+ * `promoting` is a pause, not an outcome: the move is chosen but cannot be
+ * completed until she picks what the pawn becomes.
+ */
+export type Phase = 'playing' | 'promoting' | 'won' | 'lost';
 
 export interface Move {
   readonly from: Square;
@@ -65,6 +82,12 @@ export interface GameState {
    * happen is the entire lesson of tier 2.
    */
   readonly punisher: Move | null;
+  /**
+   * A promotion waiting on her choice. Set while `phase` is `promoting`: the
+   * move is decided but cannot be applied until she picks what the pawn
+   * becomes.
+   */
+  readonly pending: Move | null;
   /**
    * Where `rewind` goes back to. Written only when a move loses.
    *

@@ -203,6 +203,9 @@ export function generateLevel({
       id: `endless-${world}-t${tier}-${index}`,
       world,
       tier,
+      teaches: captures
+        ? `Generated: take ${steps} pieces, safely and in the right order`
+        : `Generated: collect ${steps} stars`,
       fen: toFen({ board, turn: 'w' }),
       stars: captures ? '' : path.map(squareName).join(' '),
       goal: captures ? 'captureAll' : 'collectAllStars',

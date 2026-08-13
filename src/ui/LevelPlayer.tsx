@@ -4,14 +4,16 @@ import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { dangerMap } from '../chess/attacks';
-import { type Board as BoardModel, movePiece } from '../chess/board';
-import { legalTargets, rate, restart, rewind, startLevel, tap } from '../game/engine';
+import { type Board as BoardModel, findPieces, movePiece } from '../chess/board';
+import { legalTargets, promote, rate, restart, rewind, startLevel, tap } from '../game/engine';
+import { isDeadEnd } from '../game/solver';
 import type { Level } from '../game/types';
 import { Board } from './Board';
 import { BoardFrame, frameWidthFor } from './BoardFrame';
 import { Celebration } from './Celebration';
 import { IconButton } from './IconButton';
 import { MoveDots } from './MoveDots';
+import { PromotionChoice } from './PromotionChoice';
 import { strings } from './strings';
 import { colors, layout } from './theme';
 
@@ -30,6 +32,12 @@ const PUNISH_DELAY_MS = 380;
 
 /** How long the taken position stays up before the board steps back. */
 const REWIND_DELAY_MS = 950;
+
+/**
+ * Shorter than the capture rewind: there is no enemy to watch, so the only
+ * thing to see is the move itself before it comes back.
+ */
+const STRANDED_REWIND_MS = 550;
 
 /** Once she has tapped through the celebration, she is telling us to get on with it. */
 const AUTO_ADVANCE_AFTER_SKIP_MS = 450;
@@ -145,6 +153,28 @@ export function LevelPlayer({
     };
   }, [state.phase, state.punisher, state.board]);
 
+  /**
+   * Takes back a move that stranded her.
+   *
+   * Nothing attacked her, so there is no capture to play out and no "lost"
+   * state — the level has simply become unwinnable. Most obviously: pushing a
+   * pawn past a star it needed to land on, or promoting to a queen where only
+   * a knight reaches the last enemy. Without this the board would just stop
+   * responding, which is the worst possible feedback for a four-year-old.
+   *
+   * Only checked while a pawn is on the board, because every other piece can
+   * always move again and captures in the wrong order already lose.
+   */
+  useEffect(() => {
+    if (state.phase !== 'playing' || !state.undo) return;
+    if (!findPieces(state.board, 'w').some((sq) => state.board[sq]?.type === 'p')) return;
+    if (!isDeadEnd(state)) return;
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid).catch(() => {});
+    const timer = setTimeout(() => setState(rewind), STRANDED_REWIND_MS);
+    return () => clearTimeout(timer);
+  }, [state]);
+
   const retry = useCallback(() => {
     setPunished(null);
     setState((s) => restart(s));
@@ -212,6 +242,13 @@ export function LevelPlayer({
               size={boardSize}
               onTapSquare={onTapSquare}
             />
+
+            {state.phase === 'promoting' ? (
+              <PromotionChoice
+                size={boardSize}
+                onChoose={(type) => setState((s) => promote(s, type))}
+              />
+            ) : null}
 
             {state.phase === 'won' ? (
               <Celebration

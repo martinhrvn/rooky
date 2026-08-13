@@ -135,7 +135,18 @@ only "where can this piece go" and "what does the enemy cover".
 - **Danger is resolved before the goal** in `applyMove`. Otherwise the winning
   move would be immune to capture and every level's last move would be a
   loophole.
-- **Stars are collected by landing on them**, never by sliding over them.
+- **Stars are collected by landing on them**, never by sliding over them. A
+  pawn's two-square first move therefore does *not* collect a star on the
+  square it jumps.
+- **A move that strands her is taken back too**, not just one that gets her
+  captured. Nothing attacked her, so there is no "lost" state — the position
+  has simply become unwinnable, and without the rewind the board would just
+  stop responding. Checked only while a pawn is on the board, since every
+  other piece can always move again.
+- **Promotion is a pause, not an outcome.** `tap()` parks the move as
+  `phase: 'promoting'` and the UI asks; `promote()` completes it. The solver
+  branches over all four choices, which is what lets par know that
+  underpromotion is sometimes faster.
 - **A piece stays selected after it moves.** A multi-move level is then
   tap-target, tap-target, tap-target with no re-selecting in between. Tapping
   another of your own pieces still switches to it.
@@ -154,3 +165,41 @@ npx expo export --platform android   # catches bundling/native-module breakage
 The solver test is the **content gate**: it proves every level is winnable and
 that its declared `par` is the true optimum. Never hand-tune a `par` to silence
 it — change the position instead.
+
+Each world has its own gate, so a single world can be validated in isolation:
+
+```sh
+npx vitest run src/content/levels/knight
+```
+
+`src/content/levels/validate.ts` holds the shared checks; each world's test
+file is one line. This matters when several people (or agents) author worlds at
+once — without it, one half-written file breaks everyone's test run.
+
+## Authoring levels
+
+- **Every level needs a `teaches` line** saying what the position is *for*.
+  Required on purpose: being made to say it is what stops three levels quietly
+  teaching the same thing.
+- **A piece can only capture a same-moving enemy from a square that enemy
+  attacks** — so unless it starts there, it cannot capture it at all. This one
+  fact explains three separate traps that each cost real authoring time:
+  - A black **rook or queen guard** covers every approach to itself, so it is
+    uncapturable and the level is unsolvable. Two of the first five rook levels
+    died this way.
+  - A white **knight can never take a black knight**: the square it must jump
+    from is by definition a knight's move from the target, which is exactly
+    what the target covers.
+  - A black **bishop guard** is unsolvable in the bishop world for the same
+    reason, one diagonal at a time.
+- **Knights cannot guard in the bishop world at all.** A bishop is colour-bound
+  and a knight always attacks the opposite colour to the square it stands on —
+  so a knight on the bishop's colour guards only squares the bishop can never
+  reach (decorative red), and one on the other colour is uncapturable. Use
+  pawns: a pawn's two capture squares are its own colour.
+- Safe guards in practice: **pawns and knights** for line pieces, **pawns**
+  for the bishop.
+- **Do not author tier 3.** It is derived from tier 2 by mirroring, in
+  `src/content/index.ts`.
+- When the gate fails it prints `declared par 3, solver found: c1e3 e3g5` —
+  read the true par straight off that line rather than guessing again.

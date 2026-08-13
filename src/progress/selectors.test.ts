@@ -1,10 +1,25 @@
 import { describe, expect, it } from 'vitest';
 
-import { WORLDS, worldByKey } from '../content';
+import { type World, WORLDS, worldByKey } from '../content';
 import { currentWorld, isLevelUnlocked, isWorldUnlocked, worldProgress } from './selectors';
 
 const rook = worldByKey('rook')!;
 const bishop = worldByKey('bishop')!;
+
+/**
+ * A world with no content, built here rather than borrowed from WORLDS.
+ *
+ * These tests used to point at the bishop because it happened to be empty —
+ * which quietly stopped testing anything the moment it was authored. A
+ * synthetic placeholder keeps the "not written yet" case covered for good.
+ */
+const unwritten: World = {
+  key: 'mixed',
+  icon: 'q',
+  title: 'Not written yet',
+  blurb: '',
+  levels: [],
+};
 
 const none = new Set<string>();
 const allOf = (...ids: string[]) => new Set(ids);
@@ -36,7 +51,7 @@ describe('worldProgress', () => {
 
   it('does not call an empty world complete', () => {
     // Worlds with no levels yet are placeholders, not finished work.
-    const p = worldProgress(bishop, none);
+    const p = worldProgress(unwritten, none);
     expect(p.total).toBe(0);
     expect(p.complete).toBe(false);
   });
@@ -56,9 +71,13 @@ describe('isWorldUnlocked', () => {
     expect(isWorldUnlocked(WORLDS, bishop, allOf('rook-t1-01'))).toBe(false);
   });
 
+  it('opens the next world once the previous one is finished', () => {
+    expect(isWorldUnlocked(WORLDS, bishop, finished(rook))).toBe(true);
+  });
+
   it('still refuses to open a world that has no levels yet', () => {
-    // The rook is finished, but the bishop has nothing to play.
-    expect(isWorldUnlocked(WORLDS, bishop, finished(rook))).toBe(false);
+    // Everything before it is done, but there is nothing there to play.
+    expect(isWorldUnlocked([rook, unwritten], unwritten, finished(rook))).toBe(false);
   });
 });
 
@@ -91,8 +110,13 @@ describe('currentWorld', () => {
     expect(currentWorld(WORLDS, allOf('rook-t1-01'))).toBe(rook);
   });
 
+  it('moves on to the next world once one is finished', () => {
+    expect(currentWorld(WORLDS, finished(rook))).toBe(bishop);
+  });
+
   it('falls back to the last playable world once everything is finished', () => {
-    // With only the rook populated, finishing it leaves nowhere new to go.
-    expect(currentWorld(WORLDS, finished(rook))).toBe(rook);
+    const everything = new Set(WORLDS.flatMap((w) => w.levels.map((l) => l.id)));
+    const last = [...WORLDS].reverse().find((w) => w.levels.length > 0);
+    expect(currentWorld(WORLDS, everything)).toBe(last);
   });
 });

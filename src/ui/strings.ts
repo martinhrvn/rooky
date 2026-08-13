@@ -32,6 +32,8 @@ export const strings = {
   tierDone: {
     title: 'Finished!',
     nextTier: 'Next difficulty',
+    /** Shown once the whole piece is finished, not just one difficulty. */
+    nextPiece: 'Next piece',
     endless: 'Keep playing',
     reset: 'Start over',
   },

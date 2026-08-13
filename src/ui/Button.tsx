@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
 
 import { Glyph, type IconName } from './IconButton';
@@ -14,6 +15,7 @@ import { type ActionKind, actions, colors, elevation, layout } from './theme';
  */
 export function Button({
   icon,
+  iconNode,
   label,
   onPress,
   kind = 'plain',
@@ -21,6 +23,12 @@ export function Button({
   style,
 }: {
   icon: IconName;
+  /**
+   * Replaces the glyph. Used to put a real chess piece on the button — she
+   * cannot read "Next piece", but a bishop appearing there says exactly what
+   * happens next.
+   */
+  iconNode?: ReactNode;
   label: string;
   onPress: () => void;
   kind?: ActionKind;
@@ -52,7 +60,7 @@ export function Button({
       ]}
     >
       <View pointerEvents="none" style={styles.inner}>
-        <Glyph name={icon} size={prominent ? 30 : 24} color={action.ink} />
+        {iconNode ?? <Glyph name={icon} size={prominent ? 30 : 24} color={action.ink} />}
         <Text variant="button" color={action.ink}>
           {label}
         </Text>

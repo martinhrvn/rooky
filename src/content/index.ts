@@ -1,6 +1,11 @@
 import type { PieceType } from '../chess/types';
 import { toLevel } from '../game/engine';
 import type { Level, LevelData, Tier, WorldKey } from '../game/types';
+import { bishopLevels } from './levels/bishop';
+import { kingLevels } from './levels/king';
+import { knightLevels } from './levels/knight';
+import { pawnLevels } from './levels/pawn';
+import { queenLevels } from './levels/queen';
 import { rookLevels } from './levels/rook';
 import { mirrorLevel } from './mirror';
 
@@ -62,17 +67,41 @@ export const WORLDS: readonly World[] = [
     blurb: 'Moves in straight lines',
     levels: rookLevels,
   }),
-  world({ key: 'bishop', icon: 'b', title: 'The Bishop', blurb: 'Moves on diagonals', levels: [] }),
+  world({
+    key: 'bishop',
+    icon: 'b',
+    title: 'The Bishop',
+    blurb: 'Moves on diagonals',
+    levels: bishopLevels,
+  }),
   world({
     key: 'queen',
     icon: 'q',
     title: 'The Queen',
     blurb: 'Lines and diagonals, both',
-    levels: [],
+    levels: queenLevels,
   }),
-  world({ key: 'king', icon: 'k', title: 'The King', blurb: 'One step, any way', levels: [] }),
-  world({ key: 'knight', icon: 'n', title: 'The Knight', blurb: 'Jumps in an L', levels: [] }),
-  world({ key: 'pawn', icon: 'p', title: 'The Pawn', blurb: 'Forward, but takes crossways', levels: [] }),
+  world({
+    key: 'king',
+    icon: 'k',
+    title: 'The King',
+    blurb: 'One step, any way',
+    levels: kingLevels,
+  }),
+  world({
+    key: 'knight',
+    icon: 'n',
+    title: 'The Knight',
+    blurb: 'Jumps in an L',
+    levels: knightLevels,
+  }),
+  world({
+    key: 'pawn',
+    icon: 'p',
+    title: 'The Pawn',
+    blurb: 'Forward, but takes crossways',
+    levels: pawnLevels,
+  }),
 ];
 
 /** Tiers in the order they are played inside a world. */
@@ -122,4 +151,17 @@ export function isLastOfTier(level: Level): boolean {
 /** The next tier in this world that actually has levels, if any. */
 export function nextTierWithLevels(world: World, after: Tier): Tier | undefined {
   return TIERS.find((tier) => tier > after && tierLevels(world, tier).length > 0);
+}
+
+/**
+ * The next piece to learn after this one.
+ *
+ * Finishing a world's hardest tier used to be a dead end — the only offers
+ * were Endless and Start over, at exactly the proudest moment. This is what
+ * carries her on to the bishop.
+ */
+export function nextWorldWithLevels(after: World): World | undefined {
+  const index = WORLDS.indexOf(after);
+  if (index < 0) return undefined;
+  return WORLDS.slice(index + 1).find((world) => world.levels.length > 0);
 }

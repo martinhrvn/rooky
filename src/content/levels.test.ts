@@ -6,7 +6,7 @@ import { destinations } from '../chess/moves';
 import { squareName } from '../chess/types';
 import { applyMove, startLevel } from '../game/engine';
 import { solve } from '../game/solver';
-import { ALL_LEVELS } from './index';
+import { ALL_LEVELS, WORLDS, nextLevel, nextWorldWithLevels } from './index';
 
 describe('level content', () => {
   it('has unique ids', () => {
@@ -18,9 +18,52 @@ describe('level content', () => {
     expect(ALL_LEVELS.length).toBeGreaterThan(0);
   });
 
-  it('runs in tier order, which is what Continue walks', () => {
-    const tiers = ALL_LEVELS.map((level) => level.tier);
-    expect(tiers).toEqual([...tiers].sort((a, b) => a - b));
+  it('runs each world tier 1 through 3, which is what Continue walks', () => {
+    // Per world, not globally: the order across all levels is rook 1,2,3 then
+    // bishop 1,2,3, so a global sort check only held while there was one world.
+    for (const world of WORLDS) {
+      const tiers = world.levels.map((level) => level.tier);
+      expect(tiers, world.key).toEqual([...tiers].sort((a, b) => a - b));
+    }
+  });
+
+  it('keeps every world contiguous, so Continue never jumps back to a piece', () => {
+    const order = ALL_LEVELS.map((level) => level.world);
+    const firstSeen = order.map((key) => order.indexOf(key));
+    expect(firstSeen).toEqual([...firstSeen].sort((a, b) => a - b));
+  });
+
+  describe('moving from one piece to the next', () => {
+    const playable = WORLDS.filter((w) => w.levels.length > 0);
+
+    it('points every finished world at another one, except the last', () => {
+      playable.slice(0, -1).forEach((world) => {
+        const next = nextWorldWithLevels(world);
+        expect(next, `${world.key} leads nowhere`).toBeDefined();
+        expect(next!.levels.length).toBeGreaterThan(0);
+      });
+    });
+
+    it('offers nothing after the final piece rather than wrapping round', () => {
+      expect(nextWorldWithLevels(playable[playable.length - 1])).toBeUndefined();
+    });
+
+    it('skips worlds that have no levels yet', () => {
+      // Placeholder worlds are shown locked on the selector; they must never
+      // be somewhere Continue or "Next piece" can land.
+      for (const world of playable) {
+        expect(nextWorldWithLevels(world)?.levels.length ?? 1).toBeGreaterThan(0);
+      }
+    });
+
+    it('lands Continue on the next piece once one is finished', () => {
+      // Only meaningful with somewhere to go: with a single world, Continue
+      // correctly falls back to that world's last level.
+      if (playable.length < 2) return;
+
+      const done = new Set(playable[0].levels.map((l) => l.id));
+      expect(nextLevel(done)).toBe(playable[1].levels[0]);
+    });
   });
 
   it('gives every capture level real enemies to take', () => {

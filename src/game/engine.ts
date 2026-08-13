@@ -5,10 +5,10 @@
  */
 
 import { attackers } from '../chess/attacks';
-import { type Board, findPieces, movePiece, parseFen, pieceAt } from '../chess/board';
-import { destinations } from '../chess/moves';
-import { type Square, parseSquare, parseSquares } from '../chess/types';
-import type { GameState, Level, LevelData, Snapshot } from './types';
+import { type Board, findPieces, movePiece, parseFen, pieceAt, setPiece } from '../chess/board';
+import { destinations, promotionRank } from '../chess/moves';
+import { type Square, parseSquare, parseSquares, rankOf } from '../chess/types';
+import type { GameState, Level, LevelData, PromotionType, Snapshot } from './types';
 
 /** Resolves the readable square names in level data into indices. */
 export function toLevel(data: LevelData): Level {
@@ -30,6 +30,7 @@ export function startLevel(level: Level): GameState {
     phase: 'playing',
     lastMove: null,
     punisher: null,
+    pending: null,
     undo: null,
   };
 }
@@ -58,8 +59,27 @@ export function rewind(state: GameState): GameState {
     ...state.undo,
     phase: 'playing',
     punisher: null,
+    pending: null,
     undo: null,
   };
+}
+
+/** True when moving `from` to `to` would carry a pawn to the last rank. */
+export function isPromotion(board: Board, from: Square, to: Square): boolean {
+  const piece = pieceAt(board, from);
+  return piece?.type === 'p' && rankOf(to) === promotionRank(piece.color);
+}
+
+/**
+ * Completes a promotion she has been asked to choose.
+ *
+ * Underpromotion is a real option, not a formality: a knight reaches squares a
+ * queen cannot, so there are positions where only the knight wins. See the
+ * pawn world's last level.
+ */
+export function promote(state: GameState, type: PromotionType): GameState {
+  if (state.phase !== 'promoting' || !state.pending) return state;
+  return applyMove(state, state.pending.from, state.pending.to, type);
 }
 
 /**
@@ -112,17 +132,36 @@ export function tap(state: GameState, sq: Square): GameState {
     return { ...state, selected: null };
   }
 
+  // A promotion cannot be applied until she says what the pawn becomes, so
+  // park the move and let the UI ask.
+  if (isPromotion(state.board, state.selected, sq)) {
+    return { ...state, phase: 'promoting', pending: { from: state.selected, to: sq } };
+  }
+
   return applyMove(state, state.selected, sq);
 }
 
-export function applyMove(state: GameState, from: Square, to: Square): GameState {
+export function applyMove(
+  state: GameState,
+  from: Square,
+  to: Square,
+  promoteTo: PromotionType = 'q',
+): GameState {
   const before = snapshot(state);
-  const board = movePiece(state.board, from, to);
+  const moved = movePiece(state.board, from, to);
+  // A pawn that reached the last rank becomes the chosen piece. Without this
+  // it would sit there with no legal move at all — stuck rather than finished.
+  const board = isPromotion(state.board, from, to)
+    ? setPiece(moved, to, { color: 'w', type: promoteTo, id: `${pieceAt(moved, to)!.id}=${promoteTo}` })
+    : moved;
   const stars = state.stars.filter((star) => star !== to);
   const moves = state.moves + 1;
 
   const base: GameState = {
     ...state,
+    // Explicit, because this may be completing a promotion: spreading `state`
+    // would otherwise carry `promoting` through and freeze the board.
+    phase: 'playing',
     board,
     stars,
     moves,
@@ -132,7 +171,11 @@ export function applyMove(state: GameState, from: Square, to: Square): GameState
     selected: to,
     lastMove: { from, to },
     punisher: null,
-    undo: null,
+    pending: null,
+    // Every move is takeable-back, not just losing ones: a move can also
+    // strand her without anything attacking her — pushing a pawn past a star
+    // it needed to land on, say.
+    undo: before,
   };
 
   // Danger is resolved BEFORE the goal: grabbing the last star on a square the
@@ -143,7 +186,7 @@ export function applyMove(state: GameState, from: Square, to: Square): GameState
   const threats = attackers(board, to, 'b');
   if (threats.length > 0) {
     // Transient: the UI animates the capture, then calls `rewind`.
-    return { ...base, phase: 'lost', punisher: { from: threats[0], to }, undo: before };
+    return { ...base, phase: 'lost', punisher: { from: threats[0], to } };
   }
 
   if (isGoalMet(board, stars, state.level.goal)) {

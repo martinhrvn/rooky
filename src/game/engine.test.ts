@@ -2,7 +2,18 @@ import { describe, expect, it } from 'vitest';
 
 import { findPieces, pieceAt } from '../chess/board';
 import { parseSquare, squareName } from '../chess/types';
-import { applyMove, legalTargets, rate, restart, rewind, startLevel, tap, toLevel } from './engine';
+import {
+  applyMove,
+  legalTargets,
+  promote,
+  rate,
+  restart,
+  rewind,
+  startLevel,
+  tap,
+  toLevel,
+} from './engine';
+import { solve, solveFrom } from './solver';
 import type { GameState, LevelData } from './types';
 
 const sq = parseSquare;
@@ -12,6 +23,7 @@ const level = (over: Partial<LevelData> = {}) =>
     id: 'test',
     world: 'rook',
     tier: 1,
+    teaches: 'test fixture',
     fen: '8/8/8/8/8/8/8/4R3 w - -',
     stars: 'e5',
     goal: 'collectAllStars',
@@ -255,6 +267,80 @@ describe('danger', () => {
   it('freezes the level once it is over', () => {
     const won = play(startLevel(level()), 'e1e5');
     expect(tap(won, sq('e5'))).toBe(won);
+  });
+});
+
+describe('promotion', () => {
+  const pawnLevel = (over: Partial<LevelData> = {}) =>
+    level({ world: 'pawn', fen: '8/4P3/8/8/8/8/8/8 w - -', stars: 'e8', par: 1, ...over });
+
+  it('asks what the pawn becomes instead of moving it', () => {
+    let state = tap(startLevel(pawnLevel()), sq('e7'));
+    state = tap(state, sq('e8'));
+
+    expect(state.phase).toBe('promoting');
+    expect(state.pending).toEqual({ from: sq('e7'), to: sq('e8') });
+    // Nothing has happened yet — the pawn is still standing on e7.
+    expect(state.moves).toBe(0);
+    expect(pieceAt(state.board, sq('e7'))).toMatchObject({ type: 'p' });
+  });
+
+  it.each(['q', 'r', 'b', 'n'] as const)('promotes to a %s when chosen', (type) => {
+    const asked = tap(tap(startLevel(pawnLevel()), sq('e7')), sq('e8'));
+    const done = promote(asked, type);
+
+    expect(pieceAt(done.board, sq('e8'))).toMatchObject({ color: 'w', type });
+    expect(done.moves).toBe(1);
+  });
+
+  it('does not leave the pawn stuck on the last rank', () => {
+    // Before promotion existed, a pawn that reached rank 8 had no legal move
+    // at all and the level simply stopped responding.
+    const done = promote(tap(tap(startLevel(pawnLevel({ stars: 'e8 a1', par: 2 })), sq('e7')), sq('e8')), 'q');
+    expect(legalTargets({ ...done, selected: sq('e8') }).length).toBeGreaterThan(0);
+  });
+
+  it('ignores a promotion choice when nothing is pending', () => {
+    const state = startLevel(pawnLevel());
+    expect(promote(state, 'n')).toBe(state);
+  });
+
+  describe('the underpromotion puzzle', () => {
+    // White pawn e7, black rook d6. Promote to a queen and every approach to
+    // d6 runs into the rook's lines; promote to a knight and it takes on d6
+    // next move.
+    const underpromotion = level({
+      world: 'pawn',
+      teaches: 'Only a knight reaches the rook — a queen has no safe route',
+      fen: '8/4P3/3r4/8/8/8/8/8 w - -',
+      stars: undefined,
+      goal: 'captureAll',
+      tier: 2,
+      par: 2,
+    });
+
+    it('is won in two moves by promoting to a knight', () => {
+      let state = promote(tap(tap(startLevel(underpromotion), sq('e7')), sq('e8')), 'n');
+      expect(state.phase).toBe('playing');
+      state = applyMove(state, sq('e8'), sq('d6'));
+      expect(state.phase).toBe('won');
+      expect(state.moves).toBe(2);
+    });
+
+    it('costs the queen an extra move, which is what the star rating punishes', () => {
+      // The queen is not stranded — she reaches d6 via e7 — but that is three
+      // moves against the knight's two, so queening finishes the level with
+      // two stars instead of three. Forgiving, and the lesson still lands.
+      const queened = promote(tap(tap(startLevel(underpromotion), sq('e7')), sq('e8')), 'q');
+      expect(solveFrom(queened)!.length).toBe(2);
+      expect(rate(1 + 2, underpromotion.par)).toBe(2);
+    });
+
+    it('has par 2, which only the knight achieves', () => {
+      const solution = solve(underpromotion);
+      expect(solution!.length).toBe(2);
+      expect(solution!.moves[0].promoteTo).toBe('n');
+    });
   });
 });
 
