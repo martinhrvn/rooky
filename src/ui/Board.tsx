@@ -10,6 +10,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
+
 import type { Board as BoardModel } from '../chess/board';
 import { findPieces } from '../chess/board';
 import { type Piece, type Square, fileOf, rankOf, squareName } from '../chess/types';
@@ -130,15 +132,11 @@ export function Board({
         <CapturedPiece key={`captured-${piece.id}`} piece={piece} square={square} cell={cell} />
       ))}
 
-      {findPieces(board).map((sq) => (
-        <PieceView key={board[sq]!.id} piece={board[sq]!} square={sq} cell={cell} />
-      ))}
-
-      {/* Above the pieces, or the artwork would sit on top of its own warning.
-          A rounded square rather than a circle: the move ring is already a
-          circle, and although the two can never land on the same square — one
-          marks her pieces, the other marks where she may go — shape carries the
-          difference for free. */}
+      {/* Under the pieces, so the artwork stays crisp and the red reads as
+          something the piece is standing in. Above it — the ring this replaced —
+          the mark competed with the piece it was about, and at a glance looked
+          like one more square the board had painted rather than a fact about
+          her rook. */}
       {[...(threatened ?? [])].map((sq) => (
         <View
           key={`threat-${sq}`}
@@ -148,16 +146,12 @@ export function Board({
             { width: cell, height: cell, left: xOf(sq, cell), top: yOf(sq, cell) },
           ]}
         >
-          <View
-            style={{
-              width: cell * 0.9,
-              height: cell * 0.9,
-              borderRadius: cell * 0.26,
-              borderWidth: Math.max(2, cell * 0.08),
-              borderColor: colors.dangerStrong,
-            }}
-          />
+          <ThreatGlow cell={cell} id={`threat-glow-${sq}`} />
         </View>
+      ))}
+
+      {findPieces(board).map((sq) => (
+        <PieceView key={board[sq]!.id} piece={board[sq]!} square={sq} cell={cell} />
       ))}
 
       {/* Move hints go above the pieces so a capture target still reads. */}
@@ -191,6 +185,41 @@ export function Board({
         />
       ))}
     </View>
+  );
+}
+
+/**
+ * The glow under a piece that can be taken where it stands.
+ *
+ * A gradient rather than a shape: an outline of any kind reads as a marked
+ * *square*, which is what the danger wash already means, and the two then fight.
+ * A soft pool of red has no edge to mistake for one, and because it sits under
+ * the artwork the piece itself is what she ends up looking at.
+ *
+ * Drawn in SVG because React Native cannot blur a view, and a coloured
+ * `elevation` is not portable — this is also why it is not one of the theme's
+ * two elevations. It is a highlight, not a third layer of depth.
+ *
+ * `id` must be unique per square: gradient ids are resolved per SVG root, and
+ * react-native-svg has historically leaked them between roots on Android.
+ */
+function ThreatGlow({ cell, id }: { cell: number; id: string }) {
+  const r = cell / 2;
+  return (
+    <Svg width={cell} height={cell} viewBox={`0 0 ${cell} ${cell}`}>
+      <Defs>
+        <RadialGradient id={id} cx="50%" cy="50%" r="50%">
+          {/* Held near full strength through the middle, then dropped away
+              fast: a linear fade from the centre looks like fog rather than
+              like something glowing. */}
+          <Stop offset="0%" stopColor={colors.dangerInk} stopOpacity={0.62} />
+          <Stop offset="45%" stopColor={colors.dangerInk} stopOpacity={0.5} />
+          <Stop offset="75%" stopColor={colors.dangerInk} stopOpacity={0.22} />
+          <Stop offset="100%" stopColor={colors.dangerInk} stopOpacity={0} />
+        </RadialGradient>
+      </Defs>
+      <Circle cx={r} cy={r} r={r} fill={`url(#${id})`} />
+    </Svg>
   );
 }
 

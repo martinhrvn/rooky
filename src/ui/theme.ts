@@ -41,6 +41,12 @@ export const colors = {
   danger: 'rgba(216, 42, 42, 0.34)',
   /** The square she was actually taken on — shown at every tier. */
   dangerStrong: 'rgba(216, 42, 42, 0.72)',
+  /**
+   * The same red with no alpha of its own, for places that supply their own —
+   * the glow under a piece that can be taken, drawn as a gradient. Not a new
+   * colour: it is what both tints above are made of.
+   */
+  dangerInk: '#D82A2A',
 
   /** Deep wood. The board's surround and the ink on pale buttons. */
   walnut: '#6B4E35',
