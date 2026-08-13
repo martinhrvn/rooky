@@ -2,8 +2,10 @@
  * Visual constants.
  *
  * The board is the app, so the palette stays warm and quiet and lets the
- * pieces, stars and one green action colour carry everything.
+ * pieces, the stars and the action colours carry everything.
  */
+
+import { Platform, type ViewStyle } from 'react-native';
 
 export const colors = {
   background: '#FBF5EA',
@@ -40,12 +42,58 @@ export const colors = {
   /** The square she was actually taken on — shown at every tier. */
   dangerStrong: 'rgba(216, 42, 42, 0.72)',
 
+  /**
+   * Deep wood: the dark square darkened until off-white text sits on it
+   * legibly. Not a new hue — it is already the colour she looks at all game,
+   * so it cannot clash with anything.
+   */
+  walnut: '#6B4E35',
+  walnutPress: '#553D29',
+
+  /** The board's surround. */
+  frame: '#8A6244',
+  frameEdge: '#5C4530',
+
   text: '#3B3027',
   textSoft: '#8A7B6B',
-  surface: '#FFFFFF',
+  /** Warm off-white. Pure white on this cream page reads as a hole, not a card. */
+  surface: '#FFFDF8',
   border: 'rgba(59, 48, 39, 0.12)',
+  /** Hairline that defines a surface without drawing attention to itself. */
+  surfaceEdge: 'rgba(59, 48, 39, 0.08)',
+  /** Warm, not grey — a neutral shadow on a cream page looks like dirt. */
   shadow: '#2A211A',
 } as const;
+
+/**
+ * One treatment per *meaning*, used everywhere without exception.
+ *
+ * A glyph is a small detail inside a shape, not the shape itself — so to a
+ * player who cannot read, two same-coloured pills are the same button however
+ * different their icons. Filled-versus-outlined does not fix that either; that
+ * signals importance, not identity. Colour does.
+ *
+ * All three fills come from the board itself, so nothing new enters the
+ * palette and it cannot drift towards looking like a toy.
+ */
+export const actions = {
+  /** Onward: play, next level, next difficulty, another one. */
+  go: { fill: colors.green, press: '#33684A', ink: colors.surface, edge: 'transparent' },
+  /** The open-ended mode: endless, keep playing. */
+  free: { fill: colors.walnut, press: colors.walnutPress, ink: colors.surface, edge: 'transparent' },
+  /** Back to the beginning: start over, retry. */
+  again: {
+    fill: colors.lightSquare,
+    press: '#E3C79C',
+    ink: colors.walnut,
+    // Cream is too close to the page in value to read as a button unaided.
+    edge: 'rgba(107, 78, 53, 0.45)',
+  },
+  /** Everything else: hint, back, settings. */
+  plain: { fill: colors.surface, press: '#F4EEE3', ink: colors.text, edge: colors.surfaceEdge },
+} as const;
+
+export type ActionKind = keyof typeof actions;
 
 export const layout = {
   /** Minimum comfortable tap target for small hands. */
@@ -70,9 +118,37 @@ export const type = {
   display: { fontFamily: fonts.semibold, fontSize: 34, lineHeight: 40 },
   title: { fontFamily: fonts.semibold, fontSize: 22, lineHeight: 28 },
   body: { fontFamily: fonts.regular, fontSize: 16, lineHeight: 22 },
-  label: { fontFamily: fonts.medium, fontSize: 13, lineHeight: 16, letterSpacing: 0.4 },
+  label: { fontFamily: fonts.medium, fontSize: 13, lineHeight: 16, letterSpacing: 0.6 },
   button: { fontFamily: fonts.semibold, fontSize: 18, lineHeight: 24 },
 } as const;
+
+/**
+ * Two elevations, and nothing else.
+ *
+ * Depth is what the app was missing: flat surfaces with no shadow read as
+ * unstyled rather than as designed. Restricting it to two levels keeps that
+ * from turning into decoration.
+ *
+ * iOS draws from the shadow* props; Android needs `elevation` and a solid
+ * background on the same view.
+ */
+export const elevation = (level: 'raised' | 'lifted'): ViewStyle => {
+  const spec =
+    level === 'raised'
+      ? { height: 2, radius: 6, opacity: 0.07, android: 2 }
+      : { height: 5, radius: 14, opacity: 0.11, android: 6 };
+
+  return Platform.select<ViewStyle>({
+    ios: {
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: spec.height },
+      shadowRadius: spec.radius,
+      shadowOpacity: spec.opacity,
+    },
+    android: { elevation: spec.android },
+    default: {},
+  })!;
+};
 
 /** Spring used for piece travel — quick, with just enough overshoot to feel alive. */
 export const pieceSpring = {

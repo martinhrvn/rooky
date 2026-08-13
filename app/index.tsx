@@ -13,7 +13,7 @@ import { PieceTile } from '../src/ui/PieceTile';
 import { strings } from '../src/ui/strings';
 import { Text } from '../src/ui/Text';
 import { TierRank } from '../src/ui/TierRank';
-import { colors, layout } from '../src/ui/theme';
+import { colors, elevation, layout } from '../src/ui/theme';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -69,7 +69,9 @@ export default function HomeScreen() {
             <PieceTile piece={world.icon} size={84} ringed />
             <View style={styles.cardTitle}>
               <Text variant="title">{world.title}</Text>
-              <Text variant="body" color={colors.textSoft}>
+              {/* Label rather than body, so the difficulty sits under the
+                  world name instead of competing with it. */}
+              <Text variant="label" color={colors.textSoft}>
                 {strings.tiers[resume.tier]}
               </Text>
             </View>
@@ -88,13 +90,14 @@ export default function HomeScreen() {
             <Button
               icon="play"
               label={fresh ? strings.home.start : strings.home.play}
-              variant="primary"
+              kind="go"
               onPress={() => router.push(`/play/${resume.id}`)}
               style={styles.grow}
             />
             <Button
               icon="retry"
               label={strings.home.reset}
+              kind="again"
               // Non-destructive: this opens level 1 again and leaves every
               // tick and star intact. She will press it constantly, often by
               // accident, and there is no confirm dialog she could read.
@@ -105,6 +108,7 @@ export default function HomeScreen() {
           <Button
             icon="endless"
             label={strings.home.endless}
+            kind="free"
             onPress={() => router.push(`/endless/${world.key}?tier=${resume.tier}`)}
           />
         </View>
@@ -141,8 +145,11 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderRadius: 28,
-    padding: 20,
+    borderWidth: 1,
+    borderColor: colors.surfaceEdge,
+    padding: 22,
     gap: 18,
+    ...elevation('raised'),
   },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   cardTitle: { flex: 1, gap: 2 },

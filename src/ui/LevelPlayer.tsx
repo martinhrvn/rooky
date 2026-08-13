@@ -8,6 +8,7 @@ import { type Board as BoardModel, movePiece } from '../chess/board';
 import { legalTargets, rate, restart, rewind, startLevel, tap } from '../game/engine';
 import type { Level } from '../game/types';
 import { Board } from './Board';
+import { BoardFrame, frameWidthFor } from './BoardFrame';
 import { Celebration } from './Celebration';
 import { IconButton } from './IconButton';
 import { MoveDots } from './MoveDots';
@@ -172,7 +173,16 @@ export function LevelPlayer({
   const targets = useMemo(() => legalTargets(state), [state]);
   const board = punished ?? state.board;
 
-  const boardSize = Math.min(width - layout.boardPadding * 2, height * 0.68);
+  // The frame adds to the board's footprint, so take it off the space
+  // available before sizing the squares — otherwise the whole assembly
+  // overflows on a small phone.
+  //
+  // The board is then rounded down to a whole number of pixels per square.
+  // A fractional cell leaves squares and the pieces standing on them rounding
+  // independently, which shows up as pieces sitting very slightly off centre.
+  const available = Math.min(width - layout.boardPadding * 2, height * 0.68);
+  const cell = Math.floor((available - frameWidthFor(available) * 2) / 8);
+  const boardSize = cell * 8;
   const hintTargets = showHint ? level.hint.map((h) => h.to) : [];
 
   return (
@@ -185,7 +195,7 @@ export function LevelPlayer({
       </View>
 
       <View style={styles.boardWrap}>
-        <View>
+        <BoardFrame size={boardSize}>
           <Board
             board={board}
             stars={state.stars}
@@ -206,13 +216,19 @@ export function LevelPlayer({
               onSkip={() => setSkipped(true)}
             />
           ) : null}
-        </View>
+        </BoardFrame>
       </View>
 
       <View style={styles.controls}>
         {/* Retry is always present: kids replay constantly, and a button that
-            moves or appears conditionally becomes its own obstacle. */}
-        <IconButton name="retry" onPress={retry} accessibilityLabel={strings.play.retry} />
+            moves or appears conditionally becomes its own obstacle. Cream,
+            like every other "do it again" control in the app. */}
+        <IconButton
+          name="retry"
+          kind="again"
+          onPress={retry}
+          accessibilityLabel={strings.play.retry}
+        />
 
         {attempts >= ATTEMPTS_BEFORE_HINT && state.phase !== 'won' && level.hint.length > 0 ? (
           <IconButton

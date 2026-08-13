@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Path, Polygon } from 'react-native-svg';
 
-import { colors, layout } from './theme';
+import { type ActionKind, actions, colors, elevation, layout } from './theme';
 
 export type IconName =
   | 'back'
@@ -72,18 +72,30 @@ export function Glyph({ name, size, color = colors.text }: { name: IconName; siz
   );
 }
 
+/**
+ * A round control.
+ *
+ * Takes the same meaning-based colours as `Button`, so the retry circle on the
+ * play screen matches every other "start again" control in the app rather than
+ * being a third identical white disc.
+ */
 export function IconButton({
   name,
   onPress,
   accessibilityLabel,
+  kind = 'plain',
   prominent = false,
 }: {
   name: IconName;
   onPress: () => void;
   /** For screen readers and for the adults; never rendered as visible text. */
   accessibilityLabel: string;
+  kind?: ActionKind;
   prominent?: boolean;
 }) {
+  const action = actions[kind];
+  const size = prominent ? layout.touchTarget * 1.4 : layout.touchTarget;
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -91,12 +103,19 @@ export function IconButton({
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
-        prominent && styles.prominent,
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: pressed ? action.press : action.fill,
+          borderColor: action.edge,
+        },
+        elevation(prominent && !pressed ? 'lifted' : 'raised'),
         pressed && styles.pressed,
       ]}
     >
       <View pointerEvents="none">
-        <Glyph name={name} size={prominent ? 46 : 34} color={prominent ? colors.surface : colors.text} />
+        <Glyph name={name} size={prominent ? 46 : 34} color={action.ink} />
       </View>
     </Pressable>
   );
@@ -105,21 +124,11 @@ export function IconButton({
 const styles = StyleSheet.create({
   button: {
     // Never below the comfortable tap target for small hands.
-    width: layout.touchTarget,
-    height: layout.touchTarget,
-    borderRadius: layout.touchTarget / 2,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface,
-  },
-  prominent: {
-    width: layout.touchTarget * 1.4,
-    height: layout.touchTarget * 1.4,
-    borderRadius: layout.touchTarget * 0.7,
-    backgroundColor: colors.green,
+    borderWidth: 1.5,
   },
   pressed: {
-    opacity: 0.6,
     transform: [{ scale: 0.94 }],
   },
 });

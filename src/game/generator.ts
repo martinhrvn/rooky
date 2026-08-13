@@ -22,7 +22,7 @@
  */
 
 import { attackers } from '../chess/attacks';
-import { type Board, emptyBoard, movePiece, toFen } from '../chess/board';
+import { type Board, emptyBoard, findPieces, movePiece, toFen } from '../chess/board';
 import { attackedFrom, destinations } from '../chess/moves';
 import { type PieceType, type Square, squareName } from '../chess/types';
 import { toLevel } from './engine';
@@ -123,6 +123,22 @@ function walk(
  * relative to the enemies that are *still there*, since taking one removes its
  * cover.
  */
+/**
+ * How many enemies are guarded by another enemy.
+ *
+ * A guarded piece is what makes a capture level a puzzle rather than a
+ * shopping list: taking it loses unless you deal with its guard first. Levels
+ * with no guard at all are just "take them in any order", so the generator
+ * prefers positions that have at least one.
+ *
+ * Mutual guards — two knights covering each other, which neither side can ever
+ * take — cannot occur here, because the walk only accepts a capture that is
+ * safe at the moment it happens, and neither of a mutual pair ever is.
+ */
+function guardedCount(board: Board): number {
+  return findPieces(board, 'b').filter((sq) => attackers(board, sq, 'b').length > 0).length;
+}
+
 function walkSurvivesEnemies(board: Board, from: Square, path: readonly Square[]): boolean {
   let position = board;
   let current = from;
@@ -155,6 +171,12 @@ export function generateLevel({
   const starts = startSquares(piece, steps);
   const attempts = captures ? MAX_CAPTURE_ATTEMPTS : MAX_ATTEMPTS;
 
+  // Capture levels are worth retrying for: one where an enemy guards another
+  // is a puzzle, one where nothing guards anything is a shopping list. Keep
+  // the first playable position as a fallback so we never come back
+  // empty-handed just because no guarded layout turned up.
+  let fallback: Level | null = null;
+
   for (let attempt = 0; attempt < attempts; attempt++) {
     const from = starts[randInt(rng, starts.length)];
 
@@ -177,7 +199,7 @@ export function generateLevel({
       if (!walkSurvivesEnemies(board, from, path)) continue;
     }
 
-    const data: LevelData = {
+    const level = toLevel({
       id: `endless-${world}-t${tier}-${index}`,
       world,
       tier,
@@ -188,12 +210,13 @@ export function generateLevel({
       par: steps,
       // The walk is a known-good line, so it makes a genuinely useful hint.
       hint: [[squareName(from), squareName(path[0])]],
-    };
+    } satisfies LevelData);
 
-    return toLevel(data);
+    if (!captures || guardedCount(board) > 0) return level;
+    fallback ??= level;
   }
 
-  return null;
+  return fallback;
 }
 
 /**

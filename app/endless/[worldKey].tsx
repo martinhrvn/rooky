@@ -60,7 +60,7 @@ function Endless({ world, tier }: { world: World; tier: Tier }) {
       // Endless rolls straight on; the button is only there for impatience.
       onAutoAdvance={another}
       wonActions={
-        <Button icon="endless" label={strings.play.another} variant="primary" onPress={another} />
+        <Button icon="endless" label={strings.play.another} kind="go" onPress={another} />
       }
     />
   );

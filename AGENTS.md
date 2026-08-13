@@ -46,8 +46,21 @@ from it, and it is covered by vitest.
 
 ## Design
 
-- **Gold is rewards only.** Actions and progress use tournament green
-  (`colors.green`); if an action is gold it competes with the stars.
+- **One colour per meaning, used everywhere without exception.** `actions` in
+  `theme.ts`: green = go on, walnut = play freely, light-square cream = do it
+  again, plain = help/leave. A glyph is a detail inside a shape, not the shape
+  itself, so to a non-reader two same-coloured pills are the same button
+  however different their icons. Filled-vs-outlined does not fix that — that
+  signals importance, not identity.
+- **Gold is rewards only.** If an action is gold it competes with the stars.
+- **Every fill comes from the board** — the tournament green, the dark square,
+  the light square. Nothing new enters the palette, so it cannot drift towards
+  looking like a toy.
+- **Two elevations, `raised` and `lifted`, and nothing else.** Depth is what
+  the app was missing; more levels would turn it into decoration.
+- **The board's cell size must stay a whole number of pixels.** A fractional
+  cell leaves squares and the pieces on them rounding independently, which
+  shows up as pieces sitting slightly off centre.
 - **Signature element:** progress is drawn as a rank of board squares filling
   in (`src/ui/TierRank.tsx`), not a progress bar. It's on both non-board
   screens and it's what the app is meant to be remembered by.
@@ -76,6 +89,12 @@ target. That makes the level winnable by construction and `par` exactly N —
 each target needs its own landing, so no line can beat N, and the walk achieves
 it. No solver call is needed at runtime, which matters because this runs on a
 phone between levels. The solver checks the property in `generator.test.ts`.
+
+Capture levels also **prefer positions where one enemy guards another** — that
+is what makes them a puzzle rather than a shopping list. Mutual guards (two
+knights covering each other, which nobody could ever take) cannot occur: the
+walk only accepts a capture that is safe at the moment it happens, and neither
+of a mutual pair ever is.
 
 For tiers 2 and 3 the targets become real enemies, which adds two conditions
 the walk must survive: enemies standing on later landing squares can **block**

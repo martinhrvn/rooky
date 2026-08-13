@@ -12,7 +12,7 @@ import { PieceTile } from '../src/ui/PieceTile';
 import { strings } from '../src/ui/strings';
 import { Text } from '../src/ui/Text';
 import { TierRank } from '../src/ui/TierRank';
-import { colors, layout } from '../src/ui/theme';
+import { colors, elevation, layout } from '../src/ui/theme';
 
 export default function PiecesScreen() {
   const router = useRouter();
@@ -76,7 +76,11 @@ function WorldCard({
 
         <View style={styles.cardTitle}>
           <View style={styles.titleRow}>
-            <Text variant="title">{world.title}</Text>
+            {/* Muted rather than dimmed: a world with no levels yet should
+                read as "later", not as "disabled". */}
+            <Text variant="title" color={unlocked ? colors.text : colors.textSoft}>
+              {world.title}
+            </Text>
             {progress.complete ? <CompleteBadge /> : null}
             {!unlocked ? <Lock /> : null}
           </View>
@@ -160,10 +164,24 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderRadius: layout.radius,
-    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.surfaceEdge,
+    padding: 18,
     gap: 16,
+    ...elevation('raised'),
   },
-  cardLocked: { opacity: 0.55 },
+  /**
+   * Worlds with no content yet get no card at all — just an outline on the
+   * page. A greyed-out card reads as "something went wrong"; an empty outline
+   * reads as "this is coming", which is the truth.
+   */
+  cardLocked: {
+    backgroundColor: 'transparent',
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   cardTitle: { flex: 1, gap: 3 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },

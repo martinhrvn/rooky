@@ -2,34 +2,33 @@ import { Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
 
 import { Glyph, type IconName } from './IconButton';
 import { Text } from './Text';
-import { colors, layout } from './theme';
-
-type Variant = 'primary' | 'secondary';
+import { type ActionKind, actions, colors, elevation, layout } from './theme';
 
 /**
- * An icon with a word beside it.
+ * An icon and a word, coloured by what the button *means*.
  *
- * The icon carries the meaning on its own — she can't read the label — and the
- * label is there for the adult, and for her to grow into. Neither depends on
- * the other.
+ * The variants are named for meaning rather than rank ("go", not "primary")
+ * because the colour is doing real work here, not decoration: to a player who
+ * cannot read, two same-coloured pills are the same button however different
+ * their glyphs. See `actions` in theme.ts.
  */
 export function Button({
   icon,
   label,
   onPress,
-  variant = 'secondary',
+  kind = 'plain',
   disabled = false,
   style,
 }: {
   icon: IconName;
   label: string;
   onPress: () => void;
-  variant?: Variant;
+  kind?: ActionKind;
   disabled?: boolean;
   style?: ViewStyle;
 }) {
-  const primary = variant === 'primary';
-  const tint = primary ? colors.surface : colors.green;
+  const action = actions[kind];
+  const prominent = kind === 'go';
 
   return (
     <Pressable
@@ -40,15 +39,21 @@ export function Button({
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
-        primary ? styles.primary : styles.secondary,
-        disabled && styles.disabled,
+        {
+          backgroundColor: pressed ? action.press : action.fill,
+          borderColor: action.edge,
+        },
+        // A real button sinks when pressed rather than fading — dimming a
+        // filled colour just makes it look washed out.
+        elevation(prominent && !pressed ? 'lifted' : 'raised'),
         pressed && styles.pressed,
+        disabled && styles.disabled,
         style,
       ]}
     >
       <View pointerEvents="none" style={styles.inner}>
-        <Glyph name={icon} size={primary ? 30 : 24} color={tint} />
-        <Text variant="button" color={tint}>
+        <Glyph name={icon} size={prominent ? 30 : 24} color={action.ink} />
+        <Text variant="button" color={action.ink}>
           {label}
         </Text>
       </View>
@@ -61,11 +66,10 @@ const styles = StyleSheet.create({
     minHeight: layout.touchTarget,
     paddingHorizontal: 20,
     borderRadius: layout.touchTarget / 2,
+    borderWidth: 1.5,
     justifyContent: 'center',
   },
   inner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  primary: { backgroundColor: colors.green },
-  secondary: { borderWidth: 2, borderColor: colors.green },
-  disabled: { opacity: 0.4 },
-  pressed: { opacity: 0.75, transform: [{ scale: 0.97 }] },
+  pressed: { transform: [{ scale: 0.98 }] },
+  disabled: { opacity: 0.4, borderColor: colors.surfaceEdge },
 });

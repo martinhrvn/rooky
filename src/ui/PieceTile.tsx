@@ -2,7 +2,7 @@ import { StyleSheet, View } from 'react-native';
 
 import type { PieceType } from '../chess/types';
 import { pieceArt } from './pieces';
-import { colors } from './theme';
+import { colors, elevation } from './theme';
 
 /**
  * A piece standing on a board square.
@@ -37,8 +37,12 @@ export function PieceTile({
           height: size,
           borderRadius: size * 0.22,
           backgroundColor: dark ? colors.darkSquare : colors.lightSquare,
+          // A hairline by default, so the tile reads as a square lifted off
+          // the board rather than a flat swatch of colour.
+          borderWidth: ringed ? Math.max(3, size * 0.045) : 1,
+          borderColor: ringed ? colors.green : colors.frameEdge,
         },
-        ringed && { borderWidth: Math.max(3, size * 0.045), borderColor: colors.green },
+        !dimmed && elevation('raised'),
         dimmed && styles.dimmed,
       ]}
     >

@@ -149,11 +149,15 @@ function Confetti({ index, size, skipped }: { index: number; size: number; skipp
 
 const styles = StyleSheet.create({
   overlay: {
+    // Explicit insets rather than relying on the static position, now that
+    // the board sits inside a padded frame.
     position: 'absolute',
+    top: 0,
+    left: 0,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    borderRadius: 8,
+    borderRadius: 6,
   },
   scrim: {
     position: 'absolute',

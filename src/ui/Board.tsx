@@ -393,7 +393,9 @@ const styles = StyleSheet.create({
   board: {
     position: 'relative',
     overflow: 'hidden',
-    borderRadius: 8,
+    // Nests inside BoardFrame's radius: the frame is (padding + 6), so the
+    // playing area rounds by 6 and the two curves stay concentric.
+    borderRadius: 6,
   },
   cell: {
     position: 'absolute',

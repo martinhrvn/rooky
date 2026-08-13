@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { attackers } from '../chess/attacks';
 import { findPieces, parseFen } from '../chess/board';
 import { type PieceType, squareName } from '../chess/types';
 import { applyMove, startLevel } from './engine';
@@ -202,6 +203,43 @@ describe('generated capture levels (tiers 2 and 3)', () => {
     // Each capture is a harder decision than each star, so the target count
     // ramps more slowly.
     expect(capture('r', 8, 3)!.par).toBeLessThan(gen('r', 8, 3)!.par);
+  });
+
+  it('usually gives one enemy a guard, so the level is a puzzle not a shopping list', () => {
+    let guarded = 0;
+    let total = 0;
+
+    for (let seed = 0; seed < 30; seed++) {
+      const level = capture('r', 3, seed);
+      if (!level) continue;
+      total += 1;
+      const board = parseFen(level.fen).board;
+      if (findPieces(board, 'b').some((sq) => attackers(board, sq, 'b').length > 0)) guarded += 1;
+    }
+
+    expect(total).toBeGreaterThan(0);
+    expect(guarded / total).toBeGreaterThan(0.8);
+  });
+
+  it('never produces enemies that guard each other, which nobody could take', () => {
+    // Two knights covering each other is a dead level. The walk excludes it by
+    // construction -- it only accepts a capture that is safe when it happens,
+    // and neither of a mutual pair ever is -- so this is a guard on that
+    // reasoning rather than on a code path.
+    for (let seed = 0; seed < 30; seed++) {
+      const level = capture('r', 4, seed);
+      if (!level) continue;
+      const board = parseFen(level.fen).board;
+
+      for (const a of findPieces(board, 'b')) {
+        for (const b of attackers(board, a, 'b')) {
+          expect(
+            attackers(board, b, 'b').includes(a),
+            `${level.fen}: ${squareName(a)} and ${squareName(b)} guard each other`,
+          ).toBe(false);
+        }
+      }
+    }
   });
 
   it('generates the same shape for tier 3, which is tier 2 without the overlay', () => {

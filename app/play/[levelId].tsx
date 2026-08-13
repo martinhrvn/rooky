@@ -42,24 +42,27 @@ function Play({ levelId }: { levelId: string }) {
           <Button
             icon="levelUp"
             label={strings.tierDone.nextTier}
-            variant="primary"
+            kind="go"
             onPress={() => router.replace(`/play/${tierLevels(world, upcomingTier)[0].id}`)}
           />
         ) : null}
         <Button
           icon="endless"
           label={strings.tierDone.endless}
+          kind="free"
           onPress={() => router.replace(`/endless/${world.key}?tier=${level.tier}`)}
         />
         <Button
           icon="retry"
           label={strings.tierDone.reset}
+          kind="again"
           onPress={() => router.replace(`/play/${tierLevels(world, level.tier)[0].id}`)}
         />
       </View>
     ) : next ? (
       <IconButton
         name="next"
+        kind="go"
         prominent
         accessibilityLabel={strings.play.next}
         onPress={() => router.replace(`/play/${next.id}`)}
