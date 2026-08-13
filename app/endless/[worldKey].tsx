@@ -57,6 +57,8 @@ function Endless({ world, tier }: { world: World; tier: Tier }) {
       key={level.id}
       level={level}
       onExit={() => router.back()}
+      // Endless rolls straight on; the button is only there for impatience.
+      onAutoAdvance={another}
       wonActions={
         <Button icon="endless" label={strings.play.another} variant="primary" onPress={another} />
       }

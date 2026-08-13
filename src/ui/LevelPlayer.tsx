@@ -1,5 +1,5 @@
 import * as Haptics from 'expo-haptics';
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -15,6 +15,12 @@ import { colors, layout } from './theme';
 
 /** Failed attempts before the hint appears, so the screen starts nearly empty. */
 const ATTEMPTS_BEFORE_HINT = 3;
+
+/** Long enough to enjoy the win, short enough not to become a wait. */
+const AUTO_ADVANCE_MS = 1800;
+
+/** Once she has tapped through the celebration, she is telling us to get on with it. */
+const AUTO_ADVANCE_AFTER_SKIP_MS = 450;
 
 /** Fire and forget — a missing haptics motor must never break a move. */
 const buzz = (style: Haptics.ImpactFeedbackStyle) => {
@@ -32,6 +38,16 @@ export interface LevelPlayerProps {
    * end of a tier.
    */
   wonActions?: ReactNode;
+  /**
+   * When set, the level moves on by itself once the win has been shown.
+   *
+   * Endless uses this: nothing there is scored, so making her tap to continue
+   * is friction for no reason. The campaign deliberately does not — those
+   * results are recorded, and she may well want to retry for a third star.
+   *
+   * Must be referentially stable, or the timer restarts every render.
+   */
+  onAutoAdvance?: () => void;
 }
 
 /**
@@ -42,13 +58,21 @@ export interface LevelPlayerProps {
  *
  * Stays icon-only. Words are noise mid-task, and the player cannot read them.
  */
-export function LevelPlayer({ level, onExit, onWin, wonActions }: LevelPlayerProps) {
+export function LevelPlayer({
+  level,
+  onExit,
+  onWin,
+  wonActions,
+  onAutoAdvance,
+}: LevelPlayerProps) {
   const { width, height } = useWindowDimensions();
 
   const [state, setState] = useState(() => startLevel(level));
   const [attempts, setAttempts] = useState(0);
   const [showHint, setShowHint] = useState(false);
   const [skipped, setSkipped] = useState(false);
+  /** When the current win happened, so auto-advance can time from it. */
+  const wonAt = useRef<number | null>(null);
 
   const earned = rate(state.moves, level.par);
 
@@ -60,6 +84,27 @@ export function LevelPlayer({ level, onExit, onWin, wonActions }: LevelPlayerPro
     // must not be able to record the same result twice.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.phase]);
+
+  // Tapping through the celebration shortens the wait rather than cancelling
+  // it, so a tap always means "get on with it" and never strands her on a
+  // finished board.
+  //
+  // The delay is measured from the win, not from the tap — otherwise tapping
+  // late would restart the clock and make an impatient tap *slower* than
+  // sitting still.
+  useEffect(() => {
+    if (state.phase !== 'won') {
+      wonAt.current = null;
+      return;
+    }
+    wonAt.current ??= Date.now();
+    if (!onAutoAdvance) return;
+
+    const target = skipped ? AUTO_ADVANCE_AFTER_SKIP_MS : AUTO_ADVANCE_MS;
+    const remaining = Math.max(0, target - (Date.now() - wonAt.current));
+    const timer = setTimeout(onAutoAdvance, remaining);
+    return () => clearTimeout(timer);
+  }, [state.phase, skipped, onAutoAdvance]);
 
   const retry = useCallback(() => {
     setState((s) => restart(s));
