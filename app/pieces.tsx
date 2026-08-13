@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path, Rect } from 'react-native-svg';
 
-import { TIERS, type World, WORLDS, tierLevels } from '../src/content';
+import { TIERS, type World, tierLevels } from '../src/content';
 import type { Level } from '../src/game/types';
 import { isLevelUnlocked, isWorldUnlocked, worldProgress } from '../src/progress/selectors';
 import { useCompletedIds } from '../src/progress/store';
@@ -12,11 +12,13 @@ import { PieceTile } from '../src/ui/PieceTile';
 import { strings } from '../src/ui/strings';
 import { Text } from '../src/ui/Text';
 import { TierRank } from '../src/ui/TierRank';
+import { useCatalogue } from '../src/ui/useCatalogue';
 import { colors, elevation, layout } from '../src/ui/theme';
 
 export default function PiecesScreen() {
   const router = useRouter();
   const completed = useCompletedIds();
+  const catalogue = useCatalogue();
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
@@ -31,10 +33,11 @@ export default function PiecesScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.list}>
-        {WORLDS.map((world) => (
+        {catalogue.worlds.map((world) => (
           <WorldCard
             key={world.key}
             world={world}
+            worlds={catalogue.worlds}
             completedIds={completed}
             onPlay={(level) => router.push(`/play/${level.id}`)}
           />
@@ -46,14 +49,17 @@ export default function PiecesScreen() {
 
 function WorldCard({
   world,
+  worlds,
   completedIds,
   onPlay,
 }: {
   world: World;
+  /** The active catalogue's worlds, so unlocking respects the difficulty ceiling. */
+  worlds: readonly World[];
   completedIds: ReadonlySet<string>;
   onPlay: (level: Level) => void;
 }) {
-  const unlocked = isWorldUnlocked(WORLDS, world, completedIds);
+  const unlocked = isWorldUnlocked(worlds, world, completedIds);
   const progress = worldProgress(world, completedIds);
   const hasLevels = world.levels.length > 0;
 

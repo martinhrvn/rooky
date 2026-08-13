@@ -6,7 +6,7 @@ import { destinations } from '../chess/moves';
 import { squareName } from '../chess/types';
 import { applyMove, startLevel } from '../game/engine';
 import { solve } from '../game/solver';
-import { ALL_LEVELS, WORLDS, nextLevel, nextWorldWithLevels } from './index';
+import { ALL_LEVELS, FULL_CATALOGUE, WORLDS, nextLevel, nextWorldWithLevels } from './index';
 
 describe('level content', () => {
   it('has unique ids', () => {
@@ -38,21 +38,21 @@ describe('level content', () => {
 
     it('points every finished world at another one, except the last', () => {
       playable.slice(0, -1).forEach((world) => {
-        const next = nextWorldWithLevels(world);
+        const next = nextWorldWithLevels(FULL_CATALOGUE, world);
         expect(next, `${world.key} leads nowhere`).toBeDefined();
         expect(next!.levels.length).toBeGreaterThan(0);
       });
     });
 
     it('offers nothing after the final piece rather than wrapping round', () => {
-      expect(nextWorldWithLevels(playable[playable.length - 1])).toBeUndefined();
+      expect(nextWorldWithLevels(FULL_CATALOGUE, playable[playable.length - 1])).toBeUndefined();
     });
 
     it('skips worlds that have no levels yet', () => {
       // Placeholder worlds are shown locked on the selector; they must never
       // be somewhere Continue or "Next piece" can land.
       for (const world of playable) {
-        expect(nextWorldWithLevels(world)?.levels.length ?? 1).toBeGreaterThan(0);
+        expect(nextWorldWithLevels(FULL_CATALOGUE, world)?.levels.length ?? 1).toBeGreaterThan(0);
       }
     });
 
@@ -62,7 +62,7 @@ describe('level content', () => {
       if (playable.length < 2) return;
 
       const done = new Set(playable[0].levels.map((l) => l.id));
-      expect(nextLevel(done)).toBe(playable[1].levels[0]);
+      expect(nextLevel(FULL_CATALOGUE, done)).toBe(playable[1].levels[0]);
     });
   });
 

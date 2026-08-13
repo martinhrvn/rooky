@@ -6,8 +6,10 @@ import { useMemo } from 'react';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import type { Tier } from '../game/types';
 import {
   type AvatarId,
+  DEFAULT_MAX_TIER,
   type LevelResult,
   type PersistedProgress,
   PROGRESS_VERSION,
@@ -21,13 +23,44 @@ interface ProgressStore extends PersistedProgress {
   markHydrated: () => void;
   createProfile: (name: string, avatarId: AvatarId) => string;
   renameProfile: (id: string, name: string) => void;
+  setMaxTier: (tier: Tier) => void;
   selectProfile: (id: string) => void;
   deleteProfile: (id: string) => void;
+  resetProgress: () => void;
+  completeLevels: (entries: readonly Omit<LevelResult, 'completedAt'>[]) => void;
   recordResult: (levelId: string, stars: 1 | 2 | 3, moves: number) => void;
 }
 
 let counter = 0;
 const makeId = () => `p${Date.now().toString(36)}${(counter++).toString(36)}`;
+
+/**
+ * Brings a saved payload up to the current shape.
+ *
+ * Exported so it can be tested directly against an old payload — this ran for
+ * the first time when the difficulty ceiling landed, and a migration that has
+ * never been executed is a migration you do not have.
+ *
+ * Each version adds a branch; none of them may discard results, because on the
+ * other side of this function is a child's saved progress.
+ */
+export function migrateProgress(persisted: unknown, version: number): PersistedProgress {
+  const state = (persisted ?? emptyProgress) as PersistedProgress;
+
+  // v1 had no per-profile difficulty ceiling. Everyone gets all three tiers,
+  // which is exactly what they were already playing.
+  if (version < 2) {
+    return {
+      ...state,
+      profiles: (state.profiles ?? []).map((profile) => ({
+        ...profile,
+        maxTier: profile.maxTier ?? DEFAULT_MAX_TIER,
+      })),
+    };
+  }
+
+  return state;
+}
 
 export const useProgress = create<ProgressStore>()(
   persist(
@@ -38,7 +71,13 @@ export const useProgress = create<ProgressStore>()(
       markHydrated: () => set({ hydrated: true }),
 
       createProfile: (name, avatarId) => {
-        const profile: Profile = { id: makeId(), name, avatarId, createdAt: Date.now() };
+        const profile: Profile = {
+          id: makeId(),
+          name,
+          avatarId,
+          createdAt: Date.now(),
+          maxTier: DEFAULT_MAX_TIER,
+        };
         set((s) => ({
           profiles: [...s.profiles, profile],
           activeProfileId: profile.id,
@@ -49,6 +88,32 @@ export const useProgress = create<ProgressStore>()(
 
       renameProfile: (id, name) =>
         set((s) => ({ profiles: s.profiles.map((p) => (p.id === id ? { ...p, name } : p)) })),
+
+      setMaxTier: (tier) =>
+        set((s) => ({
+          profiles: s.profiles.map((p) =>
+            p.id === s.activeProfileId ? { ...p, maxTier: tier } : p,
+          ),
+        })),
+
+      /** Clears the active profile's results. Other profiles are untouched. */
+      resetProgress: () =>
+        set((s) =>
+          s.activeProfileId ? { results: { ...s.results, [s.activeProfileId]: {} } } : {},
+        ),
+
+      /** Bulk write, for the developer panel. */
+      completeLevels: (entries) =>
+        set((s) => {
+          const profileId = s.activeProfileId;
+          if (!profileId) return {};
+
+          const forProfile = { ...(s.results[profileId] ?? {}) };
+          for (const entry of entries) {
+            forProfile[entry.levelId] = { ...entry, completedAt: Date.now() };
+          }
+          return { results: { ...s.results, [profileId]: forProfile } };
+        }),
 
       selectProfile: (id) => set({ activeProfileId: id }),
 
@@ -92,11 +157,7 @@ export const useProgress = create<ProgressStore>()(
         profiles,
         results,
       }),
-      migrate: (persisted) => {
-        // v1 is the first shape, so there is nothing to migrate from yet.
-        // Future versions add a branch here rather than discarding state.
-        return persisted as PersistedProgress;
-      },
+      migrate: migrateProgress,
       onRehydrateStorage: () => (state) => state?.markHydrated(),
     },
   ),
@@ -118,6 +179,13 @@ export function useCompletedIds(): ReadonlySet<string> {
 
 export function useActiveProfile(): Profile | null {
   return useProgress((s) => s.profiles.find((p) => p.id === s.activeProfileId) ?? null);
+}
+
+/** The active player's difficulty ceiling, or all three if there is no profile yet. */
+export function useMaxTier(): Tier {
+  return useProgress(
+    (s) => s.profiles.find((p) => p.id === s.activeProfileId)?.maxTier ?? DEFAULT_MAX_TIER,
+  );
 }
 
 export function useLevelResult(levelId: string): LevelResult | undefined {

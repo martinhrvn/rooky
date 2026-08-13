@@ -20,7 +20,9 @@ transformer can parse them; the artwork itself is unchanged.
 the **artwork only** — it does not affect the licence of the app's source code,
 which stays MIT. In practice that means:
 
-- Keep this attribution, and surface it in the app's parent-facing about screen.
+- Keep this attribution. It is surfaced in the app on the parent-facing
+  settings screen (`app/settings.tsx`, "Credits"); if that section is ever
+  removed, the obligation is not met.
 - If you modify the piece SVGs, the modified SVGs must stay CC-BY-SA 3.0.
 - Replacing the set with a public-domain one would remove this obligation
   entirely, if that is ever preferable.

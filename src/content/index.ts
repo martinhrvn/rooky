@@ -107,8 +107,42 @@ export const WORLDS: readonly World[] = [
 /** Tiers in the order they are played inside a world. */
 export const TIERS: readonly Tier[] = [1, 2, 3];
 
-/** Every level in play order — the sequence `Continue` walks. */
+/** Every level in play order. The full catalogue, ignoring any difficulty ceiling. */
 export const ALL_LEVELS: readonly Level[] = WORLDS.flatMap((w) => w.levels);
+
+/**
+ * The content a given player actually sees.
+ *
+ * A parent can cap the difficulty, and "treat *On your own* as if it did not
+ * exist" has to hold in progression, unlocking, the selector and Mix at once —
+ * so screens ask for the active catalogue rather than filtering for
+ * themselves, which is how the rule stays in one place.
+ */
+export interface Catalogue {
+  readonly maxTier: Tier;
+  readonly worlds: readonly World[];
+  readonly levels: readonly Level[];
+}
+
+const CATALOGUES = new Map<Tier, Catalogue>();
+
+/** Memoised — there are only three possible values. */
+export function catalogueFor(maxTier: Tier): Catalogue {
+  const cached = CATALOGUES.get(maxTier);
+  if (cached) return cached;
+
+  const worlds = WORLDS.map((world) => ({
+    ...world,
+    levels: world.levels.filter((level) => level.tier <= maxTier),
+  }));
+  const catalogue: Catalogue = { maxTier, worlds, levels: worlds.flatMap((w) => w.levels) };
+
+  CATALOGUES.set(maxTier, catalogue);
+  return catalogue;
+}
+
+/** The whole thing, for anywhere that must not be affected by the ceiling. */
+export const FULL_CATALOGUE: Catalogue = catalogueFor(3);
 
 const BY_ID = new Map(ALL_LEVELS.map((level) => [level.id, level]));
 
@@ -125,24 +159,26 @@ export const tierLevels = (world: World, tier: Tier): readonly Level[] =>
  * the last level once everything is done. Undefined only if there is no
  * content at all, which callers should render around rather than crash on.
  */
-export function nextLevel(completedIds: ReadonlySet<string>): Level | undefined {
-  return (
-    ALL_LEVELS.find((level) => !completedIds.has(level.id)) ?? ALL_LEVELS[ALL_LEVELS.length - 1]
-  );
+export function nextLevel(
+  { levels }: Catalogue,
+  completedIds: ReadonlySet<string>,
+): Level | undefined {
+  return levels.find((level) => !completedIds.has(level.id)) ?? levels[levels.length - 1];
 }
 
 /** The level immediately after `id` in play order, or undefined at the end. */
-export function levelAfter(id: string): Level | undefined {
-  const index = ALL_LEVELS.findIndex((level) => level.id === id);
-  return index >= 0 ? ALL_LEVELS[index + 1] : undefined;
+export function levelAfter({ levels }: Catalogue, id: string): Level | undefined {
+  const index = levels.findIndex((level) => level.id === id);
+  return index >= 0 ? levels[index + 1] : undefined;
 }
 
-/** The world a level belongs to. */
-export const worldOf = (level: Level): World | undefined => worldByKey(level.world);
+/** The world a level belongs to, within a given catalogue. */
+export const worldOf = ({ worlds }: Catalogue, level: Level): World | undefined =>
+  worlds.find((world) => world.key === level.world);
 
 /** True when nothing else in this level's own tier comes after it. */
-export function isLastOfTier(level: Level): boolean {
-  const world = worldOf(level);
+export function isLastOfTier(catalogue: Catalogue, level: Level): boolean {
+  const world = worldOf(catalogue, level);
   if (!world) return false;
   const siblings = tierLevels(world, level.tier);
   return siblings[siblings.length - 1]?.id === level.id;
@@ -160,8 +196,10 @@ export function nextTierWithLevels(world: World, after: Tier): Tier | undefined 
  * were Endless and Start over, at exactly the proudest moment. This is what
  * carries her on to the bishop.
  */
-export function nextWorldWithLevels(after: World): World | undefined {
-  const index = WORLDS.indexOf(after);
+export function nextWorldWithLevels({ worlds }: Catalogue, after: World): World | undefined {
+  // Matched by key, not identity: a filtered catalogue holds copies, so
+  // indexOf on the original array would silently find nothing.
+  const index = worlds.findIndex((world) => world.key === after.key);
   if (index < 0) return undefined;
-  return WORLDS.slice(index + 1).find((world) => world.levels.length > 0);
+  return worlds.slice(index + 1).find((world) => world.levels.length > 0);
 }

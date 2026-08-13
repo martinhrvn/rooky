@@ -57,6 +57,38 @@ export const strings = {
     3: 'On your own',
   },
 
+  /**
+   * Parent-facing, so plain words are fine here — this is the one part of the
+   * app an adult reads.
+   */
+  settings: {
+    title: 'Settings',
+    difficulty: 'Difficulty',
+    difficultyHelp: 'How far the levels go. Lowering this hides the harder ones without losing anything already earned.',
+    player: 'Player',
+    playerHelp: 'Shown only to you, so you can tell profiles apart.',
+    namePlaceholder: 'Name',
+    startOver: 'Start over',
+    startOverHelp: 'Clears every level for this player. Cannot be undone.',
+    startOverConfirm: 'Clear all progress for this player? This cannot be undone.',
+    confirm: 'Clear it',
+    cancel: 'Cancel',
+    credits: 'Credits',
+    creditsBody:
+      'Chess pieces are the Cburnett set by Colin M.L. Burnett, used under CC BY-SA 3.0. Type is Fredoka, used under the SIL Open Font License 1.1.',
+    version: 'Version',
+  },
+
+  dev: {
+    title: 'Developer',
+    warning: 'These change saved progress directly. There is no undo.',
+    resetProfile: 'Reset this player',
+    completeAll: 'Finish everything',
+    completeThrough: 'Finish up to a piece',
+    state: 'Stored state',
+    done: 'Done',
+  },
+
   play: {
     back: 'Back',
     retry: 'Try again',

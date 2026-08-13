@@ -29,6 +29,32 @@ Store, so nothing copyleft may enter the dependency tree or the level content:
   needed for tier 4.
 - Any new asset gets an entry in `ASSETS.md` in the same commit.
 
+## The difficulty ceiling
+
+A parent can cap how far the tiers go, per profile. "Treat *On your own* as if
+it didn't exist" has to hold in progression, unlocking, the selector and Mix at
+once, so **screens never read `WORLDS` or `ALL_LEVELS` directly** — they call
+`useCatalogue()` and get the filtered content. Functions that depend on it
+(`nextLevel`, `levelAfter`, `isLastOfTier`, `nextWorldWithLevels`, `mixPool`)
+take a `Catalogue`.
+
+The one exception is `levelById`, which stays on the full catalogue: an id from
+a hidden tier must still resolve or a stale route becomes a blank screen.
+
+Lowering the ceiling **hides, never deletes** — results above it stay stored and
+reappear when it is raised.
+
+## Settings and the developer panel
+
+`app/settings.tsx` is the only screen written for an adult, reached through the
+small gear on the home screen. Its Credits section discharges a real licence
+obligation (see `ASSETS.md`) — do not remove it.
+
+`app/dev.tsx` is reached *only* by tapping the version line on settings seven
+times, and is never linked. Everything there writes straight to saved progress
+with no undo, so it must stay somewhere a child mashing the screen cannot reach
+by accident. Do not add a shortcut to it from a play screen.
+
 ## Layout
 
 ```

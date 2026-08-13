@@ -10,6 +10,7 @@ import { useCompletedIds, useProgress } from '../src/progress/store';
 import { Button } from '../src/ui/Button';
 import { LevelPlayer } from '../src/ui/LevelPlayer';
 import { strings } from '../src/ui/strings';
+import { useCatalogue } from '../src/ui/useCatalogue';
 import { colors } from '../src/ui/theme';
 
 /**
@@ -27,11 +28,12 @@ import { colors } from '../src/ui/theme';
 export default function MixScreen() {
   const router = useRouter();
   const completed = useCompletedIds();
+  const catalogue = useCatalogue();
   const recordResult = useProgress((s) => s.recordResult);
 
   // Fixed at mount. The pool grows as she plays, but reshuffling underneath
   // her mid-session would be more surprising than useful.
-  const [pool] = useState(() => mixPool(completed));
+  const [pool] = useState(() => mixPool(catalogue, completed));
   const [queue, setQueue] = useState<Level[]>(() => reshuffle(pool, makeRng(pool.length + 1)));
   /** Counts levels played, and keys the board so every one is a fresh mount. */
   const [round, setRound] = useState(0);

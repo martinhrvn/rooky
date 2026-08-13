@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { type World, WORLDS, worldByKey } from '../content';
+import { FULL_CATALOGUE, type World, WORLDS, worldByKey } from '../content';
 import {
   currentWorld,
   isLevelUnlocked,
@@ -110,22 +110,22 @@ describe('isLevelUnlocked', () => {
 
 describe('the Mix pool', () => {
   it('is empty on a fresh profile, which is why the card is hidden then', () => {
-    expect(mixPool(none)).toEqual([]);
+    expect(mixPool(FULL_CATALOGUE, none)).toEqual([]);
     expect(piecesPlayed(WORLDS, none)).toEqual([]);
   });
 
   it('holds only levels she has actually finished', () => {
     const done = allOf('rook-t1-01', 'rook-t1-03');
-    expect(mixPool(done).map((l) => l.id)).toEqual(['rook-t1-01', 'rook-t1-03']);
+    expect(mixPool(FULL_CATALOGUE, done).map((l) => l.id)).toEqual(['rook-t1-01', 'rook-t1-03']);
   });
 
   it('keeps play order rather than the order she happened to finish in', () => {
     const done = allOf('rook-t1-03', 'rook-t1-01');
-    expect(mixPool(done).map((l) => l.id)).toEqual(['rook-t1-01', 'rook-t1-03']);
+    expect(mixPool(FULL_CATALOGUE, done).map((l) => l.id)).toEqual(['rook-t1-01', 'rook-t1-03']);
   });
 
   it('ignores ids that match no level', () => {
-    expect(mixPool(allOf('not-a-level'))).toEqual([]);
+    expect(mixPool(FULL_CATALOGUE, allOf('not-a-level'))).toEqual([]);
   });
 
   it('lists each piece once, in world order', () => {

@@ -18,6 +18,7 @@ import { IconButton } from '../../src/ui/IconButton';
 import { LevelPlayer } from '../../src/ui/LevelPlayer';
 import { pieceArt } from '../../src/ui/pieces';
 import { strings } from '../../src/ui/strings';
+import { useCatalogue } from '../../src/ui/useCatalogue';
 import { colors } from '../../src/ui/theme';
 
 export default function PlayScreen() {
@@ -31,6 +32,7 @@ export default function PlayScreen() {
 function Play({ levelId }: { levelId: string }) {
   const level = levelById(levelId)!;
   const router = useRouter();
+  const catalogue = useCatalogue();
   const recordResult = useProgress((s) => s.recordResult);
 
   const onWin = useCallback(
@@ -38,16 +40,17 @@ function Play({ levelId }: { levelId: string }) {
     [level.id, recordResult],
   );
 
-  const world = worldOf(level);
-  const next = levelAfter(level.id);
+  const world = worldOf(catalogue, level);
+  const next = levelAfter(catalogue, level.id);
   // A tier ending is a milestone, so it gets a set of choices rather than
   // silently tipping her into the next difficulty.
-  const tierDone = isLastOfTier(level);
+  const tierDone = isLastOfTier(catalogue, level);
   const upcomingTier = world ? nextTierWithLevels(world, level.tier) : undefined;
 
   // Finishing the hardest tier finishes the piece, so the way on is the next
   // piece rather than the next difficulty.
-  const upcomingWorld = world && !upcomingTier ? nextWorldWithLevels(world) : undefined;
+  const upcomingWorld =
+    world && !upcomingTier ? nextWorldWithLevels(catalogue, world) : undefined;
 
   const wonActions =
     tierDone && world ? (

@@ -9,7 +9,7 @@
  * gated behind a star rating**. Stars are for pride, not access.
  */
 
-import { ALL_LEVELS, TIERS, type World, tierLevels } from '../content';
+import { type Catalogue, TIERS, type World, tierLevels } from '../content';
 import type { PieceType } from '../chess/types';
 import type { Level, Tier } from '../game/types';
 
@@ -79,8 +79,10 @@ export function isLevelUnlocked(world: World, level: Level, completedIds: Readon
  * Only completed levels, so every one is hand-authored and safe to record a
  * result against.
  */
-export const mixPool = (completedIds: ReadonlySet<string>): readonly Level[] =>
-  ALL_LEVELS.filter((level) => completedIds.has(level.id));
+export const mixPool = (
+  { levels }: Catalogue,
+  completedIds: ReadonlySet<string>,
+): readonly Level[] => levels.filter((level) => completedIds.has(level.id));
 
 /**
  * The pieces she has finished something with, in world order.

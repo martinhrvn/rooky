@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 
-import { WORLDS, nextLevel, worldOf } from '../src/content';
+import { nextLevel, worldOf } from '../src/content';
 import { currentWorld, piecesPlayed } from '../src/progress/selectors';
 import { useCompletedIds, useProgress } from '../src/progress/store';
 import { Button } from '../src/ui/Button';
@@ -14,6 +14,7 @@ import { PieceTile } from '../src/ui/PieceTile';
 import { strings } from '../src/ui/strings';
 import { Text } from '../src/ui/Text';
 import { TierRank } from '../src/ui/TierRank';
+import { useCatalogue } from '../src/ui/useCatalogue';
 import { colors, elevation, layout } from '../src/ui/theme';
 
 /**
@@ -27,6 +28,7 @@ const MIN_FOR_MIX = 3;
 export default function HomeScreen() {
   const router = useRouter();
   const completed = useCompletedIds();
+  const catalogue = useCatalogue();
   const profiles = useProgress((s) => s.profiles);
   const createProfile = useProgress((s) => s.createProfile);
   const hydrated = useProgress((s) => s.hydrated);
@@ -38,8 +40,8 @@ export default function HomeScreen() {
     if (hydrated && profiles.length === 0) createProfile('Player 1', 'wr');
   }, [hydrated, profiles.length, createProfile]);
 
-  const resume = nextLevel(completed);
-  const world = resume ? worldOf(resume) : currentWorld(WORLDS, completed);
+  const resume = nextLevel(catalogue, completed);
+  const world = resume ? worldOf(catalogue, resume) : currentWorld(catalogue.worlds, completed);
 
   if (!resume || !world) return <SafeAreaView style={styles.screen} />;
 
@@ -55,7 +57,7 @@ export default function HomeScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={strings.home.settings}
-          onPress={() => {}}
+          onPress={() => router.push('/settings')}
           // Parent-facing, so deliberately small and out of the way.
           hitSlop={12}
           style={({ pressed }) => [styles.gear, pressed && styles.pressed]}
@@ -125,7 +127,10 @@ export default function HomeScreen() {
         {/* Only once there is genuinely something to mix. A new player never
             meets an empty second card and never has to wonder what it's for. */}
         {completed.size >= MIN_FOR_MIX ? (
-          <MixCard pieces={piecesPlayed(WORLDS, completed)} onPlay={() => router.push('/mix')} />
+          <MixCard
+            pieces={piecesPlayed(catalogue.worlds, completed)}
+            onPlay={() => router.push('/mix')}
+          />
         ) : null}
       </View>
     </SafeAreaView>
