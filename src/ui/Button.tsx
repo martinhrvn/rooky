@@ -24,9 +24,9 @@ export function Button({
 }: {
   icon: IconName;
   /**
-   * Replaces the glyph. Used to put a real chess piece on the button — she
-   * cannot read "Next piece", but a bishop appearing there says exactly what
-   * happens next.
+   * Replaces the glyph. Used to put real chess pieces on the button — she
+   * cannot read the label, but a bishop appearing there says exactly what
+   * happens next, and a row of pieces says the next thing is not a piece.
    */
   iconNode?: ReactNode;
   label: string;

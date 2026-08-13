@@ -68,10 +68,13 @@ function Play({ levelId }: { levelId: string }) {
         {upcomingWorld ? (
           <Button
             icon="levelUp"
-            // The piece itself, not an arrow: she cannot read "Next piece",
-            // but a bishop on the button says where she is going.
-            iconNode={<NextPieceArt piece={upcomingWorld.cast[0]} />}
-            label={strings.tierDone.nextPiece}
+            // The world itself, not an arrow: she cannot read the label, but a
+            // bishop on the button says where she is going — and a row of
+            // pieces says the next thing is not another piece at all.
+            iconNode={<NextWorldArt cast={upcomingWorld.cast} />}
+            label={
+              soloPiece(upcomingWorld) ? strings.tierDone.nextPiece : strings.tierDone.nextWorld
+            }
             kind="go"
             onPress={() => router.replace(`/play/${upcomingWorld.levels[0].id}`)}
           />
@@ -113,9 +116,29 @@ function Play({ levelId }: { levelId: string }) {
   );
 }
 
-function NextPieceArt({ piece }: { piece: PieceType }) {
-  const Art = pieceArt('w', piece);
-  return <Art width={34} height={34} />;
+/**
+ * The world she is heading into, drawn as its pieces.
+ *
+ * A single piece stays the size it always was. A row shrinks and overlaps to
+ * fit the button, the same way the selector's tile does — the row itself is the
+ * signal, so it has to survive being small.
+ */
+function NextWorldArt({ cast }: { cast: readonly PieceType[] }) {
+  const many = cast.length > 1;
+  const size = many ? 24 : 34;
+
+  return (
+    <View style={styles.cast}>
+      {cast.map((piece, i) => {
+        const Art = pieceArt('w', piece);
+        return (
+          <View key={`${piece}-${i}`} style={{ marginLeft: i === 0 ? 0 : -size * 0.4 }}>
+            <Art width={size} height={size} />
+          </View>
+        );
+      })}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -123,4 +146,5 @@ const styles = StyleSheet.create({
   // Stacked rather than in a row: at the end of a tier there are up to three
   // choices, and three side-by-side buttons are too small to hit reliably.
   choices: { gap: 10, alignItems: 'stretch', alignSelf: 'stretch', paddingHorizontal: 24 },
+  cast: { flexDirection: 'row', alignItems: 'center' },
 });

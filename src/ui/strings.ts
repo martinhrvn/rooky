@@ -18,6 +18,8 @@ export const strings = {
     reset: 'Start over',
     endless: 'Endless',
     changePiece: 'Change piece',
+    /** The same control on a world that is not about a piece. */
+    changeWorld: 'Change what you play',
     settings: 'Settings',
   },
 
@@ -58,6 +60,12 @@ export const strings = {
     nextTier: 'Next difficulty',
     /** Shown once the whole piece is finished, not just one difficulty. */
     nextPiece: 'Next piece',
+    /**
+     * The same button leading into a world that is not about a piece. "Next
+     * piece" would be a lie there — Under Attack is not a piece to learn — and
+     * the row of pieces on the button says as much on its own.
+     */
+    nextWorld: 'Next challenge',
     endless: 'Keep playing',
     reset: 'Start over',
   },

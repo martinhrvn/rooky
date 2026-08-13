@@ -102,7 +102,9 @@ export default function HomeScreen() {
         <View style={styles.card}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`${world.title}. ${strings.home.changePiece}`}
+            accessibilityLabel={`${world.title}. ${
+              soloPiece(world) ? strings.home.changePiece : strings.home.changeWorld
+            }`}
             onPress={() => router.push('/pieces')}
             style={({ pressed }) => [styles.cardHead, pressed && styles.pressed]}
           >
