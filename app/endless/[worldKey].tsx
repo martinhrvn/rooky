@@ -2,7 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { type World, worldByKey } from '../../src/content';
+import { type World, soloPiece, worldByKey } from '../../src/content';
 import { generateLevelOrEasier } from '../../src/game/generator';
 import { hashString, makeRng } from '../../src/game/random';
 import type { Level, Tier } from '../../src/game/types';
@@ -67,9 +67,16 @@ function Endless({ world, tier }: { world: World; tier: Tier }) {
 }
 
 function build(world: World, tier: Tier, index: number): Level | null {
+  const piece = soloPiece(world);
+  // A theme world has no single piece to walk, and the generator builds levels
+  // by walking one — it could not produce a discovered attack if it tried. The
+  // route is unreachable from the UI for those worlds; this is the backstop for
+  // a typed or stale URL.
+  if (!piece) return null;
+
   return generateLevelOrEasier({
     world: world.key,
-    piece: world.icon,
+    piece,
     tier,
     // Ramps roughly every other level, capped inside the generator.
     difficulty: index,

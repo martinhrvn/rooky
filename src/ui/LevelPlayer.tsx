@@ -3,7 +3,7 @@ import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } fro
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { dangerFrom, dangerMap } from '../chess/attacks';
+import { attackedPieces, capturersOf, dangerFrom, dangerMap } from '../chess/attacks';
 import { type Board as BoardModel, findPieces, movePiece } from '../chess/board';
 import { legalTargets, promote, rate, restart, rewind, startLevel, tap } from '../game/engine';
 import { isDeadEnd } from '../game/solver';
@@ -16,9 +16,23 @@ import { MoveDots } from './MoveDots';
 import { PromotionChoice } from './PromotionChoice';
 import { strings } from './strings';
 import { colors, layout } from './theme';
+import { ThreatArrows } from './ThreatArrows';
 
-/** Failed attempts before the hint appears, so the screen starts nearly empty. */
-const ATTEMPTS_BEFORE_HINT = 3;
+/**
+ * How long a hint stays up.
+ *
+ * The hint shows danger rather than the answer, so it is a peek and not a
+ * setting: leaving the reveal on would turn every tier 3 level back into a
+ * tier 2 one, and tier 3 is tier 2 with exactly that help removed.
+ */
+const HINT_PEEK_MS = 2600;
+
+/**
+ * Arrows drawn at once. In practice one or two of her pieces are ever in
+ * trouble; the cap is there so a position that goes wrong in five places at
+ * once shows the worst of it rather than a red cobweb.
+ */
+const MAX_THREAT_ARROWS = 3;
 
 /** Long enough to enjoy the win, short enough not to become a wait. */
 const AUTO_ADVANCE_MS = 1800;
@@ -88,7 +102,6 @@ export function LevelPlayer({
   const { width, height } = useWindowDimensions();
 
   const [state, setState] = useState(() => startLevel(level));
-  const [attempts, setAttempts] = useState(0);
   const [showHint, setShowHint] = useState(false);
   const [skipped, setSkipped] = useState(false);
   /** Board shown mid-punishment, with the enemy already on her square. */
@@ -191,7 +204,6 @@ export function LevelPlayer({
   const onTapSquare = useCallback((sq: number) => {
     setState((s) => {
       const next = tap(s, sq);
-      if (next.phase === 'lost' && s.phase !== 'lost') setAttempts((a) => a + 1);
       // A star just came off the board — the most-repeated moment in the game.
       if (next.stars.length < s.stars.length) buzz(Haptics.ImpactFeedbackStyle.Light);
       else if (next.moves > s.moves) buzz(Haptics.ImpactFeedbackStyle.Soft);
@@ -199,8 +211,27 @@ export function LevelPlayer({
     });
   }, []);
 
-  // Tier 2 is the only tier that shows the overlay: tier 1 has no enemies, and
-  // tier 3 is deliberately the same position with the help switched off.
+  /** The hint takes itself back down, so it can never become the new normal. */
+  useEffect(() => {
+    if (!showHint) return;
+    const timer = setTimeout(() => setShowHint(false), HINT_PEEK_MS);
+    return () => clearTimeout(timer);
+  }, [showHint]);
+
+  const hasEnemies = useMemo(() => findPieces(state.board, 'b').length > 0, [state.board]);
+
+  /**
+   * What the hint does: turn tier 2's help on for a couple of seconds.
+   *
+   * Rather than pointing at the answer, which these levels do not have — most
+   * have several right move orders — it lends her the thing tier 3 took away.
+   * On a tier 2 level the overlay is already on, so what the hint adds there is
+   * the arrows.
+   */
+  const revealing = showHint && hasEnemies;
+
+  // Tier 2 is the only tier that shows the overlay by itself: tier 1 has no
+  // enemies, and tier 3 is deliberately the same position with the help off.
   //
   // Once a piece is picked up the overlay is computed for *that* piece, which
   // is the only exact answer to "if I go there, do I get taken": moving changes
@@ -209,11 +240,34 @@ export function LevelPlayer({
   // piece on the board — every level in the six piece worlds — this is the same
   // set as before and nothing on screen moves.
   const danger = useMemo(() => {
-    if (level.tier !== 2) return null;
+    if (level.tier !== 2 && !revealing) return null;
     return state.selected === null
       ? dangerMap(state.board)
       : dangerFrom(state.board, state.selected);
-  }, [level.tier, state.board, state.selected]);
+  }, [level.tier, revealing, state.board, state.selected]);
+
+  /**
+   * The ring on her own pieces, and the arrows that say what is aiming at them.
+   *
+   * Both are held back unless the level checks every piece. Under the default
+   * rule only the piece that just moved can be taken, so ringing a bystander
+   * would promise a consequence that will never arrive — and a warning that
+   * turns out not to matter is worse than none, because it teaches her that red
+   * is decoration.
+   */
+  const marksPieces = level.danger === 'allPieces' && (level.tier === 2 || revealing);
+
+  const threatened = useMemo(
+    () => (marksPieces ? attackedPieces(state.board, 'w') : null),
+    [marksPieces, state.board],
+  );
+
+  const threats = useMemo(() => {
+    if (!revealing || !marksPieces) return [];
+    return [...attackedPieces(state.board, 'w')]
+      .map((victim) => ({ from: capturersOf(state.board, victim, 'b')[0], to: victim }))
+      .slice(0, MAX_THREAT_ARROWS);
+  }, [revealing, marksPieces, state.board]);
 
   const targets = useMemo(() => legalTargets(state), [state]);
   const board = punished ?? state.board;
@@ -252,11 +306,16 @@ export function LevelPlayer({
               selected={state.selected}
               targets={state.phase === 'playing' ? targets : hintTargets}
               danger={danger}
+              threatened={threatened}
               doomed={state.phase === 'lost' ? (state.punisher?.to ?? null) : null}
               lastMove={state.lastMove}
               size={boardSize}
               onTapSquare={onTapSquare}
             />
+
+            {/* Sibling of the board, not a child of the frame — see the note in
+                ThreatArrows. */}
+            <ThreatArrows threats={threats} size={boardSize} />
 
             {state.phase === 'promoting' ? (
               <PromotionChoice
@@ -288,7 +347,11 @@ export function LevelPlayer({
           accessibilityLabel={strings.play.retry}
         />
 
-        {attempts >= ATTEMPTS_BEFORE_HINT && state.phase !== 'won' && level.hint.length > 0 ? (
+        {/* Available from the first move rather than earned after three
+            captures. It shows what the enemy covers, which is the thing she is
+            here to learn to see — holding it back until she has been taken
+            three times hands it over only once it is too late to use. */}
+        {state.phase !== 'won' && (hasEnemies || level.hint.length > 0) ? (
           <IconButton
             name="hint"
             onPress={() => setShowHint(true)}

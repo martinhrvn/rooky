@@ -77,7 +77,7 @@ function WorldCard({
           onPress={() => onPlay(world.levels[0])}
           style={({ pressed }) => pressed && styles.pressed}
         >
-          <PieceTile piece={world.icon} size={72} ringed={unlocked} dimmed={!unlocked} />
+          <PieceTile pieces={world.cast} size={72} ringed={unlocked} dimmed={!unlocked} />
         </Pressable>
 
         <View style={styles.cardTitle}>

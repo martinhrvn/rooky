@@ -9,6 +9,7 @@ import {
   levelById,
   nextTierWithLevels,
   nextWorldWithLevels,
+  soloPiece,
   tierLevels,
   worldOf,
 } from '../../src/content';
@@ -69,18 +70,22 @@ function Play({ levelId }: { levelId: string }) {
             icon="levelUp"
             // The piece itself, not an arrow: she cannot read "Next piece",
             // but a bishop on the button says where she is going.
-            iconNode={<NextPieceArt piece={upcomingWorld.icon} />}
+            iconNode={<NextPieceArt piece={upcomingWorld.cast[0]} />}
             label={strings.tierDone.nextPiece}
             kind="go"
             onPress={() => router.replace(`/play/${upcomingWorld.levels[0].id}`)}
           />
         ) : null}
-        <Button
-          icon="endless"
-          label={strings.tierDone.endless}
-          kind="free"
-          onPress={() => router.replace(`/endless/${world.key}?tier=${level.tier}`)}
-        />
+        {/* Theme worlds have nothing to generate — see the note on the home
+            screen's Endless button. */}
+        {soloPiece(world) ? (
+          <Button
+            icon="endless"
+            label={strings.tierDone.endless}
+            kind="free"
+            onPress={() => router.replace(`/endless/${world.key}?tier=${level.tier}`)}
+          />
+        ) : null}
         <Button
           icon="retry"
           label={strings.tierDone.reset}

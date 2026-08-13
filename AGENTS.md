@@ -125,6 +125,26 @@ from it, and it is covered by vitest.
   often by accident, and there is no confirm dialog she could read. Destructive
   actions belong behind the parent-facing gear.
 
+## Worlds
+
+Six worlds about a piece, then four about an idea — capture, protect, combat,
+checkmate. `World.cast` is the distinction and the only one: **one piece means
+a piece world, several means a theme world**, and everything downstream reads
+the length rather than a separate flag (`soloPiece`). A row of pieces on the
+tile is also what tells a non-reader that Taking Pieces is not another piece to
+learn.
+
+**Endless is unavailable on a theme world.** It builds levels by walking a
+single piece around an empty board and could not produce a discovered attack if
+it tried. Mix picks them up for free, because Mix replays whatever she has
+beaten.
+
+Theme worlds have no tier 1 — stars teach movement, and these do not. That
+makes them the first worlds a difficulty ceiling can empty, so
+`catalogueFor` **drops a world the ceiling has emptied** rather than showing a
+card that can never open. A world with no levels *at all* still shows, as the
+"coming soon" placeholder; those are different states and the code says so.
+
 ## Game modes
 
 `src/ui/LevelPlayer.tsx` is the board screen. Both modes use it and differ only
@@ -174,6 +194,28 @@ only "where can this piece go" and "what does the enemy cover".
 
 ## Rules worth not re-deriving
 
+- **Danger has a scope, set per level.** By default only the piece that just
+  moved can be taken. A level can set `danger: 'allPieces'`, which checks every
+  white piece and is what makes a discovered attack possible — the piece that
+  gets taken is not the one that moved. It is opt-in because nine of the piece
+  worlds' levels have more than one white piece, where a bystander coming under
+  attack mid-solution is not a mistake. The moved piece is always checked
+  first, so a plain blunder still reads as "you moved into that".
+- **An enemy king may not take a defended piece** (`capturersOf`). Nothing else
+  in the app needs this, but every mate in one turns on it: the mating piece
+  stands next to the king, held there by a defender, and without the rule the
+  king would simply take it and the mate would read as a blunder.
+- **The hint shows the danger, not the answer.** It lends her tier 2's overlay
+  for a couple of seconds, plus arrows from each enemy to the piece of hers it
+  is attacking. It never points at a move — these levels usually have several
+  right orders — and it is available from the first move rather than earned
+  after three captures, because it shows the thing she is there to learn to
+  see. It must stay a timed peek: leaving it up turns tier 3 back into tier 2.
+- **`dangerFrom(board, from)`, not `dangerMap`, once a piece is selected.**
+  `dangerMap` lifts *all* her pieces off and so paints squares red that a piece
+  going nowhere is shielding. Moving changes where one piece stands, so lifting
+  that one is the exact answer. With a single piece on the board the two agree,
+  which is why this was invisible until the theme worlds.
 - **Pseudo-legal is intentional.** Moves that walk into danger are never
   filtered out — the consequence *is* the lesson.
 - **Getting taken rewinds one move, it does not restart the level.** She
@@ -230,6 +272,15 @@ npx vitest run src/content/levels/knight
 `src/content/levels/validate.ts` holds the shared checks; each world's test
 file is one line. This matters when several people (or agents) author worlds at
 once — without it, one half-written file breaks everyone's test run.
+
+The gate validates **what a world ships, not what was typed**: it applies
+`withMirroredTier3` first, so the derived tier 3 is solver-verified too. Only
+the uniqueness checks run on the authored levels alone, because a mirrored
+level shares its `teaches` note with the tier 2 it came from. `levels.test.ts`
+is deliberately thin — it holds only what no single world can check about
+itself (ids unique across worlds, world order, next-world navigation). Do not
+grow a per-level sweep back into it; that is the thing the per-world gate
+replaced.
 
 ## Authoring levels
 

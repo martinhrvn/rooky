@@ -87,7 +87,7 @@ export default function DevScreen() {
           <View style={styles.pieces}>
             {FULL_CATALOGUE.worlds.map((world) => (
               <View key={world.key} style={styles.piece}>
-                <PieceTile piece={world.icon} size={44} />
+                <PieceTile pieces={world.cast} size={44} />
                 <Button
                   icon="levelUp"
                   label={world.title}

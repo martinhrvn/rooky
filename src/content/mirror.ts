@@ -52,3 +52,27 @@ export function mirrorLevel(level: LevelData, tier: Tier, id: string): LevelData
     ),
   };
 }
+
+/**
+ * A world's authored levels plus its derived tier 3, which is tier 2 mirrored
+ * left-to-right.
+ *
+ * The lesson and the difficulty are held identical, so "no help" is the only
+ * variable that changed — but it looks different enough that she can't coast on
+ * remembering the answer. Derived rather than authored twice, so the two tiers
+ * can never drift apart.
+ *
+ * Lives here rather than in `index.ts` so the content gate can call it too: a
+ * world ships these levels, so a world's own test has to check them. They were
+ * once covered only by a global sweep over every level at once, which is
+ * exactly the thing the per-world gate exists to replace.
+ */
+export const withMirroredTier3 = (levels: readonly LevelData[]): LevelData[] => {
+  const tier2 = levels.filter((level) => level.tier === 2);
+  return [
+    ...levels,
+    ...tier2.map((level, i) =>
+      mirrorLevel(level, 3, `${level.world}-t3-${String(i + 1).padStart(2, '0')}`),
+    ),
+  ];
+};

@@ -4,7 +4,7 @@
  * replaying scripted move sequences.
  */
 
-import { attackers } from '../chess/attacks';
+import { attackedPieces, capturersOf } from '../chess/attacks';
 import { type Board, findPieces, movePiece, parseFen, pieceAt, setPiece } from '../chess/board';
 import { isInCheck, isMate } from '../chess/check';
 import { destinations, promotionRank } from '../chess/moves';
@@ -118,19 +118,19 @@ const VALUE: Record<PieceType, number> = { k: 6, q: 5, r: 4, b: 3, n: 3, p: 1 };
  * `allPieces` look at what the move exposed.
  */
 function threatAfter(board: Board, to: Square, scope: DangerScope): Move | null {
-  const direct = attackers(board, to, 'b');
+  const direct = capturersOf(board, to, 'b');
   if (direct.length > 0) return { from: direct[0], to };
   if (scope !== 'allPieces') return null;
 
   let worst: Move | null = null;
   let worstValue = 0;
-  // `findPieces` and `attackers` both walk a1..h8, and the comparison is a
+  // `findPieces` and `capturersOf` both walk a1..h8, and the comparison is a
   // strict `>`, so ties settle on the lowest square. The solver replays these
   // positions move for move; an unstable punisher would make `par` unstable
   // with it.
   for (const victim of findPieces(board, 'w')) {
     if (victim === to) continue;
-    const threats = attackers(board, victim, 'b');
+    const threats = capturersOf(board, victim, 'b');
     if (threats.length === 0) continue;
     const value = VALUE[pieceAt(board, victim)!.type];
     if (value > worstValue) {
@@ -142,8 +142,7 @@ function threatAfter(board: Board, to: Square, scope: DangerScope): Move | null 
 }
 
 /** True when nothing of hers can be taken where it stands. */
-const allSafe = (board: Board): boolean =>
-  findPieces(board, 'w').every((sq) => attackers(board, sq, 'b').length === 0);
+const allSafe = (board: Board): boolean => attackedPieces(board, 'w').size === 0;
 
 function isGoalMet(board: Board, stars: readonly Square[], goal: Level['goal']): boolean {
   const enemiesGone = findPieces(board, 'b').length === 0;

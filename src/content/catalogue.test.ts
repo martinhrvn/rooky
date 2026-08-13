@@ -24,8 +24,24 @@ describe('the difficulty ceiling', () => {
     expect(catalogueFor(1).levels.every((l) => l.tier === 1)).toBe(true);
   });
 
-  it('keeps every world, so the selector still shows what is coming', () => {
-    expect(catalogueFor(1).worlds).toHaveLength(FULL_CATALOGUE.worlds.length);
+  it('keeps every piece world, so the selector still shows what is coming', () => {
+    // The six piece worlds all start at tier 1, so no ceiling can empty one.
+    const piecesWorlds = FULL_CATALOGUE.worlds.filter((w) => w.cast.length === 1);
+    const kept = catalogueFor(1).worlds.map((w) => w.key);
+    expect(kept).toEqual(piecesWorlds.map((w) => w.key));
+  });
+
+  it('drops a world the ceiling has emptied rather than showing an empty card', () => {
+    // The theme worlds have no tier 1 at all. A parent capping at Stars should
+    // see them gone, not see four cards that can never open — "treat it as if
+    // it did not exist" has to hold on the selector too.
+    const themed = FULL_CATALOGUE.worlds.filter((w) => w.cast.length > 1);
+    expect(themed.length).toBeGreaterThan(0);
+    for (const world of themed) {
+      expect(world.levels.some((l) => l.tier === 1)).toBe(false);
+      expect(catalogueFor(1).worlds.some((w) => w.key === world.key)).toBe(false);
+      expect(catalogueFor(2).worlds.some((w) => w.key === world.key)).toBe(true);
+    }
   });
 
   it('is memoised, so screens can call it every render', () => {

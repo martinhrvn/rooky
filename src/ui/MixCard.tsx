@@ -32,7 +32,7 @@ export function MixCard({ pieces, onPlay }: { pieces: readonly PieceType[]; onPl
             // Overlapped like a hand of cards: reads as "several" at a glance
             // and stays compact however many she unlocks.
             <View key={piece} style={i > 0 && styles.overlap}>
-              <PieceTile piece={piece} size={34} dark={i % 2 === 1} />
+              <PieceTile pieces={[piece]} size={34} dark={i % 2 === 1} />
             </View>
           ))}
         </View>

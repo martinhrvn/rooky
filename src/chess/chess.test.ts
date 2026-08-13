@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { attackMap, attackers, dangerFrom, dangerMap, isAttacked } from './attacks';
+import { attackMap, attackers, capturersOf, dangerFrom, dangerMap, isAttacked } from './attacks';
 import { findPieces, movePiece, parseFen, pieceAt, setPiece, toFen } from './board';
 import { attackedFrom, destinations } from './moves';
 import { parseSquare, parseSquares, squareName, type SquareName } from './types';
@@ -256,6 +256,24 @@ describe('attack maps', () => {
     // Ask about the bishop itself and the warning comes back, because moving it
     // is precisely what opens the file.
     expect(dangerFrom(board, parseSquare('a5')).has(parseSquare('a3'))).toBe(true);
+  });
+
+  it('will not let an enemy king take a defended piece', () => {
+    // Black king a8, her queen on b7 right next to him, her king on c6 holding
+    // it there. The black king covers b7 but may not take on it, so b7 is not a
+    // dangerous square — and this is the position nearly every mate in one
+    // ends on.
+    const board = boardOf('k7/1Q6/2K5/8/8/8/8/8 w - -');
+    expect(attackers(board, parseSquare('b7'), 'b').map(squareName)).toEqual(['a8']);
+    expect(capturersOf(board, parseSquare('b7'), 'b')).toEqual([]);
+    expect(dangerFrom(board, parseSquare('b7')).has(parseSquare('b7'))).toBe(false);
+  });
+
+  it('lets an enemy king take an undefended piece', () => {
+    // The same, with her king moved out of range. Now nothing holds the queen
+    // there and the black king simply takes it.
+    const board = boardOf('k7/1Q6/8/8/4K3/8/8/8 w - -');
+    expect(capturersOf(board, parseSquare('b7'), 'b').map(squareName)).toEqual(['a8']);
   });
 
   it('agrees with dangerMap while she has a single piece', () => {

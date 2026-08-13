@@ -2,48 +2,53 @@ import type { PieceType } from '../chess/types';
 import { toLevel } from '../game/engine';
 import type { Level, LevelData, Tier, WorldKey } from '../game/types';
 import { bishopLevels } from './levels/bishop';
+import { captureLevels } from './levels/capture';
+import { checkmateLevels } from './levels/checkmate';
+import { combatLevels } from './levels/combat';
 import { kingLevels } from './levels/king';
+import { protectLevels } from './levels/protect';
 import { knightLevels } from './levels/knight';
 import { pawnLevels } from './levels/pawn';
 import { queenLevels } from './levels/queen';
 import { rookLevels } from './levels/rook';
-import { mirrorLevel } from './mirror';
+import { withMirroredTier3 } from './mirror';
 
 export interface World {
   readonly key: WorldKey;
-  /** The piece the world is about, and the one shown on its tile. */
-  readonly icon: PieceType;
+  /**
+   * The pieces on its tile: one for a world about a piece, a row of them for a
+   * world about an idea.
+   *
+   * The length is the distinction, and everything downstream reads it rather
+   * than a separate flag — one piece means Endless can generate for this world
+   * and that it counts towards the row on the Mix card, several means neither.
+   * See {@link soloPiece}.
+   */
+  readonly cast: readonly PieceType[];
   readonly title: string;
-  /** One line on what this piece does. Supports the picture, never replaces it. */
+  /** One line on what this world is for. Supports the picture, never replaces it. */
   readonly blurb: string;
   readonly levels: readonly Level[];
 }
 
 interface WorldSpec {
   key: WorldKey;
-  icon: PieceType;
+  cast: readonly PieceType[];
   title: string;
   blurb: string;
   levels: readonly LevelData[];
 }
 
 /**
- * Tier 3 is tier 2 mirrored left-to-right.
+ * The piece a world is *about*, when it is about one.
  *
- * The lesson and the difficulty are held identical, so "no help" is the only
- * variable that changed — but it looks different enough that she can't coast
- * on remembering the answer. Derived here rather than authored twice, so the
- * two tiers can never drift apart.
+ * Endless builds levels for a single piece by random walk, so it has nothing to
+ * offer a world whose subject is a shape across several pieces — it could not
+ * produce a discovered attack if it tried. Undefined here is what switches it
+ * off, rather than a flag someone has to remember to set.
  */
-const withMirroredTier3 = (levels: readonly LevelData[]): LevelData[] => {
-  const tier2 = levels.filter((level) => level.tier === 2);
-  return [
-    ...levels,
-    ...tier2.map((level, i) =>
-      mirrorLevel(level, 3, `${level.world}-t3-${String(i + 1).padStart(2, '0')}`),
-    ),
-  ];
-};
+export const soloPiece = (world: World): PieceType | undefined =>
+  world.cast.length === 1 ? world.cast[0] : undefined;
 
 const world = ({ levels, ...rest }: WorldSpec): World => ({
   ...rest,
@@ -55,6 +60,12 @@ const world = ({ levels, ...rest }: WorldSpec): World => ({
  * bishop because it is their union, knight late because it is the hardest to
  * internalise, pawn last because it has the most special cases.
  *
+ * The four theme worlds come after all six, and in that order for a reason:
+ * capture teaches that a move can cost you something elsewhere, protect asks
+ * her to fix it, combat is both at once, and checkmate needs a king before any
+ * of it means anything. Unlocking is linear, so putting them last is also what
+ * keeps them out of the way of everything that already works.
+ *
  * Worlds with no levels yet still appear, shown locked. Seeing what is coming
  * is motivating, and hiding them would make the app look finished when it
  * isn't.
@@ -62,45 +73,73 @@ const world = ({ levels, ...rest }: WorldSpec): World => ({
 export const WORLDS: readonly World[] = [
   world({
     key: 'rook',
-    icon: 'r',
+    cast: ['r'],
     title: 'The Rook',
     blurb: 'Moves in straight lines',
     levels: rookLevels,
   }),
   world({
     key: 'bishop',
-    icon: 'b',
+    cast: ['b'],
     title: 'The Bishop',
     blurb: 'Moves on diagonals',
     levels: bishopLevels,
   }),
   world({
     key: 'queen',
-    icon: 'q',
+    cast: ['q'],
     title: 'The Queen',
     blurb: 'Lines and diagonals, both',
     levels: queenLevels,
   }),
   world({
     key: 'king',
-    icon: 'k',
+    cast: ['k'],
     title: 'The King',
     blurb: 'One step, any way',
     levels: kingLevels,
   }),
   world({
     key: 'knight',
-    icon: 'n',
+    cast: ['n'],
     title: 'The Knight',
     blurb: 'Jumps in an L',
     levels: knightLevels,
   }),
   world({
     key: 'pawn',
-    icon: 'p',
+    cast: ['p'],
     title: 'The Pawn',
     blurb: 'Forward, but takes crossways',
     levels: pawnLevels,
+  }),
+  world({
+    key: 'capture',
+    cast: ['n', 'b', 'r'],
+    title: 'Taking Pieces',
+    blurb: 'Take them all — and watch what you open up',
+    levels: captureLevels,
+  }),
+  world({
+    key: 'protect',
+    cast: ['n', 'p', 'r'],
+    title: 'Under Attack',
+    blurb: 'One of yours is in danger',
+    levels: protectLevels,
+  }),
+  world({
+    key: 'combat',
+    cast: ['r', 'n', 'b'],
+    title: 'The Fight',
+    blurb: 'Get safe first, then take them all',
+    levels: combatLevels,
+  }),
+  world({
+    key: 'checkmate',
+    cast: ['r', 'q', 'k'],
+    title: 'Check and Mate',
+    blurb: 'Corner the enemy king',
+    levels: checkmateLevels,
   }),
 ];
 
@@ -131,10 +170,15 @@ export function catalogueFor(maxTier: Tier): Catalogue {
   const cached = CATALOGUES.get(maxTier);
   if (cached) return cached;
 
-  const worlds = WORLDS.map((world) => ({
-    ...world,
-    levels: world.levels.filter((level) => level.tier <= maxTier),
-  }));
+  const worlds = WORLDS.flatMap((world) => {
+    const levels = world.levels.filter((level) => level.tier <= maxTier);
+    // A world the ceiling has emptied disappears entirely — the theme worlds
+    // have no tier 1 at all, so a parent capping at Stars must not be left
+    // looking at four cards that can never open. A world with no levels *at
+    // all* is different, and stays: that one really is coming later.
+    if (levels.length === 0 && world.levels.length > 0) return [];
+    return [{ ...world, levels }];
+  });
   const catalogue: Catalogue = { maxTier, worlds, levels: worlds.flatMap((w) => w.levels) };
 
   CATALOGUES.set(maxTier, catalogue);

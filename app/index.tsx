@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 
-import { nextLevel, worldOf } from '../src/content';
+import { nextLevel, soloPiece, worldOf } from '../src/content';
 import { currentWorld, piecesPlayed } from '../src/progress/selectors';
 import { useActiveProfile, useCompletedIds, useProgress } from '../src/progress/store';
 import { Avatar } from '../src/ui/Avatar';
@@ -106,7 +106,7 @@ export default function HomeScreen() {
             onPress={() => router.push('/pieces')}
             style={({ pressed }) => [styles.cardHead, pressed && styles.pressed]}
           >
-            <PieceTile piece={world.icon} size={84} ringed />
+            <PieceTile pieces={world.cast} size={84} ringed />
             <View style={styles.cardTitle}>
               <Text variant="title">{world.title}</Text>
               {/* Label rather than body, so the difficulty sits under the
@@ -145,12 +145,17 @@ export default function HomeScreen() {
             />
           </View>
 
-          <Button
-            icon="endless"
-            label={strings.home.endless}
-            kind="free"
-            onPress={() => router.push(`/endless/${world.key}?tier=${resume.tier}`)}
-          />
+          {/* Only where there is one piece to generate for. Endless walks a
+              single piece around an empty board, which has nothing to say about
+              a world built on what a move leaves behind. */}
+          {soloPiece(world) ? (
+            <Button
+              icon="endless"
+              label={strings.home.endless}
+              kind="free"
+              onPress={() => router.push(`/endless/${world.key}?tier=${resume.tier}`)}
+            />
+          ) : null}
         </View>
 
         {/* Only once there is genuinely something to mix. A new player never

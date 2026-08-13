@@ -28,6 +28,15 @@ export interface BoardProps {
   /** Squares the enemy covers. `null` hides the overlay (tiers 1 and 3). */
   danger: ReadonlySet<Square> | null;
   /**
+   * Her own pieces that could be taken where they stand.
+   *
+   * A different question from `danger`, and so a different mark: that one fills
+   * the square and means "do not go here", this one rings the piece and means
+   * "this one is in trouble". Filling the square for both would say the piece's
+   * own square is a place to avoid, which is the opposite of the point.
+   */
+  threatened?: ReadonlySet<Square> | null;
+  /**
    * The square she was just taken on. Pulses red regardless of tier — in tier
    * 3 the overlay is hidden, so this is the only thing that says *where* the
    * mistake was.
@@ -51,6 +60,7 @@ export function Board({
   selected,
   targets,
   danger,
+  threatened,
   doomed,
   lastMove,
   size,
@@ -122,6 +132,32 @@ export function Board({
 
       {findPieces(board).map((sq) => (
         <PieceView key={board[sq]!.id} piece={board[sq]!} square={sq} cell={cell} />
+      ))}
+
+      {/* Above the pieces, or the artwork would sit on top of its own warning.
+          A rounded square rather than a circle: the move ring is already a
+          circle, and although the two can never land on the same square — one
+          marks her pieces, the other marks where she may go — shape carries the
+          difference for free. */}
+      {[...(threatened ?? [])].map((sq) => (
+        <View
+          key={`threat-${sq}`}
+          pointerEvents="none"
+          style={[
+            styles.centred,
+            { width: cell, height: cell, left: xOf(sq, cell), top: yOf(sq, cell) },
+          ]}
+        >
+          <View
+            style={{
+              width: cell * 0.9,
+              height: cell * 0.9,
+              borderRadius: cell * 0.26,
+              borderWidth: Math.max(2, cell * 0.08),
+              borderColor: colors.dangerStrong,
+            }}
+          />
+        </View>
       ))}
 
       {/* Move hints go above the pieces so a capture target still reads. */}

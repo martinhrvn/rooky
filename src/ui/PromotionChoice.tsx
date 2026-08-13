@@ -35,7 +35,7 @@ export function PromotionChoice({
             onPress={() => onChoose(type)}
             style={({ pressed }) => pressed && styles.pressed}
           >
-            <PieceTile piece={type} size={tile} ringed />
+            <PieceTile pieces={[type]} size={tile} ringed />
           </Pressable>
         ))}
       </View>

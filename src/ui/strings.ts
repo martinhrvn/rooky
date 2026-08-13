@@ -104,7 +104,8 @@ export const strings = {
   play: {
     back: 'Back',
     retry: 'Try again',
-    hint: 'Show a hint',
+    /** Shows what the enemy covers for a moment, not what to play. */
+    hint: 'Show me the danger',
     next: 'Next level',
     another: 'Another one',
   },

@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 
-import { attackers, dangerFrom } from '../../chess/attacks';
+import { capturersOf, dangerFrom } from '../../chess/attacks';
 import { findPieces, parseFen, toFen } from '../../chess/board';
 import { isInCheck, isMate, kingSquare } from '../../chess/check';
 import { destinations } from '../../chess/moves';
@@ -8,6 +8,7 @@ import { squareName } from '../../chess/types';
 import { applyMove, startLevel, toLevel } from '../../game/engine';
 import { solve } from '../../game/solver';
 import type { LevelData } from '../../game/types';
+import { withMirroredTier3 } from '../mirror';
 
 /**
  * The content gate, callable per world.
@@ -21,9 +22,15 @@ import type { LevelData } from '../../game/types';
  * answers "winnable, and in how few moves" objectively, so a level either
  * passes or says exactly how it is broken.
  */
-export function expectWorldLevels(worldName: string, data: readonly LevelData[]) {
+export function expectWorldLevels(worldName: string, authored: readonly LevelData[]) {
+  // Everything the world actually ships, which includes the tier 3 it derives
+  // rather than authors. Those levels are as real as any other and can be as
+  // broken; validating only what was typed by hand would leave a third of the
+  // catalogue unchecked.
+  const data = withMirroredTier3(authored);
+
   it(`${worldName}: has levels`, () => {
-    expect(data.length).toBeGreaterThan(0);
+    expect(authored.length).toBeGreaterThan(0);
   });
 
   it(`${worldName}: ids are unique and match the world`, () => {
@@ -49,10 +56,14 @@ export function expectWorldLevels(worldName: string, data: readonly LevelData[])
     //
     // A puzzle is the position *and* its targets: the same pawn on e2 with one
     // star and with two is deliberately the same setup asking a new question.
-    const puzzles = data.map((l) => `${l.fen}|${l.goal}|${JSON.stringify(l.stars ?? '')}`);
+    //
+    // Authored levels only. A derived tier 3 shares its note with the tier 2 it
+    // was mirrored from — on purpose, since it is the same lesson with the help
+    // switched off — so including them would flag every world at once.
+    const puzzles = authored.map((l) => `${l.fen}|${l.goal}|${JSON.stringify(l.stars ?? '')}`);
     expect(new Set(puzzles).size, 'duplicate puzzles').toBe(puzzles.length);
 
-    const intents = data.map((l) => l.teaches.trim().toLowerCase());
+    const intents = authored.map((l) => l.teaches.trim().toLowerCase());
     expect(new Set(intents).size, 'duplicate "teaches" notes').toBe(intents.length);
   });
 
@@ -108,7 +119,7 @@ export function expectWorldLevels(worldName: string, data: readonly LevelData[])
           noStars();
           enemies();
           expect(
-            findPieces(board, 'w').some((sq) => attackers(board, sq, 'b').length > 0),
+            findPieces(board, 'w').some((sq) => capturersOf(board, sq, 'b').length > 0),
             'nothing of hers is under attack, so there is nothing to save',
           ).toBe(true);
           break;

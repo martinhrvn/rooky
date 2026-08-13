@@ -22,7 +22,7 @@ const bishop = worldByKey('bishop')!;
  */
 const unwritten: World = {
   key: 'mixed',
-  icon: 'q',
+  cast: ['q'],
   title: 'Not written yet',
   blurb: '',
   levels: [],
@@ -130,11 +130,11 @@ describe('the Mix pool', () => {
 
   it('lists each piece once, in world order', () => {
     const done = new Set([...finished(bishop), ...finished(rook)].map((id) => id));
-    expect(piecesPlayed(WORLDS, done)).toEqual([rook.icon, bishop.icon]);
+    expect(piecesPlayed(WORLDS, done)).toEqual([rook.cast[0], bishop.cast[0]]);
   });
 
   it('lists a piece after a single finished level, not only a finished world', () => {
-    expect(piecesPlayed(WORLDS, allOf('rook-t1-01'))).toEqual([rook.icon]);
+    expect(piecesPlayed(WORLDS, allOf('rook-t1-01'))).toEqual([rook.cast[0]]);
   });
 });
 

@@ -9,7 +9,7 @@
  * gated behind a star rating**. Stars are for pride, not access.
  */
 
-import { type Catalogue, TIERS, type World, tierLevels } from '../content';
+import { type Catalogue, TIERS, type World, soloPiece, tierLevels } from '../content';
 import type { PieceType } from '../chess/types';
 import type { Level, Tier } from '../game/types';
 
@@ -97,7 +97,11 @@ export function piecesPlayed(
 ): readonly PieceType[] {
   return worlds
     .filter((world) => world.levels.some((level) => completedIds.has(level.id)))
-    .map((world) => world.icon);
+    .map(soloPiece)
+    // The theme worlds drop out: they are about an idea rather than a piece, so
+    // adding their cast here would double up pieces she has already earned and
+    // make the row say less rather than more.
+    .filter((piece): piece is PieceType => piece !== undefined);
 }
 
 /** The world the player is currently working through — the first unfinished one. */

@@ -12,13 +12,19 @@ import { colors, elevation } from './theme';
  * board she just played on.
  */
 export function PieceTile({
-  piece,
+  pieces,
   size,
   dark = false,
   ringed = false,
   dimmed = false,
 }: {
-  piece: PieceType;
+  /**
+   * One piece for a world about a piece, a row of them for a world about an
+   * idea. The row is what tells her at a glance that Taking Pieces is not
+   * another piece to learn — the same job the crowd of pieces does on the Mix
+   * card, and the reason theme worlds do not need a label to be told apart.
+   */
+  pieces: readonly PieceType[];
   size: number;
   /** Draw on a dark square instead of a light one. */
   dark?: boolean;
@@ -26,7 +32,13 @@ export function PieceTile({
   ringed?: boolean;
   dimmed?: boolean;
 }) {
-  const Art = pieceArt('w', piece);
+  // A row has to shrink and overlap to fit one square, and both numbers are a
+  // compromise: much smaller and the pieces stop being recognisable, much less
+  // overlap and three of them run off the edge. These fit three at ~0.9 of the
+  // tile while leaving each one's silhouette readable.
+  const many = pieces.length > 1;
+  const art = many ? size * 0.44 : size * 0.9;
+  const overlap = many ? size * 0.2 : 0;
 
   return (
     <View
@@ -46,15 +58,29 @@ export function PieceTile({
         dimmed && styles.dimmed,
       ]}
     >
-      <Art width={size * 0.9} height={size * 0.9} />
+      {pieces.map((piece, i) => {
+        const Art = pieceArt('w', piece);
+        return (
+          <View
+            key={`${piece}-${i}`}
+            style={{ marginLeft: i === 0 ? 0 : -overlap }}
+          >
+            <Art width={art} height={art} />
+          </View>
+        );
+      })}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   tile: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    // A row of pieces is wider than the square holding it; clipping keeps the
+    // tile reading as a board square rather than as a spill.
+    overflow: 'hidden',
   },
   dimmed: {
     opacity: 0.4,

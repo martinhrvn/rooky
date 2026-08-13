@@ -8,7 +8,23 @@ import type { Square, SquareName } from '../chess/types';
  */
 export type Tier = 1 | 2 | 3;
 
-export type WorldKey = 'rook' | 'bishop' | 'queen' | 'king' | 'knight' | 'pawn' | 'mixed';
+/**
+ * The six piece worlds teach how a piece moves. The four after them are about
+ * an idea instead, and use whatever pieces the idea needs — which is why they
+ * come last, and why nothing in them can be generated.
+ */
+export type WorldKey =
+  | 'rook'
+  | 'bishop'
+  | 'queen'
+  | 'king'
+  | 'knight'
+  | 'pawn'
+  | 'capture'
+  | 'protect'
+  | 'combat'
+  | 'checkmate'
+  | 'mixed';
 
 /**
  * What finishes a level.
