@@ -10,7 +10,45 @@ export type Tier = 1 | 2 | 3;
 
 export type WorldKey = 'rook' | 'bishop' | 'queen' | 'king' | 'knight' | 'pawn' | 'mixed';
 
-export type GoalKind = 'collectAllStars' | 'captureAll' | 'collectAndCapture';
+/**
+ * What finishes a level.
+ *
+ * Note what is *not* here: "combat" and "capture with a discovered attack" are
+ * both plain `captureAll` with `danger: 'allPieces'`. The obligation to save a
+ * piece before grabbing anything comes from the danger rule, not from the
+ * objective, so they need no goal of their own. Worth not re-deriving.
+ */
+export type GoalKind =
+  | 'collectAllStars'
+  | 'captureAll'
+  | 'collectAndCapture'
+  /** Nothing of hers is under attack any more: move it away, or take the attacker. */
+  | 'protect'
+  /** Her king is out of check. The same predicate as `protect`, but the gate
+   * holds it to starting *in* check, which is the entire exercise. */
+  | 'escapeCheck'
+  /** The black king is under attack — and, by the danger rule, she still is not. */
+  | 'check'
+  | 'mateInOne';
+
+/**
+ * Whose safety is checked after a move.
+ *
+ * `movedPiece` is the original rule and the default: only the piece she just
+ * moved can be taken, so a bystander that was already hanging when the level
+ * loaded is never punished. That is deliberately forgiving, and it is what the
+ * six piece worlds are built on.
+ *
+ * `allPieces` checks every white piece instead, which is the whole point of the
+ * discovered-attack, protection and combat levels: the move that loses is the
+ * one that *exposes* something, and the piece that gets taken is not the one
+ * that moved.
+ *
+ * It is opt-in per level rather than global because nine of the authored levels
+ * have more than one white piece, and mid-solution a bystander pawn can become
+ * attacked without that being a mistake.
+ */
+export type DangerScope = 'movedPiece' | 'allPieces';
 
 /**
  * Authoring shape for a level: pure, serialisable data with no functions.
@@ -40,6 +78,8 @@ export interface LevelData {
   readonly fen: string;
   readonly stars?: string | readonly SquareName[];
   readonly goal: GoalKind;
+  /** Defaults to `movedPiece`. See {@link DangerScope}. */
+  readonly danger?: DangerScope;
   /**
    * Optimal move count. Drives the move-dot row in the UI, and is asserted
    * against the solver in tests — never hand-tune it to make a level "feel"

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { attackMap, attackers, dangerMap, isAttacked } from './attacks';
+import { attackMap, attackers, dangerFrom, dangerMap, isAttacked } from './attacks';
 import { findPieces, movePiece, parseFen, pieceAt, setPiece, toFen } from './board';
 import { attackedFrom, destinations } from './moves';
 import { parseSquare, parseSquares, squareName, type SquareName } from './types';
@@ -242,6 +242,27 @@ describe('attack maps', () => {
   it('does not invent danger where the enemy genuinely cannot reach', () => {
     const board = boardOf('r7/8/8/R7/8/8/8/8 w - -');
     expect(dangerMap(board).has(parseSquare('h3'))).toBe(false);
+  });
+
+  it('keeps a piece that is staying put as a blocker, when asked about one mover', () => {
+    // Black rook a8, her bishop on a5 blocking the file, her knight on h1. Ask
+    // about the knight and a3 is safe -- the bishop is not going anywhere.
+    // `dangerMap` lifts both pieces off and so paints a3 red for a move that
+    // could not possibly expose it, which is over-warning rather than caution:
+    // a red square she can safely stand on teaches her to ignore red.
+    const board = boardOf('r7/8/8/B7/8/8/8/7N w - -');
+    expect(dangerMap(board).has(parseSquare('a3'))).toBe(true);
+    expect(dangerFrom(board, parseSquare('h1')).has(parseSquare('a3'))).toBe(false);
+    // Ask about the bishop itself and the warning comes back, because moving it
+    // is precisely what opens the file.
+    expect(dangerFrom(board, parseSquare('a5')).has(parseSquare('a3'))).toBe(true);
+  });
+
+  it('agrees with dangerMap while she has a single piece', () => {
+    // Which is every level in the six piece worlds, so switching the overlay
+    // over changes nothing she can see.
+    const board = boardOf('r7/8/8/R7/8/8/8/8 w - -');
+    expect([...dangerFrom(board, parseSquare('a5'))].sort()).toEqual([...dangerMap(board)].sort());
   });
 
   it('marks every square a lone black rook covers', () => {

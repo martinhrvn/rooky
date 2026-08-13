@@ -254,6 +254,15 @@ once — without it, one half-written file breaks everyone's test run.
   pawns: a pawn's two capture squares are its own colour.
 - Safe guards in practice: **pawns and knights** for line pieces, **pawns**
   for the bishop.
+- **A masking piece is always itself under attack**, so a discovered-attack
+  level needs a third piece. To mask a line hers has to stand *on* it, which
+  makes it the first thing the enemy slider sees. Under `danger: 'allPieces'`
+  that means moving it hands over the piece behind, and leaving it there hangs
+  the masker — so a position with only the two loses on every move and is
+  unsolvable. What makes it a puzzle is a piece that can go and take the
+  slider, answering both threats at once. `validate.test.ts` holds a worked
+  example of this and of every other new goal kind, each known to pass the
+  gate.
 - **Do not author tier 3.** It is derived from tier 2 by mirroring, in
   `src/content/index.ts`.
 - When the gate fails it prints `declared par 3, solver found: c1e3 e3g5` —

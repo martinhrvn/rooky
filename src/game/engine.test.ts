@@ -270,6 +270,208 @@ describe('danger', () => {
   });
 });
 
+describe('goals beyond stars and captures', () => {
+  const puzzle = (fen: string, over: Partial<LevelData> = {}) =>
+    level({ fen, stars: undefined, tier: 2, par: 1, ...over });
+
+  describe('protect', () => {
+    /** The rook on a1 is under fire from a8 and has to stop being so. */
+    const HANGING = 'r7/8/8/8/8/8/8/R7 w - -';
+
+    it('is met by walking out of the line', () => {
+      expect(play(startLevel(puzzle(HANGING, { goal: 'protect' })), 'a1h1').phase).toBe('won');
+    });
+
+    it('is met by taking the attacker instead', () => {
+      // Two answers to the same position, both correct — which is why these
+      // levels cannot have a single authored solution line.
+      expect(play(startLevel(puzzle(HANGING, { goal: 'protect' })), 'a1a8').phase).toBe('won');
+    });
+
+    it('is not met while something of hers is still attacked', () => {
+      // The knight steps somewhere perfectly safe and achieves nothing: the
+      // rook is still hanging, so the level is not over.
+      const state = play(
+        startLevel(puzzle('r7/8/8/8/8/8/8/R6N w - -', { goal: 'protect', par: 2 })),
+        'h1g3',
+      );
+      expect(state.phase).toBe('playing');
+    });
+  });
+
+  describe('escapeCheck', () => {
+    it('is met by stepping off the line', () => {
+      const state = play(
+        startLevel(puzzle('4r3/8/8/8/8/8/8/4K3 w - -', { goal: 'escapeCheck' })),
+        'e1d1',
+      );
+      expect(state.phase).toBe('won');
+    });
+
+    it('asks about the king only, unlike protect', () => {
+      // The rook on a1 is still hanging and the level is still finished: the
+      // question was where the king stands, not whether everything is tidy.
+      const inCheck = 'r3r3/8/8/8/8/8/8/R3K3 w - -';
+      expect(play(startLevel(puzzle(inCheck, { goal: 'escapeCheck' })), 'e1d1').phase).toBe('won');
+      expect(play(startLevel(puzzle(inCheck, { goal: 'protect', par: 2 })), 'e1d1').phase).toBe(
+        'playing',
+      );
+    });
+  });
+
+  describe('check', () => {
+    const KING_ALONE = '4k3/8/8/8/8/8/8/R7 w - -';
+
+    it('is met by attacking the black king', () => {
+      expect(play(startLevel(puzzle(KING_ALONE, { goal: 'check' })), 'a1a8').phase).toBe('won');
+    });
+
+    it('is not met by a move that only looks busy', () => {
+      expect(play(startLevel(puzzle(KING_ALONE, { goal: 'check', par: 2 })), 'a1a4').phase).toBe(
+        'playing',
+      );
+    });
+
+    it('does not count a check she gets taken for', () => {
+      // d8 gives check and stands next to the king, so the king simply takes
+      // her. Danger runs before the goal, which is what makes "while staying
+      // safe" a rule rather than a hope.
+      const state = play(startLevel(puzzle(KING_ALONE, { goal: 'check' })), 'a1d1', 'd1d8');
+      expect(state.phase).toBe('lost');
+      expect(state.punisher).toEqual({ from: sq('e8'), to: sq('d8') });
+    });
+  });
+
+  describe('mateInOne', () => {
+    it('is met by a back-rank mate', () => {
+      const state = play(
+        startLevel(puzzle('6k1/5ppp/8/8/8/8/8/R7 w - -', { goal: 'mateInOne' })),
+        'a1a8',
+      );
+      expect(state.phase).toBe('won');
+    });
+
+    it('is not met by a check the king walks out of', () => {
+      // Same mate, one pawn short: h7 is now a door.
+      const state = play(
+        startLevel(puzzle('6k1/5pp1/8/8/8/8/8/R7 w - -', { goal: 'mateInOne', par: 2 })),
+        'a1a8',
+      );
+      expect(state.phase).toBe('playing');
+    });
+
+    it('is not met by a stalemate', () => {
+      // No legal move, but no check either. Accepting this would teach that
+      // trapping the king is the same as mating it.
+      const state = play(
+        startLevel(puzzle('7k/8/5Q2/8/8/8/8/8 w - -', { goal: 'mateInOne', par: 2 })),
+        'f6f7',
+      );
+      expect(state.phase).toBe('playing');
+    });
+  });
+});
+
+describe('danger: allPieces', () => {
+  const fight = (fen: string, over: Partial<LevelData> = {}) =>
+    level({ fen, stars: undefined, goal: 'captureAll', tier: 2, par: 1, ...over });
+
+  /**
+   * The discovered attack, which is the whole reason this scope exists: the
+   * bishop on a4 is the only thing standing between the black rook and the
+   * white rook, and stepping off the file is what loses.
+   *
+   * Note the geometry, because it is not optional: to mask a line the bishop
+   * has to *be* on it, which makes the bishop the first thing the black rook
+   * sees — so a masking piece is always itself under attack. That is the
+   * warning she gets to read. It also means this bare position is a fixture and
+   * not a level: with no way to reach the black rook, every move here loses.
+   * A real one has to offer an answer, which `LOOSE_END` below does.
+   */
+  const DISCOVERY = 'r7/8/8/8/B7/8/8/R7 w - -';
+
+  /** The same masking bishop, plus a knight that can go and take the rook. */
+  const LOOSE_END = 'r7/8/1N6/8/B7/8/8/R7 w - -';
+
+  it('takes the piece the move exposed, not the piece that moved', () => {
+    const state = play(startLevel(fight(DISCOVERY, { danger: 'allPieces' })), 'a4c6');
+    expect(state.phase).toBe('lost');
+    expect(state.punisher).toEqual({ from: sq('a8'), to: sq('a1') });
+  });
+
+  it('leaves the same move alone under the default scope', () => {
+    // Same position, same move: the difference is the level's setting and
+    // nothing else, which is what keeps the six piece worlds untouched.
+    expect(play(startLevel(fight(DISCOVERY)), 'a4c6').phase).toBe('playing');
+  });
+
+  it('punishes a bystander that was already hanging', () => {
+    // The rook on a1 is under attack from the first move onwards — moving
+    // something else and hoping is exactly the habit these levels exist to
+    // break. This is also the whole mechanic behind the protection levels.
+    const hanging = fight('r7/8/8/8/8/8/8/R6N w - -', { danger: 'allPieces' });
+    const state = play(startLevel(hanging), 'h1g3');
+    expect(state.phase).toBe('lost');
+    expect(state.punisher).toEqual({ from: sq('a8'), to: sq('a1') });
+
+    expect(play(startLevel(fight('r7/8/8/8/8/8/8/R6N w - -')), 'h1g3').phase).toBe('playing');
+  });
+
+  it('takes the most valuable piece when several hang at once', () => {
+    // Knight on a1 and queen on h1 both hang. The queen is the loss worth
+    // watching, and picking by square order would have shown the knight.
+    const state = play(
+      startLevel(fight('r6r/8/8/8/8/8/3P4/N6Q w - -', { danger: 'allPieces' })),
+      'd2d3',
+    );
+    expect(state.punisher).toEqual({ from: sq('h8'), to: sq('h1') });
+  });
+
+  it('settles ties on the lowest square, so a replay is identical', () => {
+    // Two knights, nothing to choose between them. The solver walks these
+    // positions move for move; an unstable punisher would make `par` unstable.
+    const state = play(
+      startLevel(fight('r6r/8/8/8/8/8/3P4/N6N w - -', { danger: 'allPieces' })),
+      'd2d3',
+    );
+    expect(state.punisher).toEqual({ from: sq('a8'), to: sq('a1') });
+  });
+
+  it('blames the piece that moved before anything it left behind', () => {
+    // The pawn walks onto a covered square while the knight on a1 is already
+    // hanging. The knight is worth more, but "you moved into that" is the
+    // lesson of the move she just played, so it wins.
+    const state = play(
+      startLevel(fight('r3r3/8/8/8/8/8/4P3/N7 w - -', { danger: 'allPieces' })),
+      'e2e3',
+    );
+    expect(state.punisher).toEqual({ from: sq('e8'), to: sq('e3') });
+  });
+
+  it('rewinds an exposure the same way as a direct capture', () => {
+    const lost = play(startLevel(fight(DISCOVERY, { danger: 'allPieces' })), 'a4c6');
+    const back = rewind(lost);
+    expect(back.phase).toBe('playing');
+    expect(back.moves).toBe(0);
+    expect(pieceAt(back.board, sq('a4'))).toMatchObject({ color: 'w', type: 'b' });
+  });
+
+  it('lets a move through once the piece doing the threatening is gone', () => {
+    // Taking the rook answers the masked threat and the open threat at once,
+    // which is the move order these levels are asking her to find.
+    const state = play(startLevel(fight(LOOSE_END, { danger: 'allPieces' })), 'b6a8');
+    expect(state.phase).toBe('won');
+  });
+
+  it('still punishes a move that leaves the loose end loose', () => {
+    // The knight goes somewhere perfectly safe and the bishop it walked past is
+    // taken anyway.
+    const state = play(startLevel(fight(LOOSE_END, { danger: 'allPieces', par: 2 })), 'b6d7');
+    expect(state.phase).toBe('lost');
+    expect(state.punisher).toEqual({ from: sq('a8'), to: sq('a4') });
+  });
+});
+
 describe('promotion', () => {
   const pawnLevel = (over: Partial<LevelData> = {}) =>
     level({ world: 'pawn', fen: '8/4P3/8/8/8/8/8/8 w - -', stars: 'e8', par: 1, ...over });

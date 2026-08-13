@@ -3,7 +3,7 @@ import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } fro
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { dangerMap } from '../chess/attacks';
+import { dangerFrom, dangerMap } from '../chess/attacks';
 import { type Board as BoardModel, findPieces, movePiece } from '../chess/board';
 import { legalTargets, promote, rate, restart, rewind, startLevel, tap } from '../game/engine';
 import { isDeadEnd } from '../game/solver';
@@ -162,18 +162,24 @@ export function LevelPlayer({
    * a knight reaches the last enemy. Without this the board would just stop
    * responding, which is the worst possible feedback for a four-year-old.
    *
-   * Only checked while a pawn is on the board, because every other piece can
-   * always move again and captures in the wrong order already lose.
+   * Normally only checked while a pawn is on the board, because every other
+   * piece can always move again and captures in the wrong order already lose.
+   * Under `allPieces` danger that stops holding: a move can leave every
+   * remaining continuation exposing something, with no pawn in sight, so those
+   * levels are checked whatever is on the board.
    */
   useEffect(() => {
     if (state.phase !== 'playing' || !state.undo) return;
-    if (!findPieces(state.board, 'w').some((sq) => state.board[sq]?.type === 'p')) return;
+    const mayStrand =
+      level.danger === 'allPieces' ||
+      findPieces(state.board, 'w').some((sq) => state.board[sq]?.type === 'p');
+    if (!mayStrand) return;
     if (!isDeadEnd(state)) return;
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid).catch(() => {});
     const timer = setTimeout(() => setState(rewind), STRANDED_REWIND_MS);
     return () => clearTimeout(timer);
-  }, [state]);
+  }, [state, level.danger]);
 
   const retry = useCallback(() => {
     setPunished(null);
@@ -195,10 +201,19 @@ export function LevelPlayer({
 
   // Tier 2 is the only tier that shows the overlay: tier 1 has no enemies, and
   // tier 3 is deliberately the same position with the help switched off.
-  const danger = useMemo(
-    () => (level.tier === 2 ? dangerMap(state.board) : null),
-    [level.tier, state.board],
-  );
+  //
+  // Once a piece is picked up the overlay is computed for *that* piece, which
+  // is the only exact answer to "if I go there, do I get taken": moving changes
+  // where one piece stands, so lifting that one off accounts for the line it
+  // was blocking while her other pieces keep screening theirs. With a single
+  // piece on the board — every level in the six piece worlds — this is the same
+  // set as before and nothing on screen moves.
+  const danger = useMemo(() => {
+    if (level.tier !== 2) return null;
+    return state.selected === null
+      ? dangerMap(state.board)
+      : dangerFrom(state.board, state.selected);
+  }, [level.tier, state.board, state.selected]);
 
   const targets = useMemo(() => legalTargets(state), [state]);
   const board = punished ?? state.board;

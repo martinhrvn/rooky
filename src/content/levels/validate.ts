@@ -1,7 +1,8 @@
 import { expect, it } from 'vitest';
 
-import { dangerMap } from '../../chess/attacks';
+import { attackers, dangerFrom } from '../../chess/attacks';
 import { findPieces, parseFen, toFen } from '../../chess/board';
+import { isInCheck, isMate, kingSquare } from '../../chess/check';
 import { destinations } from '../../chess/moves';
 import { squareName } from '../../chess/types';
 import { applyMove, startLevel, toLevel } from '../../game/engine';
@@ -77,21 +78,70 @@ export function expectWorldLevels(worldName: string, data: readonly LevelData[])
       const board = parseFen(level.fen).board;
       expect(findPieces(board, 'w').length, 'needs a piece to play with').toBeGreaterThan(0);
 
-      if (level.goal === 'captureAll') {
-        expect(level.stars, 'capture levels have no stars').toHaveLength(0);
-        expect(findPieces(board, 'b').length, 'needs enemies to take').toBeGreaterThan(0);
-      } else {
+      const noStars = () => expect(level.stars, `${level.goal} levels have no stars`).toHaveLength(0);
+      const enemies = () =>
+        expect(findPieces(board, 'b').length, 'needs enemies').toBeGreaterThan(0);
+      const stars = () => {
         expect(level.stars.length, 'star goals need stars').toBeGreaterThan(0);
         for (const star of level.stars) {
           expect(board[star], `${squareName(star)} has a piece standing on it`).toBeNull();
         }
+      };
+
+      // Every one of these says "the position must already pose the question
+      // the goal claims to answer". A protection level whose pieces are all
+      // safe, or an out-of-check level not in check, is won before she touches
+      // it — and would look to her exactly like a level that does nothing.
+      switch (level.goal) {
+        case 'captureAll':
+          noStars();
+          enemies();
+          break;
+        case 'collectAllStars':
+          stars();
+          break;
+        case 'collectAndCapture':
+          stars();
+          enemies();
+          break;
+        case 'protect':
+          noStars();
+          enemies();
+          expect(
+            findPieces(board, 'w').some((sq) => attackers(board, sq, 'b').length > 0),
+            'nothing of hers is under attack, so there is nothing to save',
+          ).toBe(true);
+          break;
+        case 'escapeCheck':
+          noStars();
+          expect(kingSquare(board, 'w'), 'needs a white king').not.toBeNull();
+          expect(isInCheck(board, 'w'), 'does not start in check').toBe(true);
+          break;
+        case 'check':
+          noStars();
+          expect(kingSquare(board, 'b'), 'needs a black king').not.toBeNull();
+          expect(isInCheck(board, 'b'), 'the black king is already in check').toBe(false);
+          break;
+        case 'mateInOne':
+          noStars();
+          expect(kingSquare(board, 'b'), 'needs a black king').not.toBeNull();
+          expect(level.par, 'mate in one is one move').toBe(1);
+          expect(isMate(board, 'b'), 'is already mate').toBe(false);
+          break;
       }
     });
 
     it(`${level.id}: warns about exactly the squares that punish her`, () => {
-      // The overlay's contract: red means you get taken there, and no red
-      // means you don't. Under-warning is the worse failure, so this walks the
-      // whole reachable state space rather than just the opening position.
+      // The overlay's contract: red means you get taken there, and no red means
+      // you don't. Under-warning is the worse failure, so this walks the whole
+      // reachable state space rather than just the opening position.
+      //
+      // `allPieces` levels weaken the second half and nothing else. A move can
+      // lose by exposing a piece somewhere the square overlay never claimed
+      // anything about, so there "no red" stops meaning safe — which is the
+      // point of those levels, and what the threat arrows exist to reveal. Red
+      // still never lies, and a piece that walks onto its own capture is still
+      // always warned.
       if (level.tier < 2) return;
 
       const seen = new Set<string>();
@@ -100,16 +150,29 @@ export function expectWorldLevels(worldName: string, data: readonly LevelData[])
       for (let depth = 0; depth < level.par && frontier.length > 0; depth++) {
         const next: typeof frontier = [];
         for (const state of frontier) {
-          const warned = dangerMap(state.board);
           for (const from of findPieces(state.board, 'w')) {
+            // Computed per mover, not per position: the only piece whose square
+            // changes is this one, so lifting it off is exactly right, while
+            // her other pieces keep screening what they screen.
+            const warned = dangerFrom(state.board, from);
             for (const to of destinations(state.board, from)) {
               const after = applyMove(state, from, to);
-              expect(
-                warned.has(to),
-                `${level.id}: ${squareName(from)}${squareName(to)} ${
-                  after.phase === 'lost' ? 'loses but is not marked' : 'is marked but is safe'
-                }`,
-              ).toBe(after.phase === 'lost');
+              const move = `${squareName(from)}${squareName(to)}`;
+              const struckDown = after.phase === 'lost' && after.punisher!.to !== to;
+
+              if (struckDown) {
+                expect(
+                  level.danger,
+                  `${level.id}: ${move} loses a piece elsewhere, which only 'allPieces' allows`,
+                ).toBe('allPieces');
+              } else {
+                expect(
+                  warned.has(to),
+                  `${level.id}: ${move} ${
+                    after.phase === 'lost' ? 'loses but is not marked' : 'is marked but is safe'
+                  }`,
+                ).toBe(after.phase === 'lost');
+              }
 
               if (after.phase !== 'playing') continue;
               const key = toFen({ board: after.board, turn: 'w' });

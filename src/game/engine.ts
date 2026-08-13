@@ -6,9 +6,18 @@
 
 import { attackers } from '../chess/attacks';
 import { type Board, findPieces, movePiece, parseFen, pieceAt, setPiece } from '../chess/board';
+import { isInCheck, isMate } from '../chess/check';
 import { destinations, promotionRank } from '../chess/moves';
-import { type Square, parseSquare, parseSquares, rankOf } from '../chess/types';
-import type { GameState, Level, LevelData, PromotionType, Snapshot } from './types';
+import { type PieceType, type Square, parseSquare, parseSquares, rankOf } from '../chess/types';
+import type {
+  DangerScope,
+  GameState,
+  Level,
+  LevelData,
+  Move,
+  PromotionType,
+  Snapshot,
+} from './types';
 
 /** Resolves the readable square names in level data into indices. */
 export function toLevel(data: LevelData): Level {
@@ -92,6 +101,50 @@ export function legalTargets(state: GameState): Square[] {
   return destinations(state.board, state.selected);
 }
 
+/**
+ * Ranks victims for the rare position where more than one of her pieces hangs
+ * at once. The biggest loss is the one worth watching, and it is the one she
+ * would have noticed herself.
+ */
+const VALUE: Record<PieceType, number> = { k: 6, q: 5, r: 4, b: 3, n: 3, p: 1 };
+
+/**
+ * The capture that punishes the move just played, or `null` if she got away
+ * with it. `from` is the enemy that strikes, `to` the piece it takes.
+ *
+ * The piece she just moved is checked first at every scope, so a plain blunder
+ * still reads as "you moved into that" rather than surfacing some unrelated
+ * capture on the other side of the board. Only once she is safe there does
+ * `allPieces` look at what the move exposed.
+ */
+function threatAfter(board: Board, to: Square, scope: DangerScope): Move | null {
+  const direct = attackers(board, to, 'b');
+  if (direct.length > 0) return { from: direct[0], to };
+  if (scope !== 'allPieces') return null;
+
+  let worst: Move | null = null;
+  let worstValue = 0;
+  // `findPieces` and `attackers` both walk a1..h8, and the comparison is a
+  // strict `>`, so ties settle on the lowest square. The solver replays these
+  // positions move for move; an unstable punisher would make `par` unstable
+  // with it.
+  for (const victim of findPieces(board, 'w')) {
+    if (victim === to) continue;
+    const threats = attackers(board, victim, 'b');
+    if (threats.length === 0) continue;
+    const value = VALUE[pieceAt(board, victim)!.type];
+    if (value > worstValue) {
+      worstValue = value;
+      worst = { from: threats[0], to: victim };
+    }
+  }
+  return worst;
+}
+
+/** True when nothing of hers can be taken where it stands. */
+const allSafe = (board: Board): boolean =>
+  findPieces(board, 'w').every((sq) => attackers(board, sq, 'b').length === 0);
+
 function isGoalMet(board: Board, stars: readonly Square[], goal: Level['goal']): boolean {
   const enemiesGone = findPieces(board, 'b').length === 0;
   switch (goal) {
@@ -101,6 +154,19 @@ function isGoalMet(board: Board, stars: readonly Square[], goal: Level['goal']):
       return enemiesGone;
     case 'collectAndCapture':
       return stars.length === 0 && enemiesGone;
+    case 'protect':
+      return allSafe(board);
+    case 'escapeCheck':
+      return !isInCheck(board, 'w');
+    case 'check':
+      // Staying safe while doing it is the danger rule's job, and it has
+      // already run by the time we get here.
+      return isInCheck(board, 'b');
+    case 'mateInOne':
+      // The only goal that generates moves rather than reading the position,
+      // and this runs inside the solver's BFS frontier — so it stays behind its
+      // own case rather than being computed alongside the cheap ones.
+      return isMate(board, 'b');
   }
 }
 
@@ -181,12 +247,16 @@ export function applyMove(
   // Danger is resolved BEFORE the goal: grabbing the last star on a square the
   // enemy covers still gets you taken. Checking the goal first would make the
   // winning move immune to danger, which is exactly the habit tier 2 exists to
-  // prevent. Only the piece that just moved counts — punishing one that was
-  // already under attack when the level loaded would be unfair and unteachable.
-  const threats = attackers(board, to, 'b');
-  if (threats.length > 0) {
+  // prevent.
+  //
+  // How far it looks is the level's choice. By default only the piece that just
+  // moved counts — punishing one that was already under attack when the level
+  // loaded would be unfair and unteachable — but a level can opt into
+  // `allPieces`, which is what makes a discovered attack possible.
+  const punisher = threatAfter(board, to, state.level.danger ?? 'movedPiece');
+  if (punisher) {
     // Transient: the UI animates the capture, then calls `rewind`.
-    return { ...base, phase: 'lost', punisher: { from: threats[0], to } };
+    return { ...base, phase: 'lost', punisher };
   }
 
   if (isGoalMet(board, stars, state.level.goal)) {

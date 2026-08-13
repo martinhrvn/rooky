@@ -41,6 +41,23 @@ export function dangerMap(board: Board): Set<Square> {
   );
 }
 
+/**
+ * The overlay for one specific piece: squares black covers once *that* piece
+ * has stepped off `from`, with her other pieces left where they stand.
+ *
+ * Exact, where `dangerMap` is only exact while she has a single piece. Moving
+ * changes the position of one piece and one piece only, so lifting that one off
+ * accounts for any line it was blocking, while the pieces that stay put keep
+ * screening the lines they were screening. `dangerMap` lifts all of them and so
+ * paints squares red that are in fact shielded by a piece going nowhere.
+ */
+export function dangerFrom(board: Board, from: Square): Set<Square> {
+  return attackMap(
+    board.map((piece, sq) => (sq === from ? null : piece)),
+    'b',
+  );
+}
+
 /** The squares of `color` pieces that cover `target`. */
 export function attackers(board: Board, target: Square, color: Color): Square[] {
   return findPieces(board, color).filter((from) => attackedFrom(board, from).includes(target));
