@@ -196,26 +196,32 @@ export function LevelPlayer({
 
       <View style={styles.boardWrap}>
         <BoardFrame size={boardSize}>
-          <Board
-            board={board}
-            stars={state.stars}
-            selected={state.selected}
-            targets={state.phase === 'playing' ? targets : hintTargets}
-            danger={danger}
-            doomed={state.phase === 'lost' ? (state.punisher?.to ?? null) : null}
-            lastMove={state.lastMove}
-            size={boardSize}
-            onTapSquare={onTapSquare}
-          />
-
-          {state.phase === 'won' ? (
-            <Celebration
-              earned={earned}
+          {/* Board and celebration share this wrapper so the overlay lines up
+              with the squares. Absolute children resolve against the padding
+              box, so parenting them to the frame itself would offset the
+              overlay by the frame's width. */}
+          <View style={{ width: boardSize, height: boardSize }}>
+            <Board
+              board={board}
+              stars={state.stars}
+              selected={state.selected}
+              targets={state.phase === 'playing' ? targets : hintTargets}
+              danger={danger}
+              doomed={state.phase === 'lost' ? (state.punisher?.to ?? null) : null}
+              lastMove={state.lastMove}
               size={boardSize}
-              skipped={skipped}
-              onSkip={() => setSkipped(true)}
+              onTapSquare={onTapSquare}
             />
-          ) : null}
+
+            {state.phase === 'won' ? (
+              <Celebration
+                earned={earned}
+                size={boardSize}
+                skipped={skipped}
+                onSkip={() => setSkipped(true)}
+              />
+            ) : null}
+          </View>
         </BoardFrame>
       </View>
 

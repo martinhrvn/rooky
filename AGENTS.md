@@ -61,6 +61,15 @@ from it, and it is covered by vitest.
 - **The board's cell size must stay a whole number of pixels.** A fractional
   cell leaves squares and the pieces on them rounding independently, which
   shows up as pieces sitting slightly off centre.
+- **Anything overlaying the board goes inside the wrapper next to `Board`, not
+  inside `BoardFrame`.** Absolute children resolve against the *padding* box,
+  so a child of the frame lands inside its 2px border rather than inside its
+  padding — offsetting the overlay by the frame's width and leaving a gap at
+  the bottom and right.
+- **Any SVG asset needs an explicit `viewBox`.** Without one react-native-svg
+  has nothing to scale by and draws at native coordinates inside the given
+  box, clipping and mis-centring. The Cburnett files shipped without one; this
+  is the first thing to check if new artwork looks off.
 - **Signature element:** progress is drawn as a rank of board squares filling
   in (`src/ui/TierRank.tsx`), not a progress bar. It's on both non-board
   screens and it's what the app is meant to be remembered by.

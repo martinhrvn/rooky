@@ -47,8 +47,9 @@ export function Celebration({
       onPress={onSkip}
       style={[styles.overlay, { width: size, height: size }]}
     >
-      <View style={styles.scrim} />
-
+      {/* No scrim. Washing the board out fought the whole point of keeping the
+          celebration board-anchored — she should be able to see the position
+          she just finished. The stars carry themselves instead. */}
       {Array.from({ length: CONFETTI_COUNT }, (_, i) => (
         <Confetti key={i} index={i} size={size} skipped={skipped} />
       ))}
@@ -90,12 +91,15 @@ function RewardStar({
 
   return (
     <Animated.View style={style}>
+      {/* Heavier stroke than the board's stars: without a scrim these sit
+          straight on top of the squares and need to hold their own against
+          both the light and the dark ones. */}
       <Svg width={size} height={size} viewBox="0 0 100 100">
         <Path
           d={STAR_PATH}
-          fill={filled ? colors.star : 'rgba(255,255,255,0.55)'}
-          stroke={filled ? colors.starEdge : colors.textSoft}
-          strokeWidth={6}
+          fill={filled ? colors.star : 'rgba(255, 253, 248, 0.85)'}
+          stroke={filled ? colors.starEdge : colors.walnut}
+          strokeWidth={9}
           strokeLinejoin="round"
         />
       </Svg>
@@ -158,15 +162,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
     borderRadius: 6,
-  },
-  scrim: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    // Light enough that the finished position stays readable behind it.
-    backgroundColor: 'rgba(251, 245, 234, 0.55)',
   },
   stars: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   confetti: { position: 'absolute', top: 0, left: 0 },
