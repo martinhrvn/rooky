@@ -12,7 +12,8 @@ export type IconName =
   | 'play'
   | 'endless'
   | 'shuffle'
-  | 'levelUp';
+  | 'levelUp'
+  | 'path';
 
 /**
  * Every glyph in the app.
@@ -71,6 +72,19 @@ export function Glyph({ name, size, color = colors.text }: { name: IconName; siz
           <Path d="M14 74 L34 74 L66 26 L84 26" {...common} />
           <Polygon points="76,14 96,26 76,38" fill={color} />
           <Polygon points="76,62 96,74 76,86" fill={color} />
+        </>
+      )}
+
+      {name === 'path' && (
+        <>
+          {/* Three stops on a winding line — the shape of the screen it opens,
+              which is the only way a non-reader can know what is behind it.
+              Deliberately not the steps of `levelUp`: that one means the next
+              difficulty, and this one means "show me all of them". */}
+          <Path d="M26 20 C 74 32, 26 62, 74 78" {...common} strokeWidth={6} />
+          <Circle cx={26} cy={20} r={11} fill={color} />
+          <Circle cx={50} cy={50} r={11} fill={color} />
+          <Circle cx={74} cy={78} r={11} fill={color} />
         </>
       )}
 

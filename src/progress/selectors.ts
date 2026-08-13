@@ -73,6 +73,46 @@ export function isLevelUnlocked(world: World, level: Level, completedIds: Readon
   return completedIds.has(world.levels[index - 1].id);
 }
 
+/** How a tier reads on the path: shut, open to play, or finished. */
+export type TierState = 'locked' | 'open' | 'done';
+
+/**
+ * One circle's state on the path.
+ *
+ * A tier is shut until its world opens and its own first level is reachable,
+ * which is the same lenient rule everything else uses — nothing here is gated
+ * behind a star rating.
+ */
+export function tierState(
+  worlds: readonly World[],
+  world: World,
+  tier: Tier,
+  completedIds: ReadonlySet<string>,
+): TierState {
+  const levels = tierLevels(world, tier);
+  if (levels.length === 0) return 'locked';
+  if (levels.every((level) => completedIds.has(level.id))) return 'done';
+  if (!isWorldUnlocked(worlds, world, completedIds)) return 'locked';
+  return isLevelUnlocked(world, levels[0], completedIds) ? 'open' : 'locked';
+}
+
+/**
+ * What tapping a circle opens: the first level of the tier with no result yet.
+ *
+ * Falls back to the tier's *first* level once they are all done, and that
+ * fallback is the whole of "tapping a finished circle plays it again". Nothing
+ * is cleared by doing so — `recordResult` keeps the best stars and the fewest
+ * moves, so a sloppy replay cannot cost her anything.
+ */
+export function firstPlayableOfTier(
+  world: World,
+  tier: Tier,
+  completedIds: ReadonlySet<string>,
+): Level | undefined {
+  const levels = tierLevels(world, tier);
+  return levels.find((level) => !completedIds.has(level.id)) ?? levels[0];
+}
+
 /**
  * Everything she has already beaten, in play order — what Mix draws from.
  *

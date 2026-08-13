@@ -170,6 +170,29 @@ export const actions = {
 
 export type ActionKind = keyof typeof actions;
 
+/**
+ * Ribbon hues, cycled by world down the path.
+ *
+ * **Labels, never actions.** A ribbon is a banner with a name on it and cannot
+ * be pressed, which is what lets it hold a colour outside the `actions` set
+ * without muddying "one colour per meaning". They are the only decorative
+ * colours in the app and they stay that way.
+ *
+ * Jade and cream are deliberately absent: those mean *finished* and *you are
+ * here* on the circles below, and a ribbon in either would claim a state.
+ * Periwinkle is absent too — the Endless button is periwinkle, and it sits
+ * beside the ribbon rather than on it precisely because every hue here is
+ * within 1.2:1 of it.
+ *
+ * `tail` is the same colour in shadow: the underside of the ribbon where it
+ * folds back, which is what makes the shape read as cloth rather than as a bar.
+ */
+export const ribbons = [
+  { band: '#8B6FD4', tail: '#5F4B90' },
+  { band: '#3E9E96', tail: '#2A6B66' },
+  { band: '#C96A8E', tail: '#894861' },
+] as const;
+
 export const layout = {
   /** Minimum comfortable tap target for small hands. */
   touchTarget: 64,

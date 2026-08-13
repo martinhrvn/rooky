@@ -3,29 +3,41 @@ import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, View } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 
-import { nextLevel, soloPiece, worldOf } from '../src/content';
+import type { PieceType } from '../src/chess/types';
+import { nextLevel, worldOf } from '../src/content';
 import { currentWorld, piecesPlayed } from '../src/progress/selectors';
 import { useActiveProfile, useCompletedIds, useProgress } from '../src/progress/store';
 import { Avatar } from '../src/ui/Avatar';
 import { Button } from '../src/ui/Button';
 import { ProfileForm } from '../src/ui/ProfileForm';
-import { Glyph } from '../src/ui/IconButton';
-import { MixCard } from '../src/ui/MixCard';
-import { PieceTile } from '../src/ui/PieceTile';
+import { pieceArt } from '../src/ui/pieces';
 import { strings } from '../src/ui/strings';
 import { Text } from '../src/ui/Text';
-import { TierRank } from '../src/ui/TierRank';
 import { useCatalogue } from '../src/ui/useCatalogue';
 import { colors, elevation, layout } from '../src/ui/theme';
 
 /**
- * Levels finished before the Mix card appears.
+ * Levels finished before Mix appears.
  *
- * A "mix" of one or two levels is not a mix, and an extra card on a nearly
- * empty home screen is exactly the confusion this feature had to avoid.
+ * A "mix" of one or two levels is not a mix, and an extra button on a home
+ * screen this bare is exactly the confusion the mode had to avoid.
  */
 const MIN_FOR_MIX = 3;
 
+/** Most pieces on the Mix button before the row starts to crowd it. */
+const MAX_MIX_PIECES = 5;
+
+/**
+ * Home: where she is, and three ways in.
+ *
+ * Deliberately almost empty. Everything that used to live here — the rank of
+ * squares, the world card, the per-world Endless button — either moved onto
+ * the path behind "Choose a level" or went away, because the one job this
+ * screen has is to be a Play button she cannot miss.
+ *
+ * The hero is the piece rather than a heading: it says which world Play will
+ * open to someone who cannot read the words underneath it.
+ */
 export default function HomeScreen() {
   const router = useRouter();
   const completed = useCompletedIds();
@@ -44,9 +56,6 @@ export default function HomeScreen() {
   if (profiles.length === 0) {
     return (
       <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-        {/* The card is centred in the screen, so on a small phone the keyboard
-            comes up straight over the button that submits it. This is also the
-            only form in the app a parent meets before anything else works. */}
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.body}
@@ -67,8 +76,7 @@ export default function HomeScreen() {
 
   if (!resume || !world) return <SafeAreaView style={styles.screen} />;
 
-  const tierLevels = world.levels.filter((l) => l.tier === resume.tier);
-  const fresh = completed.size === 0;
+  const played = piecesPlayed(catalogue.worlds, completed);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
@@ -102,80 +110,70 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.body}>
-        {/* One card holds the whole piece: which one, how far in, and every
-            way to play it. More modes land here rather than as loose buttons
-            scattered around the screen. */}
-        <View style={styles.card}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`${world.title}. ${
-              soloPiece(world) ? strings.home.changePiece : strings.home.changeWorld
-            }`}
-            onPress={() => router.push('/pieces')}
-            style={({ pressed }) => [styles.cardHead, pressed && styles.pressed]}
-          >
-            <PieceTile pieces={world.cast} size={84} ringed />
-            <View style={styles.cardTitle}>
-              <Text variant="title">{world.title}</Text>
-              {/* Label rather than body, so the difficulty sits under the
-                  world name instead of competing with it. */}
-              <Text variant="label" color={colors.textSoft}>
-                {strings.tiers[resume.tier]}
-              </Text>
-            </View>
-            {/* Chevron marks the whole row as the way to another piece. */}
-            <Glyph name="forward" size={22} color={colors.textSoft} />
-          </Pressable>
-
-          <TierRank
-            levels={tierLevels}
-            completedIds={completed}
-            interactive={false}
-            squareSize={24}
-          />
-
-          <View style={styles.actions}>
-            <Button
-              icon="play"
-              label={fresh ? strings.home.start : strings.home.play}
-              kind="go"
-              onPress={() => router.push(`/play/${resume.id}`)}
-              style={styles.grow}
-            />
-            <Button
-              icon="retry"
-              label={strings.home.reset}
-              kind="again"
-              // Non-destructive: this opens level 1 again and leaves every
-              // tick and star intact. She will press it constantly, often by
-              // accident, and there is no confirm dialog she could read.
-              onPress={() => router.push(`/play/${world.levels[0].id}`)}
-            />
-          </View>
-
-          {/* Only where there is one piece to generate for. Endless walks a
-              single piece around an empty board, which has nothing to say about
-              a world built on what a move leaves behind. */}
-          {soloPiece(world) ? (
-            <Button
-              icon="endless"
-              label={strings.home.endless}
-              kind="free"
-              onPress={() => router.push(`/endless/${world.key}?tier=${resume.tier}`)}
-            />
-          ) : null}
+        <View style={styles.hero}>
+          <Cast pieces={world.cast} size={96} />
+          <Text variant="display" align="center">
+            {world.title}
+          </Text>
+          <Text variant="label" color={colors.textSoft} align="center">
+            {strings.tiers[resume.tier]}
+          </Text>
         </View>
 
-        {/* Only once there is genuinely something to mix. A new player never
-            meets an empty second card and never has to wonder what it's for. */}
-        {completed.size >= MIN_FOR_MIX ? (
-          <MixCard
-            pieces={piecesPlayed(catalogue.worlds, completed)}
-            onPlay={() => router.push('/mix')}
+        <View style={styles.actions}>
+          <Button
+            icon="play"
+            label={strings.home.play}
+            kind="go"
+            onPress={() => router.push(`/play/${resume.id}`)}
           />
-        ) : null}
+
+          {/* Only once there is genuinely something to mix. The row of pieces
+              is what keeps this distinct from Endless without a word being
+              read — one piece means a single world, several mean all of them —
+              so it survives the Mix card no longer being on this screen. */}
+          {completed.size >= MIN_FOR_MIX ? (
+            <Button
+              icon="shuffle"
+              iconNode={<Cast pieces={played.slice(0, MAX_MIX_PIECES)} size={30} />}
+              label={strings.mix.play}
+              kind="free"
+              onPress={() => router.push('/mix')}
+            />
+          ) : null}
+
+          <Button
+            icon="path"
+            label={strings.home.choose}
+            kind="plain"
+            onPress={() => router.push('/levels')}
+          />
+        </View>
       </View>
     </SafeAreaView>
+  );
+}
+
+/**
+ * A world's pieces, overlapped like a hand of cards.
+ *
+ * One piece means a world about that piece; several mean a world about an
+ * idea, or — on the Mix button — every piece she has played. The count is the
+ * whole signal, which is why both callers share this rather than drawing it
+ * twice and drifting apart.
+ */
+function Cast({ pieces, size }: { pieces: readonly PieceType[]; size: number }) {
+  return (
+    <View style={styles.cast}>
+      {pieces.map((piece, i) => {
+        const Art = pieceArt('w', piece);
+        return (
+          <View key={`${piece}-${i}`} style={{ marginLeft: i === 0 ? 0 : -size * 0.38 }}>
+            <Art width={size} height={size} />
+          </View>
+        );
+      })}
+    </View>
   );
 }
 
@@ -208,14 +206,15 @@ const styles = StyleSheet.create({
   body: {
     flex: 1,
     justifyContent: 'center',
+    gap: 40,
     padding: layout.screenPadding,
-    // Held to a phone's width and centred. The app ships for tablets, and a
-    // card stretched across a 1024pt iPad is an avatar at one end, a chevron at
-    // the other, and a great deal of nothing in between.
     width: '100%',
     maxWidth: layout.contentWidth,
     alignSelf: 'center',
   },
+  hero: { alignItems: 'center', gap: 6 },
+  cast: { flexDirection: 'row', alignItems: 'center' },
+  actions: { gap: 14 },
   card: {
     backgroundColor: colors.surface,
     borderRadius: layout.radius,
@@ -225,9 +224,5 @@ const styles = StyleSheet.create({
     gap: 18,
     ...elevation('raised'),
   },
-  cardHead: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  cardTitle: { flex: 1, gap: 2 },
-  actions: { flexDirection: 'row', gap: 12 },
-  grow: { flex: 1 },
   pressed: { opacity: 0.7, transform: [{ scale: 0.98 }] },
 });

@@ -1,12 +1,22 @@
 import { describe, expect, it } from 'vitest';
 
-import { FULL_CATALOGUE, type World, WORLDS, worldByKey } from '../content';
+import {
+  catalogueFor,
+  FULL_CATALOGUE,
+  TIERS,
+  tierLevels,
+  type World,
+  WORLDS,
+  worldByKey,
+} from '../content';
 import {
   currentWorld,
+  firstPlayableOfTier,
   isLevelUnlocked,
   isWorldUnlocked,
   mixPool,
   piecesPlayed,
+  tierState,
   worldProgress,
 } from './selectors';
 
@@ -155,5 +165,81 @@ describe('currentWorld', () => {
     const everything = new Set(WORLDS.flatMap((w) => w.levels.map((l) => l.id)));
     const last = [...WORLDS].reverse().find((w) => w.levels.length > 0);
     expect(currentWorld(WORLDS, everything)).toBe(last);
+  });
+});
+
+describe('tierState', () => {
+  it('opens the first tier of the first world before anything is done', () => {
+    expect(tierState(WORLDS, rook, 1, none)).toBe('open');
+  });
+
+  it('locks a later tier until the one before it is finished', () => {
+    expect(tierState(WORLDS, rook, 2, none)).toBe('locked');
+    expect(tierState(WORLDS, rook, 2, finished(rook))).toBe('done');
+  });
+
+  it('opens a later tier once the previous tier is done', () => {
+    const throughT1 = new Set(
+      rook.levels.filter((l) => l.tier === 1).map((l) => l.id),
+    );
+    expect(tierState(WORLDS, rook, 1, throughT1)).toBe('done');
+    expect(tierState(WORLDS, rook, 2, throughT1)).toBe('open');
+  });
+
+  it('locks every tier of a world whose predecessors are unfinished', () => {
+    expect(tierState(WORLDS, bishop, 1, none)).toBe('locked');
+    expect(tierState(WORLDS, bishop, 1, finished(rook))).toBe('open');
+  });
+
+  it('locks a tier the world does not have', () => {
+    // Theme worlds have no tier 1 at all — stars teach movement and these do
+    // not. An absent tier is not a tier waiting to open.
+    const capture = worldByKey('capture')!;
+    expect(tierLevels(capture, 1)).toHaveLength(0);
+    expect(tierState(WORLDS, capture, 1, none)).toBe('locked');
+  });
+
+  it('calls a finished tier done even inside a world that is still locked', () => {
+    // Progress above the difficulty ceiling is kept, not deleted, so a tier can
+    // legitimately be finished in a world that later reads as locked.
+    expect(tierState(WORLDS, bishop, 1, finished(bishop))).toBe('done');
+  });
+});
+
+describe('firstPlayableOfTier', () => {
+  it('starts an untouched tier at its first level', () => {
+    expect(firstPlayableOfTier(rook, 1, none)?.id).toBe('rook-t1-01');
+  });
+
+  it('resumes a half-finished tier at the first level with no result', () => {
+    expect(firstPlayableOfTier(rook, 1, allOf('rook-t1-01', 'rook-t1-02'))?.id).toBe(
+      'rook-t1-03',
+    );
+  });
+
+  it('sends a finished tier back to its first level, so the circle replays', () => {
+    // This fallback is the whole of "tapping a finished circle plays it again".
+    // Returning undefined here would make a completed tier untappable.
+    expect(firstPlayableOfTier(rook, 1, finished(rook))?.id).toBe('rook-t1-01');
+  });
+
+  it('has nothing to open for a tier the world does not have', () => {
+    expect(firstPlayableOfTier(worldByKey('capture')!, 1, none)).toBeUndefined();
+  });
+});
+
+describe('the path under a difficulty ceiling', () => {
+  it('shows only the tiers the ceiling leaves, numbered from one', () => {
+    // The path numbers circles by position among the tiers that exist rather
+    // than by tier id, so capping at Watch out gives 1 and 2 — not 1 and 2-of-3.
+    const capped = catalogueFor(2);
+    const cappedRook = capped.worlds.find((w) => w.key === 'rook')!;
+    const present = TIERS.filter((tier) => tierLevels(cappedRook, tier).length > 0);
+    expect(present).toEqual([1, 2]);
+  });
+
+  it('drops a world the ceiling has emptied rather than showing a shut ribbon', () => {
+    const capped = catalogueFor(1);
+    expect(capped.worlds.some((w) => w.key === 'capture')).toBe(false);
   });
 });

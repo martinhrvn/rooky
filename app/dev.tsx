@@ -99,6 +99,21 @@ export default function DevScreen() {
           </View>
         </View>
 
+        {/* The old world-card selector, kept alive while the numbered path
+            proves itself. It is no longer linked from home, and a route with
+            no link into it is a route nobody opens by mistake — but it is also
+            one nobody can compare against, hence this. Delete both together
+            once the path has settled. */}
+        <View style={styles.section}>
+          <Text variant="title">{strings.dev.oldSelector}</Text>
+          <Button
+            icon="path"
+            label={strings.dev.openOldSelector}
+            kind="plain"
+            onPress={() => router.push('/pieces')}
+          />
+        </View>
+
         <View style={styles.section}>
           <Text variant="title">{strings.dev.state}</Text>
           <Text variant="body" color={colors.textSoft}>

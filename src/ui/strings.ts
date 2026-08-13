@@ -16,11 +16,28 @@ export const strings = {
     play: 'Play',
     /** Opens level 1 again. Never destroys progress. */
     reset: 'Start over',
-    endless: 'Endless',
+    /** Opens the path. Named for what she gets, not for what the screen is. */
+    choose: 'Choose a level',
     changePiece: 'Change piece',
     /** The same control on a world that is not about a piece. */
     changeWorld: 'Change what you play',
     settings: 'Settings',
+  },
+
+  /**
+   * The path behind "Choose a level": a ribbon per world, and a numbered
+   * circle per difficulty under it.
+   */
+  path: {
+    title: 'Levels',
+    /** The button that skips the scrolling and opens whatever is next. */
+    playNext: 'Play the next one',
+    /** Reached by pressing the front of a world's ribbon. */
+    endless: 'Play this piece forever',
+    /** Read out for a circle. `1` here is which one, never how many. */
+    node: (number: number, world: string) => `Level ${number}, ${world}`,
+    done: 'finished',
+    locked: 'locked',
   },
 
   /**
@@ -108,6 +125,9 @@ export const strings = {
     completeThrough: 'Finish up to a piece',
     state: 'Stored state',
     done: 'Done',
+    /** The pre-path selector, kept until the numbered path has proved itself. */
+    oldSelector: 'Old selector',
+    openOldSelector: 'Open the world-card selector',
   },
 
   play: {

@@ -11,9 +11,14 @@ writing any code. Append `.md` to any docs URL to get the Markdown version.
 
 **1. The player cannot read.** The first tester is a four-year-old. Text may
 *support* meaning but must never be the only thing carrying it — every control
-has to read from its icon, shape, or position alone. Counts are pips, not
-numerals. The play screen stays icon-only because words are noise mid-task; the
-home and selector screens carry titles and labels, because that is where an
+has to read from its icon, shape, or position alone. **Counts are pips, not
+numerals** — "how many" has to be countable at a glance. *Ordinals* are the one
+exception, and only on the path: the circles there are numbered 1, 2, 3 because
+that says which order they go in rather than how many of anything, those three
+shapes are known long before words are, and the path is a screen where an adult
+is expected to help. Do not read that exception as permission for numerals
+anywhere else. The play screen stays icon-only because words are noise mid-task;
+the home and path screens carry titles and labels, because that is where an
 adult helps out.
 
 All user-facing copy lives in `src/ui/strings.ts`, and all text goes through
@@ -81,13 +86,37 @@ src/chess/      pure move generation and attack maps. No React, no I/O.
 src/game/       engine.ts (pure reducer), solver.ts (BFS), generator.ts, types.ts
 src/content/    level data, world metadata, ordering
 src/progress/   selectors.ts (pure unlock/progress) + zustand store on AsyncStorage
-src/ui/         Board, Celebration, TierRank, icons, theme, strings
+src/ui/         Board, Celebration, PathNode, TierRank, icons, theme, strings
 app/            expo-router screens
 ```
 
 Unlock and completion logic belongs in `src/progress/selectors.ts` as pure
-functions, not inline in a screen — both the home and selector screens read
-from it, and it is covered by vitest.
+functions, not inline in a screen — the home and path screens both read from
+it, and it is covered by vitest.
+
+## Choosing a level
+
+`app/levels.tsx` is the path: a ribbon per world, and under it one numbered
+circle per difficulty the world actually has. It is what "Choose a level" opens
+and the only selector a child sees.
+
+- **The circles are numbered by position, not by tier id.** A parent capping
+  difficulty at *Watch out* leaves circles 1 and 2 — not 1 and 2-of-3. Theme
+  worlds have no tier 1, so their first circle is still 1.
+- **Tapping a finished circle plays it again and clears nothing.**
+  `firstPlayableOfTier` falls back to the tier's first level once they are all
+  done, and `recordResult` keeps the best stars and the fewest moves, so a
+  replay can only improve a result. Do not add a reset here: unlocking reads
+  completion (`isLevelUnlocked`, and `isWorldUnlocked` wants *every* earlier
+  world complete), so clearing one tier would re-lock the rest of its world and
+  every world after it — from a tap she cannot be talked out of.
+- **The FAB is the answer to a long path**, not a decoration. It opens
+  `nextLevel(...)`, which is exactly what Play opens, so the two can never
+  disagree.
+- `app/pieces.tsx` is the **previous** selector, kept while the path proves
+  itself and reachable only from the developer panel. When the path is settled,
+  delete it, `MixCard` and `TierRank` together — or bring `TierRank` back, per
+  the note on the signature element in Design.
 
 ## Design
 
@@ -133,11 +162,17 @@ from it, and it is covered by vitest.
   box, clipping and mis-centring. The Cburnett files shipped without one; this
   is the first thing to check if new artwork looks off.
 - **Signature element:** progress is drawn as a rank of board squares filling
-  in (`src/ui/TierRank.tsx`), not a progress bar. It's on both non-board
-  screens and it's what the app is meant to be remembered by. The squares
-  **butt together with no gap** inside a clipped, hairlined frame — spaced out
-  they were a row of tiles, touching they are a slice cut from the board, and
-  the finished levels form one continuous bar rather than a dotted line.
+  in (`src/ui/TierRank.tsx`), not a progress bar. The squares **butt together
+  with no gap** inside a clipped, hairlined frame — spaced out they were a row
+  of tiles, touching they are a slice cut from the board, and the finished
+  levels form one continuous bar rather than a dotted line.
+
+  It now lives only on `app/pieces.tsx`, which the numbered path replaced and
+  which nothing links to from home. So the thing the app was meant to be
+  remembered by is currently on a screen a child never reaches. **If the path
+  stays, this needs resolving** — either bring the rank back onto the path as a
+  circle's progress, or accept a different signature and say so here. Do not
+  leave it drifting.
 - **The "next level" ring is dark, and has to be.** It sits on board squares,
   where cream is 1.18:1 on the light square and jade is 2.33 light / 1.01 dark.
   `inkOnAccent` is the only colour in the palette that clears 3:1 on both.
@@ -195,8 +230,24 @@ in where levels come from and what happens on a win:
 buttons that both mean "play forever" is the confusion this design exists to
 avoid. Endless invents puzzles for one piece and records nothing; Mix replays
 real ones from every piece and records. That difference is carried visually by
-the card headers (one piece versus a row of them) and by distinct glyphs — the
-lemniscate is Endless, the crossing arrows are Mix. Don't blur either.
+**one piece versus a row of them**, and by distinct glyphs — the lemniscate is
+Endless, the crossing arrows are Mix. Don't blur either.
+
+They are also no longer on the same screen, which is the other half of keeping
+them apart. Mix is a button on home; the row of pieces that used to head the
+Mix card now rides on that button via `Button`'s `iconNode` — the row is the
+signal, so whatever carries it has to keep carrying it.
+
+**Endless is reached by pressing the front of a world's ribbon** on the path,
+and by the "Keep playing" choice at the end of a tier. It had a button of its
+own on the ribbon and that competed with the circles, which are the only thing
+the path is for — so the band became the control instead of carrying one.
+
+The lemniscate at the end of the band is not decoration and must not be
+removed: a control a non-reader cannot see is a control she does not have, and
+a coloured bar with a name on it says nothing about being pressable. The band
+is only pressable on a **solo-piece world that has opened** — the generator
+walks a single piece and cannot build a theme world's levels.
 
 `generator.ts` builds levels by **random walk**, not by random placement plus
 search. Drop the piece, take N legal moves, and make every square it lands on a
