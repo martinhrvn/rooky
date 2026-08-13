@@ -1,4 +1,3 @@
-import type { Color, PieceType } from '../chess/types';
 import type { Tier } from '../game/types';
 
 /** Every difficulty is on unless a parent says otherwise. */
@@ -9,21 +8,47 @@ export const DEFAULT_MAX_TIER: Tier = 3;
  * `migrate` in store.ts. This ships from day one on purpose: retrofitting
  * migrations later is how you end up wiping a kid's saved progress.
  */
-export const PROGRESS_VERSION = 2;
+export const PROGRESS_VERSION = 3;
 
-/** Avatars are chess pieces, so a profile is recognisable without reading. */
-export type AvatarId = `${Color}${PieceType}`;
+/**
+ * Avatars, so a profile is recognisable without reading.
+ *
+ * Emoji rather than chess pieces: twelve pieces all read as "a small dark
+ * shape" at avatar size, and the app is already made entirely of them, so a
+ * piece would be more furniture rather than *her*. A fox is memorable, and
+ * choosing one is something a four-year-old can do alone.
+ *
+ * The system draws these, so there are no assets and no licence to track.
+ */
+export const AVATARS = [
+  { id: 'fox', emoji: '🦊', name: 'Fox' },
+  { id: 'frog', emoji: '🐸', name: 'Frog' },
+  { id: 'cat', emoji: '🐱', name: 'Cat' },
+  { id: 'unicorn', emoji: '🦄', name: 'Unicorn' },
+  { id: 'octopus', emoji: '🐙', name: 'Octopus' },
+  { id: 'penguin', emoji: '🐧', name: 'Penguin' },
+  { id: 'bear', emoji: '🐻', name: 'Bear' },
+  { id: 'panda', emoji: '🐼', name: 'Panda' },
+  { id: 'lion', emoji: '🦁', name: 'Lion' },
+  { id: 'owl', emoji: '🦉', name: 'Owl' },
+  { id: 'dragon', emoji: '🐲', name: 'Dragon' },
+  { id: 'rocket', emoji: '🚀', name: 'Rocket' },
+] as const satisfies readonly { id: string; emoji: string; name: string }[];
 
-export const AVATARS: readonly AvatarId[] = [
-  'wr',
-  'wn',
-  'wb',
-  'wq',
-  'br',
-  'bn',
-  'bb',
-  'bq',
-];
+export type Avatar = (typeof AVATARS)[number];
+
+/**
+ * Stored on the profile. The **id**, never the character — so the set can
+ * change later without orphaning saved profiles.
+ */
+export type AvatarId = Avatar['id'];
+
+/**
+ * Falls back to the first avatar for an id it does not recognise, which is
+ * what stops an unknown stored value rendering as an empty chip.
+ */
+export const avatarById = (id: string): Avatar =>
+  AVATARS.find((avatar) => avatar.id === id) ?? AVATARS[0];
 
 export interface Profile {
   readonly id: string;

@@ -1,13 +1,14 @@
 import { useRouter } from 'expo-router';
-import { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { nextLevel, worldOf } from '../src/content';
 import { currentWorld, piecesPlayed } from '../src/progress/selectors';
-import { useCompletedIds, useProgress } from '../src/progress/store';
+import { useActiveProfile, useCompletedIds, useProgress } from '../src/progress/store';
+import { Avatar } from '../src/ui/Avatar';
 import { Button } from '../src/ui/Button';
+import { ProfileForm } from '../src/ui/ProfileForm';
 import { Glyph } from '../src/ui/IconButton';
 import { MixCard } from '../src/ui/MixCard';
 import { PieceTile } from '../src/ui/PieceTile';
@@ -29,16 +30,31 @@ export default function HomeScreen() {
   const router = useRouter();
   const completed = useCompletedIds();
   const catalogue = useCatalogue();
+  const profile = useActiveProfile();
   const profiles = useProgress((s) => s.profiles);
   const createProfile = useProgress((s) => s.createProfile);
   const hydrated = useProgress((s) => s.hydrated);
 
-  // Until the avatar picker exists (Phase E), make sure there is somewhere for
-  // results to be recorded. Waiting for hydration avoids stacking a second
-  // profile on top of a saved one.
-  useEffect(() => {
-    if (hydrated && profiles.length === 0) createProfile('Player 1', 'wr');
-  }, [hydrated, profiles.length, createProfile]);
+  // Nothing at all until the saved state is back, or the first frame would
+  // flash the first-run form at someone who already has a profile.
+  if (!hydrated) return <SafeAreaView style={styles.screen} />;
+
+  // First run. Rendered inline rather than as its own route so there is no
+  // navigation flicker on the very first frame of the app.
+  if (profiles.length === 0) {
+    return (
+      <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+        <View style={styles.body}>
+          <View style={styles.card}>
+            <Text variant="display" align="center">
+              {strings.profiles.title}
+            </Text>
+            <ProfileForm onCreate={createProfile} />
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const resume = nextLevel(catalogue, completed);
   const world = resume ? worldOf(catalogue, resume) : currentWorld(catalogue.worlds, completed);
@@ -51,9 +67,22 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Text variant="title" color={colors.green}>
+        {/* Who is playing, always visible. The switching matters less than the
+            fact that a sibling can no longer quietly play on the wrong
+            profile for a week without anyone noticing. */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${profile?.name ?? ''}. ${strings.profiles.switcher}`}
+          onPress={() => router.push('/profiles')}
+          style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
+        >
+          <Avatar id={profile?.avatarId ?? ''} size={44} />
+        </Pressable>
+
+        <Text variant="title" color={colors.green} style={styles.wordmark}>
           {strings.appName}
         </Text>
+
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={strings.home.settings}
@@ -156,10 +185,12 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 12,
     paddingHorizontal: layout.screenPadding,
     paddingVertical: 12,
   },
+  chip: { borderRadius: 24 },
+  wordmark: { flex: 1 },
   gear: { padding: 8 },
   body: { flex: 1, justifyContent: 'center', padding: layout.screenPadding },
   card: {

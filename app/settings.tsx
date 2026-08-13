@@ -29,6 +29,7 @@ export default function SettingsScreen() {
   const setMaxTier = useProgress((s) => s.setMaxTier);
   const renameProfile = useProgress((s) => s.renameProfile);
   const resetProgress = useProgress((s) => s.resetProgress);
+  const deleteProfile = useProgress((s) => s.deleteProfile);
 
   const [taps, setTaps] = useState(0);
 
@@ -90,6 +91,30 @@ export default function SettingsScreen() {
 
         <Section title={strings.settings.startOver} help={strings.settings.startOverHelp}>
           <Button icon="retry" label={strings.settings.startOver} kind="again" onPress={confirmReset} />
+        </Section>
+
+        {/* Destructive, so it lives behind the gear rather than in the
+            switcher a child can reach. */}
+        <Section title={strings.profiles.remove} help={strings.profiles.removeHelp}>
+          <Button
+            icon="retry"
+            label={strings.profiles.remove}
+            kind="again"
+            onPress={() =>
+              profile &&
+              Alert.alert(strings.profiles.remove, strings.profiles.removeConfirm, [
+                { text: strings.settings.cancel, style: 'cancel' },
+                {
+                  text: strings.settings.confirm,
+                  style: 'destructive',
+                  onPress: () => {
+                    deleteProfile(profile.id);
+                    router.back();
+                  },
+                },
+              ])
+            }
+          />
         </Section>
 
         <Section title={strings.settings.credits}>

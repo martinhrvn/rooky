@@ -33,6 +33,18 @@ export const strings = {
     another: 'Another one',
   },
 
+  profiles: {
+    title: 'Who is playing?',
+    switcher: 'Players',
+    add: 'Add a player',
+    create: 'Start playing',
+    namePlaceholder: 'Name (optional)',
+    /** Parent-facing, on the settings screen. */
+    remove: 'Remove this player',
+    removeHelp: 'Deletes this player and everything they have finished.',
+    removeConfirm: 'Remove this player and all their progress? This cannot be undone.',
+  },
+
   pieces: {
     title: 'Pieces',
     subtitle: 'Pick one to start it from the beginning',

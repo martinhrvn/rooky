@@ -44,6 +44,25 @@ a hidden tier must still resolve or a stale route becomes a blank screen.
 Lowering the ceiling **hides, never deletes** — results above it stay stored and
 reappear when it is raised.
 
+## Profiles
+
+Everything is keyed off `activeProfileId`, so switching profile switches
+progress, the difficulty ceiling and the Mix pool together — one child can be
+on stars-only while another has all three tiers, and neither sees the other's
+stars.
+
+`activeProfileId` is inside `partialize`, which is the *entire* implementation
+of "the app reopens on the last profile used". Dropping it from there would
+silently reopen on the wrong player; `store.test.ts` asserts it stays.
+
+Avatars are emoji stored **by id**, never by character, so the set can change
+without orphaning saved profiles. `avatarById` falls back to the first entry
+for an unknown id.
+
+Switching lives in `app/profiles.tsx` and is child-reachable, because it is
+non-destructive and instantly reversible. **Deleting a profile is in settings**
+behind the gear and a confirm — do not move it into the switcher.
+
 ## Settings and the developer panel
 
 `app/settings.tsx` is the only screen written for an adult, reached through the

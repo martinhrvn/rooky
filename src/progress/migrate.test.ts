@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_MAX_TIER, PROGRESS_VERSION } from './schema';
+import { AVATARS, DEFAULT_MAX_TIER, PROGRESS_VERSION, avatarById } from './schema';
 import { migrateProgress } from './store';
 
 /**
@@ -51,15 +51,71 @@ describe('migrating from version 1', () => {
   });
 });
 
+describe('migrating from version 2', () => {
+  /** v2 stored avatars as chess pieces. */
+  const v2 = {
+    ...v1,
+    profiles: v1.profiles.map((p) => ({ ...p, maxTier: 2 as const })),
+  };
+  const migrated = migrateProgress(structuredClone(v2), 2);
+
+  it('replaces chess-piece avatars with real emoji ids', () => {
+    for (const profile of migrated.profiles) {
+      expect(avatarById(profile.avatarId).id).toBe(profile.avatarId);
+    }
+  });
+
+  it('gives each profile a different face', () => {
+    // By position rather than at random, so two siblings never collide.
+    const ids = migrated.profiles.map((p) => p.avatarId);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('leaves the difficulty ceiling and results alone', () => {
+    expect(migrated.profiles.map((p) => p.maxTier)).toEqual([2, 2]);
+    expect(migrated.results.p1['rook-t1-01']).toEqual(v1.results.p1['rook-t1-01']);
+  });
+});
+
+describe('migrating a version 1 payload all the way up', () => {
+  // A payload from the very first release crosses both branches in one go.
+  const migrated = migrateProgress(structuredClone(v1), 1);
+
+  it('gains both the ceiling and an emoji avatar', () => {
+    expect(migrated.profiles[0].maxTier).toBe(DEFAULT_MAX_TIER);
+    expect(avatarById(migrated.profiles[0].avatarId).id).toBe(migrated.profiles[0].avatarId);
+  });
+
+  it('still has every result', () => {
+    expect(Object.keys(migrated.results.p1)).toHaveLength(2);
+  });
+});
+
 describe('migrating from the current version', () => {
   it('passes a current payload through untouched', () => {
     const current = {
       ...v1,
-      profiles: v1.profiles.map((p) => ({ ...p, maxTier: 2 as const })),
+      profiles: v1.profiles.map((p, i) => ({
+        ...p,
+        maxTier: 2 as const,
+        avatarId: i === 0 ? ('lion' as const) : ('owl' as const),
+      })),
     };
-    expect(migrateProgress(current, PROGRESS_VERSION).profiles.map((p) => p.maxTier)).toEqual([
-      2, 2,
-    ]);
+    const migrated = migrateProgress(current, PROGRESS_VERSION);
+    expect(migrated.profiles.map((p) => p.avatarId)).toEqual(['lion', 'owl']);
+    expect(migrated.profiles.map((p) => p.maxTier)).toEqual([2, 2]);
+  });
+});
+
+describe('avatars', () => {
+  it('falls back rather than rendering nothing for an unknown id', () => {
+    // Guards against a stored id from a set that has since changed.
+    expect(avatarById('no-such-avatar').emoji).toBeTruthy();
+  });
+
+  it('has a distinct emoji and name for every entry', () => {
+    expect(new Set(AVATARS.map((a) => a.emoji)).size).toBe(AVATARS.length);
+    expect(new Set(AVATARS.map((a) => a.id)).size).toBe(AVATARS.length);
   });
 });
 

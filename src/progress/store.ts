@@ -8,6 +8,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import type { Tier } from '../game/types';
 import {
+  AVATARS,
   type AvatarId,
   DEFAULT_MAX_TIER,
   type LevelResult,
@@ -45,16 +46,28 @@ const makeId = () => `p${Date.now().toString(36)}${(counter++).toString(36)}`;
  * other side of this function is a child's saved progress.
  */
 export function migrateProgress(persisted: unknown, version: number): PersistedProgress {
-  const state = (persisted ?? emptyProgress) as PersistedProgress;
+  let state = (persisted ?? emptyProgress) as PersistedProgress;
 
   // v1 had no per-profile difficulty ceiling. Everyone gets all three tiers,
   // which is exactly what they were already playing.
   if (version < 2) {
-    return {
+    state = {
       ...state,
       profiles: (state.profiles ?? []).map((profile) => ({
         ...profile,
         maxTier: profile.maxTier ?? DEFAULT_MAX_TIER,
+      })),
+    };
+  }
+
+  // v2 stored avatars as chess pieces ('wr'). They are emoji now, assigned by
+  // position so two profiles never land on the same face.
+  if (version < 3) {
+    state = {
+      ...state,
+      profiles: (state.profiles ?? []).map((profile, i) => ({
+        ...profile,
+        avatarId: AVATARS[i % AVATARS.length].id,
       })),
     };
   }
