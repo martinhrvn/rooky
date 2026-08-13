@@ -100,6 +100,29 @@ export const rookLevels: readonly LevelData[] = [
     par: 4,
   },
 
+  {
+    id: 'rook-t1-09',
+    world: 'rook',
+    tier: 1,
+    teaches: 'Corner to corner: three stars round the outside, each one a straight line away',
+    fen: '8/8/8/8/8/8/8/R7 w - -',
+    stars: 'a8 h8 h1',
+    goal: 'collectAllStars',
+    par: 3,
+  },
+  {
+    id: 'rook-t1-10',
+    world: 'rook',
+    tier: 1,
+    teaches: 'Three stars and two rooks, so one of them has to make two trips',
+    // The counterpart of level 8, where the work split evenly. Here it cannot,
+    // and finding which rook is the spare one is the whole level.
+    fen: '8/8/8/8/8/8/8/1R4R1 w - -',
+    stars: 'b5 g5 d5',
+    goal: 'collectAllStars',
+    par: 3,
+  },
+
   // ── Tier 2: the stars become real pieces, and the squares they cover are
   // tinted red. Enemies never move; the danger is entirely about where you
   // choose to land.
@@ -159,5 +182,55 @@ export const rookLevels: readonly LevelData[] = [
     fen: 'r7/2p5/8/8/7n/8/8/R7 w - -',
     goal: 'captureAll',
     par: 5,
+  },
+  {
+    id: 'rook-t2-06',
+    world: 'rook',
+    tier: 2,
+    teaches: 'Three loose pawns and one route that turns twice and touches all of them',
+    fen: '4p3/8/8/8/p3p3/8/8/R7 w - -',
+    goal: 'captureAll',
+    par: 3,
+  },
+  {
+    id: 'rook-t2-07',
+    world: 'rook',
+    tier: 2,
+    teaches: 'Pawns bite sideways, so the square directly in front of one is the way in',
+    // Two pawns side by side paint four red squares and none of them is the
+    // square a rook actually wants. The lesson is what pawns do *not* cover.
+    fen: '8/8/8/3pp3/8/8/8/R7 w - -',
+    goal: 'captureAll',
+    par: 3,
+  },
+  {
+    id: 'rook-t2-08',
+    world: 'rook',
+    tier: 2,
+    teaches: 'A bishop guards the pawn down a diagonal — a line a rook can never travel on',
+    // A new kind of guard for this world. The bishop covers the pawn and
+    // nothing else the rook cares about, so the answer is to take the bishop
+    // where it stands rather than to work round the red.
+    fen: '8/1b6/8/3p4/8/8/8/R7 w - -',
+    goal: 'captureAll',
+    par: 4,
+  },
+  {
+    id: 'rook-t2-09',
+    world: 'rook',
+    tier: 2,
+    teaches: 'Both pawns are loose — it is the knight in the middle that mines the short way',
+    fen: '8/8/8/2p1p3/8/4n3/8/R7 w - -',
+    goal: 'captureAll',
+    par: 4,
+  },
+  {
+    id: 'rook-t2-10',
+    world: 'rook',
+    tier: 2,
+    teaches: 'The longest route in the world: a knight to clear first, then a corner and a turn',
+    fen: '8/2p5/8/3p4/8/1n6/8/R7 w - -',
+    goal: 'captureAll',
+    par: 6,
   },
 ];

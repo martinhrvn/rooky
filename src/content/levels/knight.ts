@@ -109,6 +109,51 @@ export const knightLevels: readonly LevelData[] = [
     ],
   },
 
+  {
+    id: 'knight-t1-07',
+    world: 'knight',
+    tier: 1,
+    teaches: 'From the corner there are only two hops to choose from, and one of them is wrong',
+    // The corner is where the L is most obviously a shape rather than a
+    // direction: half of it is off the board.
+    fen: '8/8/8/8/8/8/8/N7 w - -',
+    stars: 'a3',
+    goal: 'collectAllStars',
+    par: 2,
+  },
+  {
+    id: 'knight-t1-08',
+    world: 'knight',
+    tier: 1,
+    teaches: 'Three stars all within two squares of him, and it still takes five hops',
+    // Level 3's surprise, three times over and in one position: everything
+    // here looks adjacent and nothing is.
+    fen: '8/8/8/8/8/8/8/1N6 w - -',
+    stars: 'a3 c3 d2',
+    goal: 'collectAllStars',
+    par: 5,
+  },
+  {
+    id: 'knight-t1-09',
+    world: 'knight',
+    tier: 1,
+    teaches: 'Two knights and three stars — the one that is already nearby does two of them',
+    fen: '8/8/8/8/8/8/8/1N4N1 w - -',
+    stars: 'c3 f3 h4',
+    goal: 'collectAllStars',
+    par: 3,
+  },
+  {
+    id: 'knight-t1-10',
+    world: 'knight',
+    tier: 1,
+    teaches: 'A staircase right across the board: five stars, five hops, nothing wasted',
+    fen: '8/8/8/8/8/8/8/N7 w - -',
+    stars: 'b3 d4 f5 h6 g8',
+    goal: 'collectAllStars',
+    par: 5,
+  },
+
   // ── Tier 2: the stars become real pieces, and every square an enemy covers
   // is tinted red. Enemies never move; you lose only by choosing to land on
   // red. Guards are pawns and bishops throughout — see the note at the top of
@@ -180,5 +225,52 @@ export const knightLevels: readonly LevelData[] = [
       ['f6', 'd5'],
       ['d5', 'e3'],
     ],
+  },
+  {
+    id: 'knight-t2-06',
+    world: 'knight',
+    tier: 2,
+    teaches: 'The near pawn guards the far one, and the hop back to it is the long way round',
+    fen: '8/8/8/8/2p5/1p6/8/3N4 w - -',
+    goal: 'captureAll',
+    par: 4,
+  },
+  {
+    id: 'knight-t2-07',
+    world: 'knight',
+    tier: 2,
+    teaches: 'The bishop’s diagonal is red the whole way, so he has to come at it from the side',
+    // A knight is the one piece that can approach a bishop without ever
+    // standing on the line it covers — because it never moves along a line.
+    fen: '8/8/8/8/8/8/2p5/b2N4 w - -',
+    goal: 'captureAll',
+    par: 3,
+  },
+  {
+    id: 'knight-t2-08',
+    world: 'knight',
+    tier: 2,
+    teaches: 'A bishop guarding a pawn from behind — the guard is the one he has to reach first',
+    fen: '8/8/5b2/4p3/8/8/8/1N6 w - -',
+    goal: 'captureAll',
+    par: 5,
+  },
+  {
+    id: 'knight-t2-09',
+    world: 'knight',
+    tier: 2,
+    teaches: 'Three pawns where the middle one is the guard, and the hops between them are all twos',
+    fen: '8/8/8/2p1p3/3p4/8/8/4N3 w - -',
+    goal: 'captureAll',
+    par: 6,
+  },
+  {
+    id: 'knight-t2-10',
+    world: 'knight',
+    tier: 2,
+    teaches: 'A bishop in the middle of the board and a loose pawn past it — take the bishop on the way',
+    fen: '8/8/8/1p6/3b4/8/8/6N1 w - -',
+    goal: 'captureAll',
+    par: 3,
   },
 ];

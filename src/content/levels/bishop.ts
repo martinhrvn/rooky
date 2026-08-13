@@ -100,6 +100,52 @@ export const bishopLevels: readonly LevelData[] = [
     par: 4,
   },
 
+  {
+    id: 'bishop-t1-07',
+    world: 'bishop',
+    tier: 1,
+    teaches: 'Three stars strung along one diagonal — one slide, but still three landings',
+    fen: '8/8/8/8/8/8/8/B7 w - -',
+    stars: 'c3 e5 g7',
+    goal: 'collectAllStars',
+    par: 3,
+  },
+  {
+    id: 'bishop-t1-08',
+    world: 'bishop',
+    tier: 1,
+    teaches: 'Three stars and two bishops: one of them takes two, and the other cannot help',
+    // Level 5 said the two cannot swap jobs. This says the work does not have
+    // to be shared equally either — the colours decide, not fairness.
+    fen: '8/8/8/8/8/8/8/2B2B2 w - -',
+    stars: 'e3 h6 d3',
+    goal: 'collectAllStars',
+    par: 3,
+  },
+  {
+    id: 'bishop-t1-09',
+    world: 'bishop',
+    tier: 1,
+    teaches: 'Four stars right around her, and the fifth move is coming back through the middle',
+    // Every star is one diagonal step away and there are only four of them, so
+    // four moves looks obvious — but two of them cannot be reached from each
+    // other, and the extra move is the lesson.
+    fen: '8/8/8/8/3B4/8/8/8 w - -',
+    stars: 'c3 e3 e5 c5',
+    goal: 'collectAllStars',
+    par: 5,
+  },
+  {
+    id: 'bishop-t1-10',
+    world: 'bishop',
+    tier: 1,
+    teaches: 'A zig-zag across the whole board, every star on her own colour',
+    fen: '8/8/8/8/8/8/8/7B w - -',
+    stars: 'c6 f3 h5 e8',
+    goal: 'collectAllStars',
+    par: 4,
+  },
+
   // ── Tier 2: the stars become real pieces, and the squares they cover are
   // tinted red. Enemies never move; the danger is entirely about where you
   // choose to land.
@@ -173,5 +219,54 @@ export const bishopLevels: readonly LevelData[] = [
       ['f1', 'g2'],
       ['g2', 'b7'],
     ],
+  },
+  {
+    id: 'bishop-t2-06',
+    world: 'bishop',
+    tier: 2,
+    teaches: 'Two pawns on one diagonal — one slide cannot take both, however far it goes',
+    // The tier 1 lesson about sliding over a star, restated where it costs a
+    // piece rather than a move.
+    fen: '8/8/8/4p3/8/2p5/8/B7 w - -',
+    goal: 'captureAll',
+    par: 2,
+  },
+  {
+    id: 'bishop-t2-07',
+    world: 'bishop',
+    tier: 2,
+    teaches: 'The near pawn is guarded from behind, so she has to sail past both and turn round',
+    fen: '8/8/8/6p1/5p2/8/8/2B5 w - -',
+    goal: 'captureAll',
+    par: 4,
+  },
+  {
+    id: 'bishop-t2-08',
+    world: 'bishop',
+    tier: 2,
+    teaches: 'One pawn on each colour and one bishop for each — with a real piece at stake',
+    fen: '8/8/8/1p4p1/8/8/8/2B2B2 w - -',
+    goal: 'captureAll',
+    par: 2,
+  },
+  {
+    id: 'bishop-t2-09',
+    world: 'bishop',
+    tier: 2,
+    teaches: 'A chain of three straight down one diagonal, unpicked from the top end',
+    fen: '8/8/8/4p3/3p4/2p5/7B/8 w - -',
+    goal: 'captureAll',
+    par: 3,
+  },
+  {
+    id: 'bishop-t2-10',
+    world: 'bishop',
+    tier: 2,
+    teaches: 'The knight blocks her diagonal and a pawn guards it — the way in is round the back',
+    // Everything this world has: a target that is both in the way and
+    // defended, so the first move goes backwards and the last one comes home.
+    fen: '8/8/8/2p5/3n4/8/8/6B1 w - -',
+    goal: 'captureAll',
+    par: 4,
   },
 ];

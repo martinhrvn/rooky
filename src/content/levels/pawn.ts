@@ -8,8 +8,10 @@
  * landing. Tier 2 then splits "forward" from "capture": the enemy directly
  * ahead is the one she cannot touch, and it blocks her too.
  *
- * The last level is the reason `solve()` branches on promotion at all: a knight
- * gets the rook in two, a queen needs three.
+ * `pawn-t2-05` is the reason `solve()` branches on promotion at all: a knight
+ * gets the rook in two, a queen needs three. `pawn-t2-08` is deliberately the
+ * other way round, so the choice reads as a question about the position rather
+ * than as "the clever answer is always the knight".
  *
  * Every `par` here is verified against the BFS solver.
  *
@@ -89,6 +91,47 @@ export const pawnLevels: readonly LevelData[] = [
     par: 3,
   },
 
+  {
+    id: 'pawn-t1-07',
+    world: 'pawn',
+    tier: 1,
+    teaches: 'Two pawns, three stars: one walks twice and the other takes its big step',
+    fen: '8/8/8/8/8/8/3P1P2/8 w - -',
+    stars: 'd3 d4 f4',
+    goal: 'collectAllStars',
+    par: 3,
+  },
+  {
+    id: 'pawn-t1-08',
+    world: 'pawn',
+    tier: 1,
+    teaches: 'Once it has left home the big step is gone, so the rest of the file is one at a time',
+    fen: '8/8/8/8/8/8/4P3/8 w - -',
+    stars: 'e3 e5 e7',
+    goal: 'collectAllStars',
+    par: 5,
+  },
+  {
+    id: 'pawn-t1-09',
+    world: 'pawn',
+    tier: 1,
+    teaches: 'Three pawns and three stars, one each — no pawn can ever help its neighbour',
+    fen: '8/8/8/8/8/8/2P1P1P1/8 w - -',
+    stars: 'c3 e4 g3',
+    goal: 'collectAllStars',
+    par: 3,
+  },
+  {
+    id: 'pawn-t1-10',
+    world: 'pawn',
+    tier: 1,
+    teaches: 'One pawn nearly home and one just starting — the far one is three moves of walking',
+    fen: '8/8/8/1P6/8/8/6P1/8 w - -',
+    stars: 'b8 g4',
+    goal: 'collectAllStars',
+    par: 4,
+  },
+
   // ── Tier 2: real enemies, and the squares they cover tinted red. Enemies
   // never move. Guards are knights and pawns on purpose — a rook or queen
   // guard covers every approach to itself as well, which makes it
@@ -153,5 +196,55 @@ export const pawnLevels: readonly LevelData[] = [
     fen: '8/4P3/3r4/8/8/8/8/8 w - -',
     goal: 'captureAll',
     par: 2,
+  },
+  {
+    id: 'pawn-t2-06',
+    world: 'pawn',
+    tier: 2,
+    teaches: 'The pawn in front cannot be taken by the pawn it is blocking — its neighbour does it',
+    // The two halves of the world in one position: one pawn is stuck because
+    // pawns cannot take forwards, and the answer is the pawn beside it, which
+    // is attacking that very square.
+    fen: '8/8/8/2n5/1p6/PP6/8/8 w - -',
+    goal: 'captureAll',
+    par: 2,
+  },
+  {
+    id: 'pawn-t2-07',
+    world: 'pawn',
+    tier: 2,
+    teaches: 'A staircase of three: every capture lands her in front of the next one',
+    fen: '8/8/8/2n5/1n6/2n5/1P6/8 w - -',
+    goal: 'captureAll',
+    par: 3,
+  },
+  {
+    id: 'pawn-t2-08',
+    world: 'pawn',
+    tier: 2,
+    teaches: 'This time the queen is the right choice — a knight cannot reach where she needs to go',
+    // Deliberately the opposite answer to the level before it. Promotion is a
+    // question, not a formality, and the position decides it.
+    fen: '8/3P4/1n6/8/8/8/8/8 w - -',
+    goal: 'captureAll',
+    par: 2,
+  },
+  {
+    id: 'pawn-t2-09',
+    world: 'pawn',
+    tier: 2,
+    teaches: 'Each pawn owns its own two squares, so which one goes where is decided for her',
+    fen: '8/8/8/8/1n6/2n4n/1P4P1/8 w - -',
+    goal: 'captureAll',
+    par: 3,
+  },
+  {
+    id: 'pawn-t2-10',
+    world: 'pawn',
+    tier: 2,
+    teaches: 'Two pawns, two staircases, and one of them climbs three times',
+    fen: '8/8/8/4n3/3n4/2p3n1/1P3P2/8 w - -',
+    goal: 'captureAll',
+    par: 4,
   },
 ];

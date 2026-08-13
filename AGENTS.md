@@ -216,7 +216,18 @@ only "where can this piece go" and "what does the enemy cover".
   only of losing a piece. The Escape world therefore teaches move-the-king and
   take-the-checker, and `escape-t2-02` exists to show the interposition being
   punished. Giving blocks a fair hearing means teaching the engine about
-  defended pieces and trades, which is much larger than it looks.
+  defended pieces and trades, which is much larger than it looks: the question
+  stops being "will it be taken" and becomes "is taking it worth it" — a static
+  exchange evaluation. The cheap approximation, "the enemy never takes a
+  defended piece", is not on the table: it is false everywhere else in the app
+  and would quietly rewrite what is safe in every tier 2 and 3 level. Until
+  there is a real SEE, blocking levels stay unauthored.
+- **Under `danger: 'allPieces'`, every move must leave nothing of hers
+  attacked.** So a level that starts with a piece in trouble has to resolve it
+  on move one, and cannot pose two separate threats at once — the second would
+  punish the move that answers the first. This is why every Protect level has
+  `par: 1` (nothing attacked *is* the goal) and why Combat levels open with
+  exactly one threat and put the length after it.
 - **The hint shows the danger, not the answer.** It lends her tier 2's overlay
   for a couple of seconds, plus arrows from each enemy to the piece of hers it
   is attacking. It never points at a move — these levels usually have several
@@ -317,6 +328,29 @@ replaced.
   pawns: a pawn's two capture squares are its own colour.
 - Safe guards in practice: **pawns and knights** for line pieces, **pawns**
   for the bishop.
+- **A piece can only take its attacker back if the two attack each other**,
+  which rules out three shapes that keep looking authorable: a rook or queen
+  can never capture the knight forking it (a knight's move is never a line), a
+  bishop can never capture a knight attacking it (a knight attacks the opposite
+  colour to the square it stands on, so the bishop it hits is on a colour the
+  bishop cannot reach), and a king can never capture a knight checking it. Each
+  of those needs a third piece, which is the level.
+- **A pawn cannot escape an attack down its own file**, because pushing keeps
+  it on that file — it can only capture its way off. Along a *rank* one push is
+  the whole answer. `protect-t2-05` and `-10` are that pair.
+- **Only the square she lands on is checked, never the ones she slides over.**
+  A rook may cross a whole file of red to take the piece at the end of it. This
+  is what makes an enemy rook capturable at all: every square that attacks it
+  along its own lines is red, so the answer is nearly always to start on that
+  line and take it in one.
+- **Two black guards that guard each other are unauthorable**, the same trap
+  the generator avoids by construction: neither can ever be taken, so the level
+  has no solution. A bishop on c3 and a pawn on b4 is the shape to watch for.
+- **Do not author a mate that the white king delivers by stepping next to
+  his.** `src/chess/` is pseudo-legal and does not stop it, so the solver will
+  happily report par 1 — but kings may not touch, and the level would teach a
+  move that is illegal in every real game. Check the solver's line, not just
+  its length.
 - **A masking piece is always itself under attack**, so a discovered-attack
   level needs a third piece. To mask a line hers has to stand *on* it, which
   makes it the first thing the enemy slider sees. Under `danger: 'allPieces'`
