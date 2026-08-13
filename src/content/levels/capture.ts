@@ -65,4 +65,78 @@ export const captureLevels: readonly LevelData[] = [
     danger: 'allPieces',
     par: 1,
   },
+  {
+    id: 'capture-t2-05',
+    world: 'capture',
+    tier: 2,
+    teaches: 'One knight guarding both pawns — take the knight and they are both free',
+    // The first level where removing one piece changes the status of two
+    // others. Either pawn taken first is taken back by the knight.
+    fen: '8/8/8/3n4/Rp3p2/8/8/7B w - -',
+    goal: 'captureAll',
+    danger: 'allPieces',
+    par: 3,
+  },
+  {
+    id: 'capture-t2-06',
+    world: 'capture',
+    tier: 2,
+    teaches: 'Three pawns down one diagonal, each guarding the one in front — start at the back',
+    // The bishop is on their diagonal, so the near pawn is the one it can
+    // reach — and the one that is guarded. Coming at the chain from the far
+    // end is the whole answer.
+    fen: 'B7/8/2p5/3p4/4p3/8/8/8 w - -',
+    goal: 'captureAll',
+    danger: 'allPieces',
+    par: 3,
+  },
+  {
+    id: 'capture-t2-07',
+    world: 'capture',
+    tier: 2,
+    teaches: 'The bishop shielding her rook is also the one that can go and take the attacker',
+    // The other half of capture-t2-04: there the masking piece could not reach
+    // the enemy and a second piece had to. Here the masker answers both threats
+    // itself, which is the move that looks least likely — it steps out of the
+    // way *towards* the thing threatening it.
+    fen: '7b/8/8/4B3/8/8/8/R7 w - -',
+    goal: 'captureAll',
+    danger: 'allPieces',
+    par: 1,
+  },
+  {
+    id: 'capture-t2-08',
+    world: 'capture',
+    tier: 2,
+    teaches: 'Taking the pawn opens the file behind it, onto the square she just took it from',
+    // Nothing guards the pawn, so the red squares say the capture is safe — and
+    // it is, until the pawn is gone and the rook behind it can see that far.
+    fen: '2r5/8/3N4/8/2p5/8/8/2R5 w - -',
+    goal: 'captureAll',
+    danger: 'allPieces',
+    par: 2,
+  },
+  {
+    id: 'capture-t2-09',
+    world: 'capture',
+    tier: 2,
+    teaches: 'Her pawn takes to the side — but only once the pawn guarding the knight is gone',
+    fen: '8/8/2p5/N2n4/4P3/8/8/8 w - -',
+    goal: 'captureAll',
+    danger: 'allPieces',
+    par: 2,
+  },
+  {
+    id: 'capture-t2-10',
+    world: 'capture',
+    tier: 2,
+    teaches: 'A pawn guards the knight and the knight guards a pawn — three, in one order only',
+    // The knight is the middle of the chain, so only the bishop can take it:
+    // a white knight can never capture a black one, and the rook is busy at
+    // both ends of the line.
+    fen: '8/8/8/1p2p3/2n5/8/B7/1R6 w - -',
+    goal: 'captureAll',
+    danger: 'allPieces',
+    par: 3,
+  },
 ];

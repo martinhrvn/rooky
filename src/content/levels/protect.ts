@@ -57,4 +57,74 @@ export const protectLevels: readonly LevelData[] = [
     danger: 'allPieces',
     par: 1,
   },
+  {
+    id: 'protect-t2-05',
+    world: 'protect',
+    tier: 2,
+    teaches: 'A rook down the file her pawn cannot leave, so the knight has to go and take it',
+    // The one threat a pawn can never walk out of: pushing keeps it on the
+    // same file, and there is nothing on its capture squares. Every move but
+    // the knight's loses it.
+    fen: '4r3/8/3N4/8/4P3/8/8/8 w - -',
+    goal: 'protect',
+    danger: 'allPieces',
+    par: 1,
+  },
+  {
+    id: 'protect-t2-06',
+    world: 'protect',
+    tier: 2,
+    teaches: 'The knight attacking her rook has a pawn behind it — taking back is the trap',
+    fen: '8/8/8/8/3p4/2n5/4R3/8 w - -',
+    goal: 'protect',
+    danger: 'allPieces',
+    par: 1,
+  },
+  {
+    id: 'protect-t2-07',
+    world: 'protect',
+    tier: 2,
+    teaches: 'One bishop attacking two of hers at once — moving either one loses the other',
+    // Neither of the two can answer it: a rook is never on a line with the
+    // bishop attacking it, so the third piece has to do the work.
+    fen: '8/6N1/8/8/3b4/1N6/8/R7 w - -',
+    goal: 'protect',
+    danger: 'allPieces',
+    par: 1,
+  },
+  {
+    id: 'protect-t2-08',
+    world: 'protect',
+    tier: 2,
+    teaches: 'Running away and taking something can be the same move',
+    fen: '8/8/8/5p2/r2N4/8/8/8 w - -',
+    goal: 'protect',
+    danger: 'allPieces',
+    par: 1,
+  },
+  {
+    id: 'protect-t2-09',
+    world: 'protect',
+    tier: 2,
+    teaches: 'Two enemies aiming at the same rook, so one move has to answer both',
+    // Taking the rook is also stepping off the bishop's diagonal, which is why
+    // it works. Anything that only deals with one of them still loses her rook.
+    fen: '3r4/6b1/8/8/3R4/8/8/8 w - -',
+    goal: 'protect',
+    danger: 'allPieces',
+    par: 1,
+  },
+  {
+    id: 'protect-t2-10',
+    world: 'protect',
+    tier: 2,
+    teaches: 'Three of hers on the board and only the pawn is in trouble — and it can only go forward',
+    // The pair of protect-t2-05: the same rook, the same pawn, and the answer
+    // is the opposite one, because this time the attack comes along the rank
+    // and one step forward leaves it.
+    fen: '8/8/8/P6r/8/8/8/1NB5 w - -',
+    goal: 'protect',
+    danger: 'allPieces',
+    par: 1,
+  },
 ];
