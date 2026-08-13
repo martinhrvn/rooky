@@ -23,7 +23,12 @@ export type WorldKey =
   | 'capture'
   | 'protect'
   | 'combat'
-  | 'checkmate'
+  // Three worlds rather than one: reaching the king, getting out of it and
+  // finishing are three different skills, and rolling them into a single
+  // "checkmate" world would hide two of them behind the third.
+  | 'check'
+  | 'escape'
+  | 'mate'
   | 'mixed';
 
 /**

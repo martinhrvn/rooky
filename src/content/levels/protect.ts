@@ -37,6 +37,20 @@ export const protectLevels: readonly LevelData[] = [
     id: 'protect-t2-03',
     world: 'protect',
     tier: 2,
+    teaches: 'A queen covers six of the knight’s eight squares — only the far side is out of reach',
+    // The one level here where "move it somewhere" is genuinely hard. The
+    // queen sitting straight in front of the knight takes the whole rank and
+    // both diagonals with it, so every square that feels like an escape is
+    // still hers. Only c2 and e2, behind the knight, are safe.
+    fen: '8/8/8/3q4/3N4/8/8/8 w - -',
+    goal: 'protect',
+    danger: 'allPieces',
+    par: 1,
+  },
+  {
+    id: 'protect-t2-04',
+    world: 'protect',
+    tier: 2,
     teaches: 'Two of hers and only one in danger — moving the safe one loses the other',
     fen: '8/8/8/3b4/8/8/8/1N5R w - -',
     goal: 'protect',

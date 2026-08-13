@@ -3,9 +3,11 @@ import { toLevel } from '../game/engine';
 import type { Level, LevelData, Tier, WorldKey } from '../game/types';
 import { bishopLevels } from './levels/bishop';
 import { captureLevels } from './levels/capture';
-import { checkmateLevels } from './levels/checkmate';
+import { checkLevels } from './levels/check';
 import { combatLevels } from './levels/combat';
+import { escapeLevels } from './levels/escape';
 import { kingLevels } from './levels/king';
+import { mateLevels } from './levels/mate';
 import { protectLevels } from './levels/protect';
 import { knightLevels } from './levels/knight';
 import { pawnLevels } from './levels/pawn';
@@ -135,11 +137,25 @@ export const WORLDS: readonly World[] = [
     levels: combatLevels,
   }),
   world({
-    key: 'checkmate',
-    cast: ['r', 'q', 'k'],
-    title: 'Check and Mate',
-    blurb: 'Corner the enemy king',
-    levels: checkmateLevels,
+    key: 'check',
+    cast: ['r', 'b', 'q'],
+    title: 'Check',
+    blurb: 'Attack the enemy king — from somewhere safe',
+    levels: checkLevels,
+  }),
+  world({
+    key: 'escape',
+    cast: ['k', 'r', 'n'],
+    title: 'Get Out of Check',
+    blurb: 'Your king is in trouble. Move him, or take what is after him',
+    levels: escapeLevels,
+  }),
+  world({
+    key: 'mate',
+    cast: ['q', 'r', 'k'],
+    title: 'Checkmate',
+    blurb: 'Check he cannot answer',
+    levels: mateLevels,
   }),
 ];
 

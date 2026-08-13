@@ -127,8 +127,12 @@ from it, and it is covered by vitest.
 
 ## Worlds
 
-Six worlds about a piece, then four about an idea — capture, protect, combat,
-checkmate. `World.cast` is the distinction and the only one: **one piece means
+Six worlds about a piece, then six about an idea — capture, protect, combat,
+check, escape, mate. Reaching the king, getting out of check and finishing are
+three separate skills and get three separate worlds; rolling them into one
+"checkmate" world hides two of them behind the third.
+
+`World.cast` is the distinction and the only one: **one piece means
 a piece world, several means a theme world**, and everything downstream reads
 the length rather than a separate flag (`soloPiece`). A row of pieces on the
 tile is also what tells a non-reader that Taking Pieces is not another piece to
@@ -205,6 +209,14 @@ only "where can this piece go" and "what does the enemy cover".
   in the app needs this, but every mate in one turns on it: the mating piece
   stands next to the king, held there by a defender, and without the rule the
   king would simply take it and the mate would read as a blunder.
+- **Blocking a check always loses, so never author it as an answer.** To block
+  a line her piece has to stand *on* it, which is by definition a square the
+  checking piece attacks — so the blocker is taken, and getting taken rewinds.
+  Real chess calls that a trade and weighs it; Rooky has no notion of trading,
+  only of losing a piece. The Escape world therefore teaches move-the-king and
+  take-the-checker, and `escape-t2-02` exists to show the interposition being
+  punished. Giving blocks a fair hearing means teaching the engine about
+  defended pieces and trades, which is much larger than it looks.
 - **The hint shows the danger, not the answer.** It lends her tier 2's overlay
   for a couple of seconds, plus arrows from each enemy to the piece of hers it
   is attacking. It never points at a move — these levels usually have several
