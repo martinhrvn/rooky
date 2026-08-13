@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { attackMap, attackers, isAttacked } from './attacks';
+import { attackMap, attackers, dangerMap, isAttacked } from './attacks';
 import { findPieces, movePiece, parseFen, pieceAt, setPiece, toFen } from './board';
 import { attackedFrom, destinations } from './moves';
 import { parseSquare, parseSquares, squareName, type SquareName } from './types';
@@ -188,7 +188,62 @@ describe('empty squares', () => {
   });
 });
 
+describe('coverage versus legal moves', () => {
+  it('covers a square its own side occupies, but cannot move there', () => {
+    // Black knight d5 is defended by the black rook d8. The rook cannot move
+    // onto its own knight, but it does defend it — and that defended square is
+    // exactly what tier 2 has to tint red.
+    const fen = '3r4/8/8/3n4/8/8/8/8 w - -';
+    expect(attacksFrom(fen, 'd8')).toContain('d5');
+    expect(movesFrom(fen, 'd8')).not.toContain('d5');
+  });
+
+  it('does not see past the piece it is defending', () => {
+    const fen = '3r4/8/8/3n4/8/8/8/8 w - -';
+    expect(attacksFrom(fen, 'd8')).not.toContain('d4');
+  });
+
+  it('covers a defended piece with a knight too', () => {
+    // Knight f4 defends the pawn on d5 — the guard shape used across tier 2.
+    expect(attacksFrom('8/8/8/3p4/5n2/8/8/8 w - -', 'f4')).toContain('d5');
+  });
+
+  it('agrees with destinations when nothing friendly is in the way', () => {
+    const fen = '8/8/8/3R4/8/8/8/8 w - -';
+    expect(attacksFrom(fen, 'd5')).toEqual(movesFrom(fen, 'd5'));
+  });
+});
+
 describe('attack maps', () => {
+  it('marks a defended enemy as dangerous, so the warning matches the rule', () => {
+    // The engine punishes capturing a defended piece. If the map disagreed,
+    // tier 2 would punish a danger it never showed — which is worse than
+    // showing nothing at all.
+    const board = boardOf('3r4/8/8/3n4/8/8/8/8 w - -');
+    expect(attackMap(board, 'b').has(parseSquare('d5'))).toBe(true);
+    expect(isAttacked(board, parseSquare('d5'), 'b')).toBe(true);
+  });
+
+  it('leaves an undefended enemy unmarked, so it reads as safe to take', () => {
+    const board = boardOf('8/8/8/3n4/8/8/8/8 w - -');
+    expect(attackMap(board, 'b').has(parseSquare('d5'))).toBe(false);
+  });
+
+  it('warns about squares her own piece is currently screening', () => {
+    // Black rook a8, her rook standing on a5 in the way. a3 looks safe only
+    // because she is the blocker -- move her down the file and the rook is
+    // suddenly looking straight at her. The raw map misses this; the overlay
+    // must not, or it warns about a danger only after it has happened.
+    const board = boardOf('r7/8/8/R7/8/8/8/8 w - -');
+    expect(attackMap(board, 'b').has(parseSquare('a3'))).toBe(false);
+    expect(dangerMap(board).has(parseSquare('a3'))).toBe(true);
+  });
+
+  it('does not invent danger where the enemy genuinely cannot reach', () => {
+    const board = boardOf('r7/8/8/R7/8/8/8/8 w - -');
+    expect(dangerMap(board).has(parseSquare('h3'))).toBe(false);
+  });
+
   it('marks every square a lone black rook covers', () => {
     const map = attackMap(boardOf('8/8/8/3r4/8/8/8/8 w - -'), 'b');
     expect(map.has(parseSquare('d1'))).toBe(true);

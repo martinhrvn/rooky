@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { findPieces, parseFen } from '../chess/board';
+import { dangerMap } from '../chess/attacks';
+import { findPieces, parseFen, toFen } from '../chess/board';
+import { destinations } from '../chess/moves';
 import { squareName } from '../chess/types';
+import { applyMove, startLevel } from '../game/engine';
 import { solve } from '../game/solver';
 import { ALL_LEVELS } from './index';
 
@@ -40,6 +43,42 @@ describe('level content', () => {
         expect(level.stars).toHaveLength(0);
       } else {
         expect(level.stars.length, 'star goals need stars').toBeGreaterThan(0);
+      }
+    });
+
+    it('warns about exactly the squares that punish her', () => {
+      // The overlay's contract: red means you get taken there, and no red
+      // means you don't. Under-warning is the worse failure -- it punishes a
+      // danger it never displayed -- so this walks the level's whole reachable
+      // state space rather than just the opening position.
+      if (level.tier < 2) return;
+
+      const seen = new Set<string>();
+      let frontier = [startLevel(level)];
+
+      for (let depth = 0; depth < level.par && frontier.length > 0; depth++) {
+        const next: typeof frontier = [];
+        for (const state of frontier) {
+          const warned = dangerMap(state.board);
+          for (const from of findPieces(state.board, 'w')) {
+            for (const to of destinations(state.board, from)) {
+              const after = applyMove(state, from, to);
+              expect(
+                warned.has(to),
+                `${level.id}: ${squareName(from)}${squareName(to)} ${
+                  after.phase === 'lost' ? 'loses but is not marked' : 'is marked but is safe'
+                }`,
+              ).toBe(after.phase === 'lost');
+
+              if (after.phase !== 'playing') continue;
+              const key = toFen({ board: after.board, turn: 'w' });
+              if (seen.has(key)) continue;
+              seen.add(key);
+              next.push(after);
+            }
+          }
+        }
+        frontier = next;
       }
     });
 

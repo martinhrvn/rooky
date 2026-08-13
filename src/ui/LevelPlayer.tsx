@@ -3,7 +3,7 @@ import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } fro
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { attackMap } from '../chess/attacks';
+import { dangerMap } from '../chess/attacks';
 import { type Board as BoardModel, movePiece } from '../chess/board';
 import { legalTargets, rate, restart, rewind, startLevel, tap } from '../game/engine';
 import type { Level } from '../game/types';
@@ -165,7 +165,7 @@ export function LevelPlayer({
   // Tier 2 is the only tier that shows the overlay: tier 1 has no enemies, and
   // tier 3 is deliberately the same position with the help switched off.
   const danger = useMemo(
-    () => (level.tier === 2 ? attackMap(state.board, 'b') : null),
+    () => (level.tier === 2 ? dangerMap(state.board) : null),
     [level.tier, state.board],
   );
 

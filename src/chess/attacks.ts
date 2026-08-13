@@ -19,6 +19,28 @@ export function attackMap(board: Board, color: Color): Set<Square> {
   return attacked;
 }
 
+/**
+ * The tier 2 overlay: squares black covers, computed as if the player's own
+ * pieces were lifted off the board.
+ *
+ * Her piece can be the very thing blocking an enemy line, so a square that
+ * looks safe while she stands in the way becomes dangerous the moment she
+ * moves. Lifting her pieces off first makes the red squares match what will
+ * actually happen when she moves there — which is the whole contract of the
+ * overlay.
+ *
+ * Exact while she has a single piece, which is every capture level so far. A
+ * level with two white pieces would over-warn on squares screened by the piece
+ * that stays put; `levels.test.ts` asserts the correspondence, so that will
+ * announce itself rather than slip through.
+ */
+export function dangerMap(board: Board): Set<Square> {
+  return attackMap(
+    board.map((piece) => (piece?.color === 'w' ? null : piece)),
+    'b',
+  );
+}
+
 /** The squares of `color` pieces that cover `target`. */
 export function attackers(board: Board, target: Square, color: Color): Square[] {
   return findPieces(board, color).filter((from) => attackedFrom(board, from).includes(target));

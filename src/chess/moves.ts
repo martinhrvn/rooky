@@ -60,7 +60,15 @@ const pawnHomeRank = (color: Color): number => (color === 'w' ? 1 : 6);
 export const promotionRank = (color: Color): number => (color === 'w' ? 7 : 0);
 
 /** Walks outward along `dirs` until blocked; includes the blocking square if it holds an enemy. */
-function slide(board: Board, from: Square, dirs: readonly Vector[], mover: Piece): Square[] {
+/**
+ * Squares a sliding piece covers, walking outward until something blocks it.
+ *
+ * The blocking square is **included whatever colour stands there**. That is
+ * the difference between coverage and legal moves: a piece defends its own
+ * side's squares even though it cannot move onto them, and a defended enemy is
+ * exactly the square that must be tinted red.
+ */
+function slideCover(board: Board, from: Square, dirs: readonly Vector[]): Square[] {
   const out: Square[] = [];
   const startFile = fileOf(from);
   const startRank = rankOf(from);
@@ -70,12 +78,8 @@ function slide(board: Board, from: Square, dirs: readonly Vector[], mover: Piece
     let rank = startRank + dr;
     while (onBoard(file, rank)) {
       const sq = squareAt(file, rank);
-      const occupant = pieceAt(board, sq);
-      if (occupant) {
-        if (occupant.color !== mover.color) out.push(sq);
-        break;
-      }
       out.push(sq);
+      if (pieceAt(board, sq)) break;
       file += df;
       rank += dr;
     }
@@ -83,8 +87,8 @@ function slide(board: Board, from: Square, dirs: readonly Vector[], mover: Piece
   return out;
 }
 
-/** Single-step jumps (knight, king) onto empty or enemy squares. */
-function hop(board: Board, from: Square, hops: readonly Vector[], mover: Piece): Square[] {
+/** Squares a jumping piece (knight, king) covers, occupied or not. */
+function hopCover(from: Square, hops: readonly Vector[]): Square[] {
   const out: Square[] = [];
   const startFile = fileOf(from);
   const startRank = rankOf(from);
@@ -92,13 +96,23 @@ function hop(board: Board, from: Square, hops: readonly Vector[], mover: Piece):
   for (const [df, dr] of hops) {
     const file = startFile + df;
     const rank = startRank + dr;
-    if (!onBoard(file, rank)) continue;
-    const sq = squareAt(file, rank);
-    const occupant = pieceAt(board, sq);
-    if (!occupant || occupant.color !== mover.color) out.push(sq);
+    if (onBoard(file, rank)) out.push(squareAt(file, rank));
   }
   return out;
 }
+
+/** Coverage minus your own pieces: you cannot move onto a friend. */
+const movable = (board: Board, mover: Piece, squares: Square[]): Square[] =>
+  squares.filter((sq) => {
+    const occupant = pieceAt(board, sq);
+    return !occupant || occupant.color !== mover.color;
+  });
+
+const slide = (board: Board, from: Square, dirs: readonly Vector[], mover: Piece): Square[] =>
+  movable(board, mover, slideCover(board, from, dirs));
+
+const hop = (board: Board, from: Square, hops: readonly Vector[], mover: Piece): Square[] =>
+  movable(board, mover, hopCover(from, hops));
 
 function pawnDestinations(board: Board, from: Square, mover: Piece): Square[] {
   const out: Square[] = [];
@@ -158,25 +172,40 @@ export function destinations(board: Board, from: Square): Square[] {
 }
 
 /**
- * Squares the piece on `from` COVERS — i.e. where it could capture an enemy.
+ * Squares the piece on `from` COVERS — everywhere it could capture something,
+ * *including squares its own side occupies*.
  *
- * Identical to `destinations` for every piece except the pawn, which attacks
- * diagonally but moves straight. Getting this distinction wrong would paint
- * the square directly in front of an enemy pawn red, which is the one square
- * a pawn cannot touch you on.
+ * This is coverage, not legal movement, and the difference matters twice over:
+ *
+ * - A piece defending a friend still covers that square. Without this, a
+ *   defended enemy shows no red tint even though taking it loses — the level
+ *   punishes a danger it never displayed.
+ * - A pawn attacks diagonally but moves straight, so the square directly in
+ *   front of an enemy pawn is the one square it cannot touch you on.
  */
 export function attackedFrom(board: Board, from: Square): Square[] {
   const mover = pieceAt(board, from);
   if (!mover) return [];
-  if (mover.type !== 'p') return destinations(board, from);
 
-  const file = fileOf(from);
-  const rank = rankOf(from) + pawnStep(mover.color);
-  const out: Square[] = [];
-  for (const df of [-1, 1]) {
-    if (onBoard(file + df, rank)) out.push(squareAt(file + df, rank));
+  switch (mover.type) {
+    case 'r':
+      return slideCover(board, from, ROOK_DIRS);
+    case 'b':
+      return slideCover(board, from, BISHOP_DIRS);
+    case 'q':
+      return slideCover(board, from, QUEEN_DIRS);
+    case 'n':
+      return hopCover(from, KNIGHT_HOPS);
+    case 'k':
+      return hopCover(from, QUEEN_DIRS);
+    case 'p': {
+      const file = fileOf(from);
+      const rank = rankOf(from) + pawnStep(mover.color);
+      return [-1, 1]
+        .filter((df) => onBoard(file + df, rank))
+        .map((df) => squareAt(file + df, rank));
+    }
   }
-  return out;
 }
 
 export function canMove(board: Board, from: Square, to: Square): boolean {
