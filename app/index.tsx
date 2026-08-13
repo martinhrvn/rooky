@@ -5,15 +5,24 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { WORLDS, nextLevel, worldOf } from '../src/content';
-import { currentWorld } from '../src/progress/selectors';
+import { currentWorld, piecesPlayed } from '../src/progress/selectors';
 import { useCompletedIds, useProgress } from '../src/progress/store';
 import { Button } from '../src/ui/Button';
 import { Glyph } from '../src/ui/IconButton';
+import { MixCard } from '../src/ui/MixCard';
 import { PieceTile } from '../src/ui/PieceTile';
 import { strings } from '../src/ui/strings';
 import { Text } from '../src/ui/Text';
 import { TierRank } from '../src/ui/TierRank';
 import { colors, elevation, layout } from '../src/ui/theme';
+
+/**
+ * Levels finished before the Mix card appears.
+ *
+ * A "mix" of one or two levels is not a mix, and an extra card on a nearly
+ * empty home screen is exactly the confusion this feature had to avoid.
+ */
+const MIN_FOR_MIX = 3;
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -112,6 +121,12 @@ export default function HomeScreen() {
             onPress={() => router.push(`/endless/${world.key}?tier=${resume.tier}`)}
           />
         </View>
+
+        {/* Only once there is genuinely something to mix. A new player never
+            meets an empty second card and never has to wonder what it's for. */}
+        {completed.size >= MIN_FOR_MIX ? (
+          <MixCard pieces={piecesPlayed(WORLDS, completed)} onPlay={() => router.push('/mix')} />
+        ) : null}
       </View>
     </SafeAreaView>
   );

@@ -11,6 +11,7 @@ export type IconName =
   | 'next'
   | 'play'
   | 'endless'
+  | 'shuffle'
   | 'levelUp';
 
 /**
@@ -58,6 +59,18 @@ export function Glyph({ name, size, color = colors.text }: { name: IconName; siz
           {/* A lemniscate: two loops that never end. */}
           <Circle cx={33} cy={50} r={17} {...common} />
           <Circle cx={67} cy={50} r={17} {...common} />
+        </>
+      )}
+
+      {name === 'shuffle' && (
+        <>
+          {/* Two crossing paths. Deliberately not the lemniscate — that means
+              Endless, and reusing it would undo the distinction the Mix card's
+              layout is there to make. */}
+          <Path d="M14 26 L34 26 L66 74 L84 74" {...common} />
+          <Path d="M14 74 L34 74 L66 26 L84 26" {...common} />
+          <Polygon points="76,14 96,26 76,38" fill={color} />
+          <Polygon points="76,62 96,74 76,86" fill={color} />
         </>
       )}
 

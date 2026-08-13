@@ -21,6 +21,18 @@ export const strings = {
     settings: 'Settings',
   },
 
+  /**
+   * The second home card: a shuffle of everything she has already beaten.
+   * Named for what it contains, not for how long it lasts — "Endless" is
+   * already taken by the per-piece mode and the two must not blur.
+   */
+  mix: {
+    title: 'Mix',
+    subtitle: 'Anything you have finished',
+    play: 'Play a mix',
+    another: 'Another one',
+  },
+
   pieces: {
     title: 'Pieces',
     subtitle: 'Pick one to start it from the beginning',

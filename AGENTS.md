@@ -91,6 +91,16 @@ in where levels come from and what happens on a win:
 - **Endless** (`app/endless/[worldKey].tsx`) — generated levels, never scored
   or saved. The pressure-free mode, for when she's stuck and would rather mess
   about with a piece than fail the same puzzle again.
+- **Mix** (`app/mix.tsx`) — a shuffle of every level she has already beaten,
+  across every piece. Real authored levels, so results *are* recorded, and it
+  advances manually rather than automatically.
+
+**Endless and Mix must stay different in kind, not just in scope** — two
+buttons that both mean "play forever" is the confusion this design exists to
+avoid. Endless invents puzzles for one piece and records nothing; Mix replays
+real ones from every piece and records. That difference is carried visually by
+the card headers (one piece versus a row of them) and by distinct glyphs — the
+lemniscate is Endless, the crossing arrows are Mix. Don't blur either.
 
 `generator.ts` builds levels by **random walk**, not by random placement plus
 search. Drop the piece, take N legal moves, and make every square it lands on a

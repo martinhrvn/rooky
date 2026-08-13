@@ -9,7 +9,8 @@
  * gated behind a star rating**. Stars are for pride, not access.
  */
 
-import { TIERS, type World, tierLevels } from '../content';
+import { ALL_LEVELS, TIERS, type World, tierLevels } from '../content';
+import type { PieceType } from '../chess/types';
 import type { Level, Tier } from '../game/types';
 
 export interface Counted {
@@ -70,6 +71,31 @@ export function isLevelUnlocked(world: World, level: Level, completedIds: Readon
   if (index < 0) return false;
   if (index === 0) return true;
   return completedIds.has(world.levels[index - 1].id);
+}
+
+/**
+ * Everything she has already beaten, in play order — what Mix draws from.
+ *
+ * Only completed levels, so every one is hand-authored and safe to record a
+ * result against.
+ */
+export const mixPool = (completedIds: ReadonlySet<string>): readonly Level[] =>
+  ALL_LEVELS.filter((level) => completedIds.has(level.id));
+
+/**
+ * The pieces she has finished something with, in world order.
+ *
+ * Heads the Mix card, where the piece card is headed by a single piece — so
+ * the difference in scope is visible without reading either label. It grows as
+ * she unlocks more, which is a small reward in itself.
+ */
+export function piecesPlayed(
+  worlds: readonly World[],
+  completedIds: ReadonlySet<string>,
+): readonly PieceType[] {
+  return worlds
+    .filter((world) => world.levels.some((level) => completedIds.has(level.id)))
+    .map((world) => world.icon);
 }
 
 /** The world the player is currently working through — the first unfinished one. */

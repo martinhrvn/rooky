@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import { type World, WORLDS, worldByKey } from '../content';
-import { currentWorld, isLevelUnlocked, isWorldUnlocked, worldProgress } from './selectors';
+import {
+  currentWorld,
+  isLevelUnlocked,
+  isWorldUnlocked,
+  mixPool,
+  piecesPlayed,
+  worldProgress,
+} from './selectors';
 
 const rook = worldByKey('rook')!;
 const bishop = worldByKey('bishop')!;
@@ -98,6 +105,36 @@ describe('isLevelUnlocked', () => {
 
   it('rejects a level that is not in the world', () => {
     expect(isLevelUnlocked(bishop, rook.levels[0], none)).toBe(false);
+  });
+});
+
+describe('the Mix pool', () => {
+  it('is empty on a fresh profile, which is why the card is hidden then', () => {
+    expect(mixPool(none)).toEqual([]);
+    expect(piecesPlayed(WORLDS, none)).toEqual([]);
+  });
+
+  it('holds only levels she has actually finished', () => {
+    const done = allOf('rook-t1-01', 'rook-t1-03');
+    expect(mixPool(done).map((l) => l.id)).toEqual(['rook-t1-01', 'rook-t1-03']);
+  });
+
+  it('keeps play order rather than the order she happened to finish in', () => {
+    const done = allOf('rook-t1-03', 'rook-t1-01');
+    expect(mixPool(done).map((l) => l.id)).toEqual(['rook-t1-01', 'rook-t1-03']);
+  });
+
+  it('ignores ids that match no level', () => {
+    expect(mixPool(allOf('not-a-level'))).toEqual([]);
+  });
+
+  it('lists each piece once, in world order', () => {
+    const done = new Set([...finished(bishop), ...finished(rook)].map((id) => id));
+    expect(piecesPlayed(WORLDS, done)).toEqual([rook.icon, bishop.icon]);
+  });
+
+  it('lists a piece after a single finished level, not only a finished world', () => {
+    expect(piecesPlayed(WORLDS, allOf('rook-t1-01'))).toEqual([rook.icon]);
   });
 });
 
