@@ -5,7 +5,9 @@ import { Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { TIERS } from '../src/content';
+import { AVATARS } from '../src/progress/schema';
 import { useActiveProfile, useMaxTier, useProgress } from '../src/progress/store';
+import { AvatarPicker } from '../src/ui/AvatarPicker';
 import { Button } from '../src/ui/Button';
 import { IconButton } from '../src/ui/IconButton';
 import { strings } from '../src/ui/strings';
@@ -28,6 +30,7 @@ export default function SettingsScreen() {
   const maxTier = useMaxTier();
   const setMaxTier = useProgress((s) => s.setMaxTier);
   const renameProfile = useProgress((s) => s.renameProfile);
+  const setProfileAvatar = useProgress((s) => s.setProfileAvatar);
   const resetProgress = useProgress((s) => s.resetProgress);
   const deleteProfile = useProgress((s) => s.deleteProfile);
 
@@ -80,6 +83,15 @@ export default function SettingsScreen() {
         </Section>
 
         <Section title={strings.settings.player} help={strings.settings.playerHelp}>
+          {/* The face is the only part of a profile the player herself reads,
+              so it is editable rather than fixed at creation — a child who has
+              decided she is the dragon now should not have to be deleted and
+              made again. Changing it keeps every star, because results are
+              keyed by profile id. */}
+          <AvatarPicker
+            value={profile?.avatarId ?? AVATARS[0].id}
+            onChange={(avatarId) => profile && setProfileAvatar(profile.id, avatarId)}
+          />
           <TextInput
             value={profile?.name ?? ''}
             onChangeText={(name) => profile && renameProfile(profile.id, name)}

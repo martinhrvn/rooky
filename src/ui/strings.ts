@@ -86,7 +86,8 @@ export const strings = {
     difficulty: 'Difficulty',
     difficultyHelp: 'How far the levels go. Lowering this hides the harder ones without losing anything already earned.',
     player: 'Player',
-    playerHelp: 'Shown only to you, so you can tell profiles apart.',
+    playerHelp:
+      'Pick a face for this player. The name is shown only to you, so you can tell profiles apart.',
     namePlaceholder: 'Name',
     startOver: 'Start over',
     startOverHelp: 'Clears every level for this player. Cannot be undone.',

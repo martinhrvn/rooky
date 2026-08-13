@@ -24,6 +24,7 @@ interface ProgressStore extends PersistedProgress {
   markHydrated: () => void;
   createProfile: (name: string, avatarId: AvatarId) => string;
   renameProfile: (id: string, name: string) => void;
+  setProfileAvatar: (id: string, avatarId: AvatarId) => void;
   setMaxTier: (tier: Tier) => void;
   selectProfile: (id: string) => void;
   deleteProfile: (id: string) => void;
@@ -101,6 +102,16 @@ export const useProgress = create<ProgressStore>()(
 
       renameProfile: (id, name) =>
         set((s) => ({ profiles: s.profiles.map((p) => (p.id === id ? { ...p, name } : p)) })),
+
+      /**
+       * Changes a profile's face. Takes an id rather than acting on the active
+       * profile so it reads the same way as renaming, which it sits next to.
+       *
+       * Results are keyed by profile id and untouched by this, so a child can
+       * be a dragon on Tuesday without losing a single star.
+       */
+      setProfileAvatar: (id, avatarId) =>
+        set((s) => ({ profiles: s.profiles.map((p) => (p.id === id ? { ...p, avatarId } : p)) })),
 
       setMaxTier: (tier) =>
         set((s) => ({

@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { StyleSheet, TextInput, View } from 'react-native';
 
 import { AVATARS, type AvatarId, avatarById } from '../progress/schema';
-import { Avatar } from './Avatar';
+import { AvatarPicker } from './AvatarPicker';
 import { Button } from './Button';
 import { strings } from './strings';
-import { colors, layout, type as typeScale } from './theme';
+import { colors, type as typeScale } from './theme';
 
 /**
  * Choose a face, and optionally a name.
@@ -29,20 +29,7 @@ export function ProfileForm({
 
   return (
     <View style={styles.form}>
-      <View style={styles.grid}>
-        {AVATARS.map((avatar) => (
-          <Pressable
-            key={avatar.id}
-            accessibilityRole="radio"
-            accessibilityLabel={avatar.name}
-            accessibilityState={{ selected: avatar.id === avatarId }}
-            onPress={() => setAvatarId(avatar.id)}
-            style={({ pressed }) => pressed && styles.pressed}
-          >
-            <Avatar id={avatar.id} size={layout.touchTarget} selected={avatar.id === avatarId} />
-          </Pressable>
-        ))}
-      </View>
+      <AvatarPicker value={avatarId} onChange={setAvatarId} />
 
       <TextInput
         value={name}
@@ -64,7 +51,6 @@ export function ProfileForm({
 
 const styles = StyleSheet.create({
   form: { gap: 16 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center' },
   input: {
     ...typeScale.body,
     color: colors.text,

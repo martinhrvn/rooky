@@ -85,6 +85,27 @@ describe('the profile that opens on relaunch', () => {
   });
 });
 
+describe('editing a profile', () => {
+  it('changes the face without touching what they have finished', () => {
+    const fox = state().createProfile('Fox', 'fox');
+    state().recordResult('rook-t1-01', 3, 1);
+
+    state().setProfileAvatar(fox, 'dragon');
+
+    expect(state().profiles[0].avatarId).toBe('dragon');
+    expect(state().results[fox]?.['rook-t1-01']?.stars).toBe(3);
+  });
+
+  it('leaves the other players as they were', () => {
+    const fox = state().createProfile('Fox', 'fox');
+    state().createProfile('Owl', 'owl');
+
+    state().setProfileAvatar(fox, 'dragon');
+
+    expect(state().profiles.map((p) => p.avatarId)).toEqual(['dragon', 'owl']);
+  });
+});
+
 describe('removing a profile', () => {
   it('hands play to a survivor', () => {
     const fox = state().createProfile('Fox', 'fox');
