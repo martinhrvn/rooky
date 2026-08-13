@@ -4,9 +4,11 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 
-import { ALL_LEVELS, WORLDS, nextLevel, worldOf } from '../src/content';
+import { WORLDS, nextLevel, worldOf } from '../src/content';
 import { currentWorld } from '../src/progress/selectors';
 import { useCompletedIds, useProgress } from '../src/progress/store';
+import { Button } from '../src/ui/Button';
+import { Glyph } from '../src/ui/IconButton';
 import { PieceTile } from '../src/ui/PieceTile';
 import { strings } from '../src/ui/strings';
 import { Text } from '../src/ui/Text';
@@ -28,16 +30,12 @@ export default function HomeScreen() {
   }, [hydrated, profiles.length, createProfile]);
 
   const resume = nextLevel(completed);
-  const resumeWorld = worldOf(resume) ?? currentWorld(WORLDS, completed);
-  const allDone = completed.size >= ALL_LEVELS.length;
+  const world = resume ? worldOf(resume) : currentWorld(WORLDS, completed);
 
-  const label = allDone
-    ? strings.home.replay
-    : completed.size === 0
-      ? strings.home.start
-      : strings.home.continue;
+  if (!resume || !world) return <SafeAreaView style={styles.screen} />;
 
-  const tierLabel = strings.tiers[resume.tier];
+  const tierLevels = world.levels.filter((l) => l.tier === resume.tier);
+  const fresh = completed.size === 0;
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
@@ -57,50 +55,59 @@ export default function HomeScreen() {
         </Pressable>
       </View>
 
-      <View style={styles.hero}>
-        {/* The one control she has to find. It shows the piece she is about to
-            play, so the screen says what happens next without being read. */}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`${label}. ${resumeWorld?.title ?? ''}`}
-          onPress={() => router.push(`/play/${resume.id}`)}
-          style={({ pressed }) => [styles.continueTile, pressed && styles.pressed]}
-        >
-          <PieceTile piece={resumeWorld?.icon ?? 'r'} size={168} ringed />
-        </Pressable>
+      <View style={styles.body}>
+        {/* One card holds the whole piece: which one, how far in, and every
+            way to play it. More modes land here rather than as loose buttons
+            scattered around the screen. */}
+        <View style={styles.card}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${world.title}. ${strings.home.changePiece}`}
+            onPress={() => router.push('/pieces')}
+            style={({ pressed }) => [styles.cardHead, pressed && styles.pressed]}
+          >
+            <PieceTile piece={world.icon} size={84} ringed />
+            <View style={styles.cardTitle}>
+              <Text variant="title">{world.title}</Text>
+              <Text variant="body" color={colors.textSoft}>
+                {strings.tiers[resume.tier]}
+              </Text>
+            </View>
+            {/* Chevron marks the whole row as the way to another piece. */}
+            <Glyph name="forward" size={22} color={colors.textSoft} />
+          </Pressable>
 
-        <View style={styles.heroLabel}>
-          <Text variant="display">{label}</Text>
-          {resumeWorld ? (
-            <Text variant="body" color={colors.textSoft}>
-              {resumeWorld.title} · {tierLabel}
-            </Text>
-          ) : null}
-        </View>
-
-        {resumeWorld ? (
           <TierRank
-            levels={resumeWorld.levels.filter((l) => l.tier === resume.tier)}
+            levels={tierLevels}
             completedIds={completed}
-            // A progress readout, not a way in — the route to a specific level
-            // is the selector. Continue is the only thing to tap here.
             interactive={false}
-            squareSize={22}
+            squareSize={24}
           />
-        ) : null}
-      </View>
 
-      <View style={styles.footer}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={strings.home.chooseAPiece}
-          onPress={() => router.push('/pieces')}
-          style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}
-        >
-          <Text variant="button" color={colors.green}>
-            {strings.home.chooseAPiece}
-          </Text>
-        </Pressable>
+          <View style={styles.actions}>
+            <Button
+              icon="play"
+              label={fresh ? strings.home.start : strings.home.play}
+              variant="primary"
+              onPress={() => router.push(`/play/${resume.id}`)}
+              style={styles.grow}
+            />
+            <Button
+              icon="retry"
+              label={strings.home.reset}
+              // Non-destructive: this opens level 1 again and leaves every
+              // tick and star intact. She will press it constantly, often by
+              // accident, and there is no confirm dialog she could read.
+              onPress={() => router.push(`/play/${world.levels[0].id}`)}
+            />
+          </View>
+
+          <Button
+            icon="endless"
+            label={strings.home.endless}
+            onPress={() => router.push(`/endless/${world.key}?tier=${resume.tier}`)}
+          />
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -130,26 +137,16 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   gear: { padding: 8 },
-  hero: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 20,
+  body: { flex: 1, justifyContent: 'center', padding: layout.screenPadding },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: 28,
+    padding: 20,
+    gap: 18,
   },
-  continueTile: { borderRadius: 40 },
-  heroLabel: { alignItems: 'center', gap: 4 },
-  footer: {
-    paddingHorizontal: layout.screenPadding,
-    paddingBottom: 20,
-    alignItems: 'center',
-  },
-  secondary: {
-    minHeight: layout.touchTarget,
-    paddingHorizontal: 28,
-    justifyContent: 'center',
-    borderRadius: layout.touchTarget / 2,
-    borderWidth: 2,
-    borderColor: colors.green,
-  },
-  pressed: { opacity: 0.7, transform: [{ scale: 0.97 }] },
+  cardHead: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  cardTitle: { flex: 1, gap: 2 },
+  actions: { flexDirection: 'row', gap: 12 },
+  grow: { flex: 1 },
+  pressed: { opacity: 0.7, transform: [{ scale: 0.98 }] },
 });

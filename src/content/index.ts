@@ -73,10 +73,11 @@ export const tierLevels = (world: World, tier: Tier): readonly Level[] =>
   world.levels.filter((level) => level.tier === tier);
 
 /**
- * What `Continue` opens: the first level with no recorded result, falling back
- * to the last level once everything is done.
+ * What Play opens: the first level with no recorded result, falling back to
+ * the last level once everything is done. Undefined only if there is no
+ * content at all, which callers should render around rather than crash on.
  */
-export function nextLevel(completedIds: ReadonlySet<string>): Level {
+export function nextLevel(completedIds: ReadonlySet<string>): Level | undefined {
   return (
     ALL_LEVELS.find((level) => !completedIds.has(level.id)) ?? ALL_LEVELS[ALL_LEVELS.length - 1]
   );
@@ -90,3 +91,16 @@ export function levelAfter(id: string): Level | undefined {
 
 /** The world a level belongs to. */
 export const worldOf = (level: Level): World | undefined => worldByKey(level.world);
+
+/** True when nothing else in this level's own tier comes after it. */
+export function isLastOfTier(level: Level): boolean {
+  const world = worldOf(level);
+  if (!world) return false;
+  const siblings = tierLevels(world, level.tier);
+  return siblings[siblings.length - 1]?.id === level.id;
+}
+
+/** The next tier in this world that actually has levels, if any. */
+export function nextTierWithLevels(world: World, after: Tier): Tier | undefined {
+  return TIERS.find((tier) => tier > after && tierLevels(world, tier).length > 0);
+}

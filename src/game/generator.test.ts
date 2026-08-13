@@ -1,0 +1,136 @@
+import { describe, expect, it } from 'vitest';
+
+import type { PieceType } from '../chess/types';
+import { findPieces, parseFen } from '../chess/board';
+import { generateLevel, generateLevelOrEasier } from './generator';
+import { hashString, makeRng, sample } from './random';
+import { solve } from './solver';
+
+const gen = (piece: PieceType, difficulty: number, seed: number) =>
+  generateLevelOrEasier({
+    world: 'rook',
+    piece,
+    tier: 1,
+    difficulty,
+    rng: makeRng(seed),
+    index: 0,
+  });
+
+describe('seeded rng', () => {
+  it('is reproducible from a seed', () => {
+    const a = makeRng(42);
+    const b = makeRng(42);
+    expect([a(), a(), a()]).toEqual([b(), b(), b()]);
+  });
+
+  it('produces different streams for different seeds', () => {
+    expect(makeRng(1)()).not.toBe(makeRng(2)());
+  });
+
+  it('stays inside [0, 1)', () => {
+    const rng = makeRng(7);
+    for (let i = 0; i < 500; i++) {
+      const value = rng();
+      expect(value).toBeGreaterThanOrEqual(0);
+      expect(value).toBeLessThan(1);
+    }
+  });
+
+  it('samples distinct items and never over-draws a small pool', () => {
+    const picked = sample(makeRng(3), [1, 2, 3], 10);
+    expect(picked).toHaveLength(3);
+    expect(new Set(picked).size).toBe(3);
+  });
+
+  it('hashes same-length strings apart', () => {
+    // 'rook', 'king' and 'pawn' are all four characters, so seeding off the
+    // length alone would give three worlds the same level stream.
+    const seeds = ['rook', 'king', 'pawn'].map(hashString);
+    expect(new Set(seeds).size).toBe(3);
+  });
+});
+
+describe('generateLevel', () => {
+  // Every piece that has a world, so a future Endless button can't ship
+  // pointing at a piece the generator silently can't fill.
+  const pieces: PieceType[] = ['r', 'b', 'q', 'k', 'n', 'p'];
+
+  it.each(pieces)('produces a winnable level for %s', (piece) => {
+    const level = gen(piece, 2, 11);
+    expect(level, `no level generated for ${piece}`).not.toBeNull();
+    expect(solve(level!)).not.toBeNull();
+  });
+
+  it.each(pieces)('reports a truthful par for %s', (piece) => {
+    const level = gen(piece, 2, 23)!;
+    expect(solve(level)!.length).toBe(level.par);
+  });
+
+  it('places the requested number of stars, none of them under a piece', () => {
+    const level = gen('r', 4, 5)!;
+    const { board } = parseFen(level.fen);
+    expect(level.stars.length).toBeGreaterThanOrEqual(2);
+    for (const star of level.stars) {
+      expect(board[star]).toBeNull();
+    }
+  });
+
+  it('uses a single piece, which is what keeps generation cheap', () => {
+    expect(findPieces(parseFen(gen('r', 8, 9)!.fen).board, 'w')).toHaveLength(1);
+  });
+
+  it('gives more stars as difficulty rises, up to a cap', () => {
+    expect(gen('r', 0, 4)!.stars.length).toBeLessThan(gen('r', 8, 4)!.stars.length);
+    expect(gen('r', 40, 4)!.stars.length).toBe(6);
+  });
+
+  it.each(pieces)('declares par equal to its star count for %s', (piece) => {
+    // The whole point of building by random walk: each star needs its own
+    // landing, so par can never beat the star count, and the walk achieves it.
+    // This is the property that lets the runtime skip the solver entirely.
+    for (let seed = 0; seed < 12; seed++) {
+      const level = gen(piece, 3, seed);
+      if (!level) continue;
+      expect(level.par).toBe(level.stars.length);
+      expect(solve(level)!.length).toBe(level.par);
+    }
+  });
+
+  it('is reproducible from the same seed', () => {
+    expect(gen('r', 3, 99)!.fen).toBe(gen('r', 3, 99)!.fen);
+  });
+
+  it('gives different levels for different seeds', () => {
+    const fens = new Set(Array.from({ length: 12 }, (_, i) => gen('r', 3, i)?.fen));
+    expect(fens.size).toBeGreaterThan(6);
+  });
+
+  it('never puts a pawn on the first or last rank', () => {
+    // The walk needs room ahead of the pawn, but a pawn on rank 1 is a
+    // position that cannot occur in chess and would teach the wrong thing.
+    for (let seed = 0; seed < 20; seed++) {
+      const level = gen('p', 8, seed);
+      if (!level) continue;
+      const { board } = parseFen(level.fen);
+      const square = findPieces(board, 'w')[0];
+      expect(square >> 3).toBeGreaterThanOrEqual(1);
+      expect(square >> 3).toBeLessThanOrEqual(6);
+    }
+  });
+
+  it('always finds something to play, for every piece at every difficulty', () => {
+    for (const piece of pieces) {
+      for (const difficulty of [0, 2, 4, 6, 8, 20]) {
+        const level = generateLevel({
+          world: 'rook',
+          piece,
+          tier: 1,
+          difficulty,
+          rng: makeRng(difficulty * 13 + piece.charCodeAt(0)),
+          index: 0,
+        });
+        expect(level, `${piece} at difficulty ${difficulty}`).not.toBeNull();
+      }
+    }
+  });
+});

@@ -33,7 +33,7 @@ Store, so nothing copyleft may enter the dependency tree or the level content:
 
 ```
 src/chess/      pure move generation and attack maps. No React, no I/O.
-src/game/       engine.ts (pure reducer), solver.ts (BFS), types.ts
+src/game/       engine.ts (pure reducer), solver.ts (BFS), generator.ts, types.ts
 src/content/    level data, world metadata, ordering
 src/progress/   selectors.ts (pure unlock/progress) + zustand store on AsyncStorage
 src/ui/         Board, Celebration, TierRank, icons, theme, strings
@@ -53,6 +53,29 @@ from it, and it is covered by vitest.
   screens and it's what the app is meant to be remembered by.
 - **The win celebration must stay skippable mid-flight.** Levels get replayed
   constantly; an unskippable cutscene becomes torture by the fifth attempt.
+- **Nothing she can reach may destroy progress.** "Start over" opens level 1
+  and leaves every tick and star intact. She presses buttons constantly and
+  often by accident, and there is no confirm dialog she could read. Destructive
+  actions belong behind the parent-facing gear.
+
+## Game modes
+
+`src/ui/LevelPlayer.tsx` is the board screen. Both modes use it and differ only
+in where levels come from and what happens on a win:
+
+- **Campaign** (`app/play/[levelId].tsx`) — authored levels, results recorded.
+  Finishing the last level of a tier offers a choice (next difficulty / endless
+  / start over) rather than silently tipping into the next difficulty.
+- **Endless** (`app/endless/[worldKey].tsx`) — generated levels, never scored
+  or saved. The pressure-free mode, for when she's stuck and would rather mess
+  about with a piece than fail the same puzzle again.
+
+`generator.ts` builds levels by **random walk**, not by random placement plus
+search. Drop the piece, take N legal moves, star every square it lands on. That
+makes the level winnable by construction and `par` exactly N — each star needs
+its own landing, so no line can beat N, and the walk achieves it. No solver call
+is needed at runtime, which matters because this runs on a phone between
+levels. The solver checks the property in `generator.test.ts` instead.
 
 `src/chess/` is hand-rolled rather than a library because nearly every level
 position is **kingless**, which real chess libraries reject, and tiers 1–3 need

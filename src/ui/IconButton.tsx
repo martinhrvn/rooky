@@ -1,18 +1,28 @@
 import { Pressable, StyleSheet, View } from 'react-native';
-import Svg, { Path, Polygon } from 'react-native-svg';
+import Svg, { Circle, Path, Polygon } from 'react-native-svg';
 
 import { colors, layout } from './theme';
 
-export type IconName = 'back' | 'retry' | 'hint' | 'next';
+export type IconName =
+  | 'back'
+  | 'forward'
+  | 'retry'
+  | 'hint'
+  | 'next'
+  | 'play'
+  | 'endless'
+  | 'levelUp';
 
 /**
- * The complete set of controls on the play screen. Four icons, always in the
- * same place, so meaning comes from position and shape rather than words.
+ * Every glyph in the app.
+ *
+ * Meaning has to survive without the label beside it — the player cannot read
+ * one — so each shape says what it does on its own: a circular arrow for going
+ * round again, a triangle for go, a lemniscate for "keeps going".
  */
-function Glyph({ name, size }: { name: IconName; size: number }) {
-  const stroke = colors.text;
+export function Glyph({ name, size, color = colors.text }: { name: IconName; size: number; color?: string }) {
   const common = {
-    stroke,
+    stroke: color,
     strokeWidth: 7,
     strokeLinecap: 'round' as const,
     strokeLinejoin: 'round' as const,
@@ -22,20 +32,42 @@ function Glyph({ name, size }: { name: IconName; size: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 100 100">
       {name === 'back' && <Path d="M60 20 L30 50 L60 80" {...common} />}
+
+      {name === 'forward' && <Path d="M40 20 L70 50 L40 80" {...common} />}
+
       {name === 'retry' && (
         <>
-          {/* Circular arrow: the shape itself suggests "go round again". */}
           <Path d="M78 50 A28 28 0 1 1 50 22" {...common} />
-          <Polygon points="50,8 50,36 34,22" fill={stroke} />
+          <Polygon points="50,8 50,36 34,22" fill={color} />
         </>
       )}
+
       {name === 'hint' && (
         <>
           <Path d="M50 18 A22 22 0 0 1 62 58 L62 68 L38 68 L38 58 A22 22 0 0 1 50 18 Z" {...common} />
           <Path d="M42 80 L58 80" {...common} />
         </>
       )}
-      {name === 'next' && <Polygon points="34,22 34,78 76,50" fill={stroke} />}
+
+      {(name === 'next' || name === 'play') && (
+        <Polygon points="34,22 34,78 76,50" fill={color} />
+      )}
+
+      {name === 'endless' && (
+        <>
+          {/* A lemniscate: two loops that never end. */}
+          <Circle cx={33} cy={50} r={17} {...common} />
+          <Circle cx={67} cy={50} r={17} {...common} />
+        </>
+      )}
+
+      {name === 'levelUp' && (
+        <>
+          {/* Steps rising to the right — the next difficulty is a step up. */}
+          <Path d="M18 78 L42 78 L42 56 L66 56 L66 34 L88 34" {...common} />
+          <Polygon points="74,20 96,20 96,42" fill={color} />
+        </>
+      )}
     </Svg>
   );
 }
@@ -64,7 +96,7 @@ export function IconButton({
       ]}
     >
       <View pointerEvents="none">
-        <Glyph name={name} size={prominent ? 46 : 34} />
+        <Glyph name={name} size={prominent ? 46 : 34} color={prominent ? colors.surface : colors.text} />
       </View>
     </Pressable>
   );
@@ -84,6 +116,7 @@ const styles = StyleSheet.create({
     width: layout.touchTarget * 1.4,
     height: layout.touchTarget * 1.4,
     borderRadius: layout.touchTarget * 0.7,
+    backgroundColor: colors.green,
   },
   pressed: {
     opacity: 0.6,
