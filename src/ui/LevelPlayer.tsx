@@ -11,6 +11,7 @@ import type { Level } from '../game/types';
 import { Board } from './Board';
 import { BoardFrame, frameWidthFor } from './BoardFrame';
 import { Celebration } from './Celebration';
+import { GoalBadge } from './GoalBadge';
 import { IconButton } from './IconButton';
 import { MoveDots } from './MoveDots';
 import { PromotionChoice } from './PromotionChoice';
@@ -289,8 +290,17 @@ export function LevelPlayer({
       <View style={styles.topBar}>
         <IconButton name="back" onPress={onExit} accessibilityLabel={strings.play.back} />
         <MoveDots moves={state.moves} par={level.par} />
-        {/* Balances the back button so the counter stays centred. */}
-        <View style={{ width: layout.touchTarget }} />
+        {/* Takes over the spacer that used to balance the back button, so the
+            counter stays centred and the goal sits opposite the way out — the
+            two fixed things on the screen, one on each side. */}
+        <View
+          accessible
+          accessibilityRole="image"
+          accessibilityLabel={strings.play.goals[level.goal]}
+          style={styles.goal}
+        >
+          <GoalBadge goal={level.goal} />
+        </View>
       </View>
 
       <View style={styles.boardWrap}>
@@ -375,6 +385,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   boardWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  goal: { width: layout.touchTarget, alignItems: 'center', justifyContent: 'center' },
   controls: {
     flexDirection: 'row',
     alignItems: 'center',

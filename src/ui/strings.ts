@@ -114,6 +114,20 @@ export const strings = {
     retry: 'Try again',
     /** Shows what the enemy covers for a moment, not what to play. */
     hint: 'Show me the danger',
+    /**
+     * The goal badge, read aloud rather than shown. She cannot read these, and
+     * the badge does not depend on them — they are for a screen reader and for
+     * an adult working out what a level is asking.
+     */
+    goals: {
+      collectAllStars: 'Collect all the stars',
+      captureAll: 'Take all their pieces',
+      collectAndCapture: 'Collect the stars and take their pieces',
+      protect: 'Get your piece out of danger',
+      escapeCheck: 'Get your king out of check',
+      check: 'Put their king in check',
+      mateInOne: 'Checkmate in one move',
+    },
     next: 'Next level',
     another: 'Another one',
   },
