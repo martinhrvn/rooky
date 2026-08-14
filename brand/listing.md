@@ -49,8 +49,12 @@ Safety form is the shortest one Play accepts.
 - **Content rating**: IARC questionnaire. Everything answers no.
 - **Data safety**: no data collected, no data shared. True and checkable.
 - **Ads**: none.
-- **Privacy policy**: still required at a public URL even with nothing
-  collected. Play does not accept "not applicable".
+- **Privacy policy**: `PRIVACY.md` in this repo, served at
+  <https://github.com/martinhrvn/rooky/blob/main/PRIVACY.md> — GitHub renders it
+  as a page, which is what Play asks for, and the repo being public is the whole
+  of the hosting. Required at a public URL even with nothing collected; Play
+  does not accept "not applicable". It must stay reachable without a login, so
+  **the repo cannot be made private** while that URL is the one on file.
 
 ## Copy
 
