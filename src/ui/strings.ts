@@ -64,6 +64,70 @@ export const strings = {
     removeConfirm: 'Remove this player and all their progress? This cannot be undone.',
   },
 
+  /**
+   * Achievement names, keyed by the tally they watch.
+   *
+   * Read aloud rather than read: she cannot read them, but an adult is
+   * usually nearby when something unusual happens on screen, and being told
+   * "you got *Never give up*" is most of the value. The icon has to carry it
+   * alone when nobody is watching.
+   *
+   * Warm, never a joke at her expense — especially the three that reward
+   * failing. "Never give up", not "Blunderer".
+   *
+   * One name per tally rather than per tier: the second and third time she
+   * crosses the same one it is honestly the same achievement, further along.
+   */
+  achievements: {
+    'moved:p': 'Little steps',
+    'moved:n': 'Hop, hop, hop',
+    'moved:b': 'Diagonal dancer',
+    'moved:r': 'Up and down',
+    'moved:q': 'Queen of everywhere',
+    'moved:k': 'The king walks',
+
+    'took:p': 'Sneaky pawn',
+    'took:n': 'Knight snatcher',
+    'took:b': 'Bishop swoop',
+    'took:r': 'Rook raider',
+    'took:q': 'Queen takes all',
+    'took:k': 'Brave king',
+
+    'slid:b': 'The long diagonal',
+    'slid:r': 'The long run',
+    'slid:q': 'Right across the board',
+
+    promoted: 'All grown up',
+    checked: 'Check!',
+    mated: 'Checkmate!',
+    stars: 'Star collector',
+    levels: 'Level after level',
+    hints: 'Good spotting',
+    mix: 'A bit of everything',
+    endless: 'Round and round',
+
+    /** The three for failing. Warm on purpose — see the note above. */
+    taken: 'Back on your feet',
+    stranded: 'Stuck, and carried on',
+    tries: 'Never give up',
+  } as Record<string, string>,
+
+  /**
+   * The rewards screen. Every label here is for the adult reading over her
+   * shoulder — the stickers, the choice and the bar all carry themselves.
+   */
+  stickers: {
+    title: 'Stickers',
+    /** The moment a sticker is won. The animation carries it; this is for the adult. */
+    tada: 'Ta-da!',
+    /** Shown above the three she picks from. */
+    choose: 'Pick one!',
+    /** Nothing earned yet. */
+    empty: 'Play to win stickers',
+    /** Heads the list of achievements she has earned. */
+    achievements: 'Things you have done',
+  },
+
   pieces: {
     title: 'Pieces',
     subtitle: 'Pick one to start it from the beginning',
@@ -128,6 +192,13 @@ export const strings = {
     /** The pre-path selector, kept until the numbered path has proved itself. */
     oldSelector: 'Old selector',
     openOldSelector: 'Open the world-card selector',
+
+    rewards: 'Rewards',
+    /** Enough to fill the bar once, so the choice screen can be reached. */
+    grantSticker: 'Earn a sticker',
+    /** Every threshold at once — the state the notification is designed for. */
+    grantAchievements: 'Cross every achievement',
+    grantAlbum: 'Fill the album',
   },
 
   play: {

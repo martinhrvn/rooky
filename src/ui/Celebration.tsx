@@ -1,9 +1,8 @@
 import { useEffect } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
-  useReducedMotion,
   useSharedValue,
   withDelay,
   withSpring,
@@ -14,73 +13,23 @@ import Svg, { Path } from 'react-native-svg';
 import { STAR_PATH } from './Star';
 import { colors, rewardSpring } from './theme';
 
-const CONFETTI_COUNT = 22;
+/**
+ * The two moving parts of a win, kept apart from where they are arranged.
+ *
+ * They were one board-anchored component until the XP bar and the way onward
+ * had to be shown alongside the stars — none of which is board-shaped. The
+ * arrangement now lives in `WinDialog`; what stays here is the confetti and
+ * the star that springs in, which are the same wherever they are put.
+ *
+ * Both settle instantly when `skipped`. That is what keeps the win skippable
+ * mid-flight, which matters more than the animation does: levels get replayed
+ * constantly, and an unskippable cutscene is torture by the fifth attempt.
+ */
+export const CONFETTI_COUNT = 22;
+
 const CONFETTI_COLORS = [colors.lightSquare, colors.darkSquare, colors.star, colors.greenLight];
 
-/**
- * The win moment, anchored to the board rather than taking the screen over.
- *
- * The board stays visible behind a light scrim, and **any tap skips straight to
- * the resting state**. That skip matters more than the animation does: levels
- * get replayed constantly, and an unskippable cutscene becomes torture by the
- * fifth attempt.
- *
- * It settles into a resting state rather than disappearing, so the stars she
- * earned stay on screen until she moves on.
- */
-export function Celebration({
-  earned,
-  size,
-  skipped,
-  onSkip,
-}: {
-  earned: 1 | 2 | 3;
-  /** Board edge length, so the overlay matches it exactly. */
-  size: number;
-  /** True once she has tapped — everything jumps to its final position. */
-  skipped: boolean;
-  onSkip: () => void;
-}) {
-  const reduced = useReducedMotion();
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${earned} of 3 stars. Tap to continue.`}
-      onPress={onSkip}
-      style={[styles.overlay, { width: size, height: size }]}
-    >
-      {/* No scrim. Washing the board out fought the whole point of keeping the
-          celebration board-anchored — she should be able to see the position
-          she just finished. The stars carry themselves instead.
-
-          Under reduced motion there is no confetti at all: twenty-two sprites
-          spinning through 540° is the single most vestibular thing in the app,
-          and it is also the one part of the celebration that carries no
-          information. The stars say what she earned, and they still arrive —
-          they simply arrive already there. */}
-      {reduced
-        ? null
-        : Array.from({ length: CONFETTI_COUNT }, (_, i) => (
-            <Confetti key={i} index={i} size={size} skipped={skipped} />
-          ))}
-
-      <View style={styles.stars}>
-        {[0, 1, 2].map((i) => (
-          <RewardStar
-            key={i}
-            index={i}
-            filled={i < earned}
-            size={size * 0.2}
-            skipped={skipped || reduced}
-          />
-        ))}
-      </View>
-    </Pressable>
-  );
-}
-
-function RewardStar({
+export function RewardStar({
   index,
   filled,
   size,
@@ -108,9 +57,8 @@ function RewardStar({
 
   return (
     <Animated.View style={style}>
-      {/* Heavier stroke than the board's stars: without a scrim these sit
-          straight on top of the squares and need to hold their own against
-          both the light and the dark ones. */}
+      {/* Heavier stroke than the board's stars: these are drawn large on a
+          card and need an edge that holds at that size. */}
       <Svg width={size} height={size} viewBox="0 0 100 100">
         <Path
           d={STAR_PATH}
@@ -124,7 +72,7 @@ function RewardStar({
   );
 }
 
-function Confetti({ index, size, skipped }: { index: number; size: number; skipped: boolean }) {
+export function Confetti({ index, size, skipped }: { index: number; size: number; skipped: boolean }) {
   // Deterministic spread from the index — no randomness needed, and it keeps
   // the distribution even rather than clumpy.
   const startX = ((index * 37) % 100) / 100;
@@ -169,17 +117,5 @@ function Confetti({ index, size, skipped }: { index: number; size: number; skipp
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    // Explicit insets rather than relying on the static position, now that
-    // the board sits inside a padded frame.
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    borderRadius: 6,
-  },
-  stars: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   confetti: { position: 'absolute', top: 0, left: 0 },
 });

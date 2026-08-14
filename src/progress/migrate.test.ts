@@ -91,6 +91,41 @@ describe('migrating a version 1 payload all the way up', () => {
   });
 });
 
+describe('migrating from version 3', () => {
+  /** v3 had results and profiles, but no rewards at all. */
+  const v3 = {
+    ...v1,
+    profiles: v1.profiles.map((p, i) => ({
+      ...p,
+      maxTier: 3 as const,
+      avatarId: i === 0 ? ('lion' as const) : ('owl' as const),
+    })),
+  };
+  const migrated = migrateProgress(structuredClone(v3), 3);
+
+  it('keeps every result, which is the whole point', () => {
+    expect(migrated.results.p1['rook-t1-01']).toEqual(v1.results.p1['rook-t1-01']);
+    expect(Object.keys(migrated.results.p1)).toHaveLength(2);
+  });
+
+  it('starts everyone at nothing rather than back-filling', () => {
+    // Deliberate: paying out for a hundred already-finished levels would dump
+    // a dozen sticker choices in a row on first launch, which is a mess and
+    // not a celebration. The counters could not be back-filled in any case —
+    // nothing ever recorded how many times she had been taken.
+    expect(migrated.xp).toEqual({});
+    expect(migrated.album).toEqual({});
+    expect(migrated.counters).toEqual({});
+    expect(migrated.earned).toEqual({});
+  });
+
+  it('gives every new record a value rather than leaving it undefined', () => {
+    for (const key of ['xp', 'counters', 'streaks', 'earned', 'album', 'pending'] as const) {
+      expect(migrated[key], key).toBeDefined();
+    }
+  });
+});
+
 describe('migrating from the current version', () => {
   it('passes a current payload through untouched', () => {
     const current = {

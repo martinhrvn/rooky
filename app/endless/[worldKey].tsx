@@ -8,6 +8,7 @@ import { hashString, makeRng } from '../../src/game/random';
 import type { Level, Tier } from '../../src/game/types';
 import { Button } from '../../src/ui/Button';
 import { LevelPlayer } from '../../src/ui/LevelPlayer';
+import { useRewards } from '../../src/ui/useRewards';
 import { strings } from '../../src/ui/strings';
 import { colors } from '../../src/ui/theme';
 
@@ -30,11 +31,23 @@ export default function EndlessScreen() {
 
 function Endless({ world, tier }: { world: World; tier: Tier }) {
   const router = useRouter();
+  const rewards = useRewards('endless');
 
   // `index` doubles as the difficulty ramp and as the level's identity, so a
   // new level is a genuinely new component rather than a reset of the old one.
   const [index, setIndex] = useState(0);
   const [level, setLevel] = useState<Level | null>(() => build(world, tier, 0));
+
+  /**
+   * Endless pays XP but writes no level result — it is generated, so there is
+   * nothing to record and nothing to be first at. That keeps it the
+   * pressure-free mode while stopping it from being the mode that earns
+   * nothing, which is how it would come to be the mode she skips.
+   */
+  const onWin = useCallback(
+    (stars: 1 | 2 | 3) => rewards.settleWin({ stars, isFirstClear: false }),
+    [rewards],
+  );
 
   const another = useCallback(() => {
     const next = index + 1;
@@ -57,6 +70,11 @@ function Endless({ world, tier }: { world: World; tier: Tier }) {
       key={level.id}
       level={level}
       onExit={() => router.back()}
+      onWin={onWin}
+      onMove={rewards.onMove}
+      onLost={rewards.onLost}
+      onStranded={rewards.onStranded}
+      onHint={rewards.onHint}
       // Endless rolls straight on; the button is only there for impatience.
       onAutoAdvance={another}
       wonActions={

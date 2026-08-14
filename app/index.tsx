@@ -6,7 +6,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import type { PieceType } from '../src/chess/types';
 import { nextLevel, worldOf } from '../src/content';
 import { currentWorld, piecesPlayed } from '../src/progress/selectors';
-import { useActiveProfile, useCompletedIds, useProgress } from '../src/progress/store';
+import { useActiveProfile, useCompletedIds, useProgress, useXp } from '../src/progress/store';
 import { Avatar } from '../src/ui/Avatar';
 import { Button } from '../src/ui/Button';
 import { ProfileForm } from '../src/ui/ProfileForm';
@@ -14,6 +14,7 @@ import { pieceArt } from '../src/ui/pieces';
 import { strings } from '../src/ui/strings';
 import { Text } from '../src/ui/Text';
 import { useCatalogue } from '../src/ui/useCatalogue';
+import { XpBar } from '../src/ui/XpBar';
 import { colors, elevation, layout } from '../src/ui/theme';
 
 /**
@@ -46,6 +47,7 @@ export default function HomeScreen() {
   const profiles = useProgress((s) => s.profiles);
   const createProfile = useProgress((s) => s.createProfile);
   const hydrated = useProgress((s) => s.hydrated);
+  const xp = useXp();
 
   // Nothing at all until the saved state is back, or the first frame would
   // flash the first-run form at someone who already has a profile.
@@ -93,9 +95,23 @@ export default function HomeScreen() {
           <Avatar id={profile?.avatarId ?? ''} size={44} />
         </Pressable>
 
-        <Text variant="title" color={colors.green} style={styles.wordmark}>
-          {strings.appName}
-        </Text>
+        {/* The bar is the reward, so the bar is the way to the rewards. It
+            takes the wordmark's place rather than sitting beside it: what she
+            has earned is more use to her than the app's name, which she
+            cannot read anyway.
+
+            No "you have one waiting" state here — `StickerChoiceDialog` opens
+            over this screen by itself and cannot be dismissed without
+            choosing, so a prompt would only ever be visible in a state that
+            cannot happen. */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={strings.stickers.title}
+          onPress={() => router.push('/stickers')}
+          style={({ pressed }) => [styles.wordmark, pressed && styles.pressed]}
+        >
+          <XpBar xp={xp} />
+        </Pressable>
 
         <Pressable
           accessibilityRole="button"

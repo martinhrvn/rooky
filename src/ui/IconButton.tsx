@@ -7,6 +7,7 @@ export type IconName =
   | 'back'
   | 'forward'
   | 'retry'
+  | 'restart'
   | 'hint'
   | 'next'
   | 'play'
@@ -41,6 +42,19 @@ export function Glyph({ name, size, color = colors.text }: { name: IconName; siz
         <>
           <Path d="M78 50 A28 28 0 1 1 50 22" {...common} />
           <Polygon points="50,8 50,36 34,22" fill={color} />
+        </>
+      )}
+
+      {/* Back to the *first level*, which is a different act from replaying
+          this one — and they appear side by side at the end of a tier, both
+          coral because both mean "again". The circular arrow was doing both
+          jobs, which made them one button to anyone who cannot read the
+          labels. This is the rewind-to-start shape instead: a wall you cannot
+          go back past, and an arrow travelling to it. */}
+      {name === 'restart' && (
+        <>
+          <Path d="M26 22 L26 78" {...common} />
+          <Polygon points="76,20 76,80 34,50" fill={color} />
         </>
       )}
 

@@ -15,11 +15,11 @@ import {
 } from '../../src/content';
 import { useProgress } from '../../src/progress/store';
 import { Button } from '../../src/ui/Button';
-import { IconButton } from '../../src/ui/IconButton';
 import { LevelPlayer } from '../../src/ui/LevelPlayer';
 import { pieceArt } from '../../src/ui/pieces';
 import { strings } from '../../src/ui/strings';
 import { useCatalogue } from '../../src/ui/useCatalogue';
+import { useRewards } from '../../src/ui/useRewards';
 import { colors } from '../../src/ui/theme';
 
 export default function PlayScreen() {
@@ -35,10 +35,20 @@ function Play({ levelId }: { levelId: string }) {
   const router = useRouter();
   const catalogue = useCatalogue();
   const recordResult = useProgress((s) => s.recordResult);
+  const rewards = useRewards('campaign');
 
   const onWin = useCallback(
-    (stars: 1 | 2 | 3, moves: number) => recordResult(level.id, stars, moves),
-    [level.id, recordResult],
+    (stars: 1 | 2 | 3, moves: number) => {
+      // Read before recording: afterwards there is always a result, so
+      // "was this the first time" is no longer answerable.
+      const isFirstClear = !useProgress.getState().results[
+        useProgress.getState().activeProfileId ?? ''
+      ]?.[level.id];
+
+      recordResult(level.id, stars, moves);
+      rewards.settleWin({ stars, isFirstClear });
+    },
+    [level.id, recordResult, rewards],
   );
 
   const world = worldOf(catalogue, level);
@@ -90,18 +100,21 @@ function Play({ levelId }: { levelId: string }) {
           />
         ) : null}
         <Button
-          icon="retry"
+          icon="restart"
           label={strings.tierDone.reset}
           kind="again"
           onPress={() => router.replace(`/play/${tierLevels(world, level.tier)[0].id}`)}
         />
       </View>
     ) : next ? (
-      <IconButton
-        name="next"
+      // A labelled button rather than the bare icon disc it used to be. On the
+      // card it sits beside the end-of-tier choices, which are all pills — a
+      // lone circle there read as a different kind of object rather than as
+      // the same control in its simple case.
+      <Button
+        icon="next"
+        label={strings.play.next}
         kind="go"
-        prominent
-        accessibilityLabel={strings.play.next}
         onPress={() => router.replace(`/play/${next.id}`)}
       />
     ) : null;
@@ -111,6 +124,10 @@ function Play({ levelId }: { levelId: string }) {
       level={level}
       onExit={() => router.back()}
       onWin={onWin}
+      onMove={rewards.onMove}
+      onLost={rewards.onLost}
+      onStranded={rewards.onStranded}
+      onHint={rewards.onHint}
       wonActions={wonActions}
     />
   );
@@ -145,6 +162,9 @@ const styles = StyleSheet.create({
   blank: { flex: 1, backgroundColor: colors.background },
   // Stacked rather than in a row: at the end of a tier there are up to three
   // choices, and three side-by-side buttons are too small to hit reliably.
-  choices: { gap: 10, alignItems: 'stretch', alignSelf: 'stretch', paddingHorizontal: 24 },
+  // The dialog supplies the width and the gap now, so this only has to not
+  // fight it — the old `paddingHorizontal` was compensating for sitting inside
+  // the centred controls row, which it no longer does.
+  choices: { gap: 10, alignItems: 'stretch', alignSelf: 'stretch' },
   cast: { flexDirection: 'row', alignItems: 'center' },
 });

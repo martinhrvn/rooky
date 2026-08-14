@@ -5,14 +5,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 
 import { attackedPieces, capturersOf, dangerFrom, dangerMap } from '../chess/attacks';
-import { type Board as BoardModel, findPieces, movePiece } from '../chess/board';
+import { type Board as BoardModel, findPieces, movePiece, pieceAt } from '../chess/board';
+import { isInCheck, isMate } from '../chess/check';
 import type { Square } from '../chess/types';
 import { legalTargets, promote, rate, restart, rewind, startLevel, tap } from '../game/engine';
 import { isDeadEnd } from '../game/solver';
-import type { Level } from '../game/types';
+import type { GameState, Level } from '../game/types';
+import type { MoveEvent } from '../progress/achievements';
+import { useXp } from '../progress/store';
 import { Board } from './Board';
 import { BoardFrame, frameWidthFor } from './BoardFrame';
-import { Celebration } from './Celebration';
+import { WinDialog } from './WinDialog';
 import { GoalBadge } from './GoalBadge';
 import { IconButton } from './IconButton';
 import { MoveDots } from './MoveDots';
@@ -64,11 +67,52 @@ const buzz = (style: Haptics.ImpactFeedbackStyle) => {
   Haptics.impactAsync(style).catch(() => {});
 };
 
+/**
+ * What a completed move counted as, read off the boards either side of it.
+ *
+ * The board *before* is the only place the answers live: which piece moved,
+ * and what was standing on the square it landed on. Afterwards both are gone.
+ */
+function describeMove(before: BoardModel, after: GameState): MoveEvent {
+  const { from, to } = after.lastMove!;
+  const landed = pieceAt(after.board, to);
+
+  return {
+    piece: pieceAt(before, from)?.type ?? 'p',
+    from,
+    to,
+    captured: pieceAt(before, to)?.type,
+    // A pawn that is no longer a pawn was promoted; `promote` mints the new
+    // piece on the landing square, so comparing the two boards is enough.
+    promotedTo:
+      pieceAt(before, from)?.type === 'p' && landed && landed.type !== 'p'
+        ? landed.type
+        : undefined,
+    gaveCheck: isInCheck(after.board, 'b'),
+    gaveMate: isMate(after.board, 'b'),
+  };
+}
+
 export interface LevelPlayerProps {
   level: Level;
   onExit: () => void;
   /** Fires once, when the level is won. */
   onWin?: (stars: 1 | 2 | 3, moves: number) => void;
+  /**
+   * Fires once per completed move, with everything the achievements need to
+   * work out what it counted as.
+   *
+   * The screen decides what to do with it. `LevelPlayer` deliberately knows
+   * nothing about the store — the same reason `onWin` is a callback — so that
+   * Endless can count moves without ever recording a level result.
+   */
+  onMove?: (event: MoveEvent) => void;
+  /** Her piece was taken. Fires when the capture starts, not after the rewind. */
+  onLost?: () => void;
+  /** The position became unwinnable and was taken back. */
+  onStranded?: () => void;
+  /** She asked to see the danger. */
+  onHint?: () => void;
   /**
    * Controls shown in the bar once the level is won — "next level" for the
    * numbered campaign, "another one" for Endless, or a set of choices at the
@@ -99,6 +143,10 @@ export function LevelPlayer({
   level,
   onExit,
   onWin,
+  onMove,
+  onLost,
+  onStranded,
+  onHint,
   wonActions,
   onAutoAdvance,
 }: LevelPlayerProps) {
@@ -119,6 +167,38 @@ export function LevelPlayer({
   const wonAt = useRef<number | null>(null);
 
   const earned = rate(state.moves, level.par);
+
+  /**
+   * XP as it stood before this level paid out, so the dialog's bar can travel
+   * rather than appear already full.
+   *
+   * Held in a ref updated *during* render and frozen the moment the level is
+   * won: the win effect runs after that render, so by the time `settle` adds
+   * anything, this already holds the old value. Reading XP is the one thing
+   * this component knows about the store, and it is display state only — every
+   * decision about what a level is worth still belongs to the screen.
+   */
+  const xp = useXp();
+  const xpBefore = useRef(xp);
+  if (state.phase !== 'won') xpBefore.current = xp;
+
+  /**
+   * One emit per completed move, wherever it came from.
+   *
+   * Keyed on the move count rising rather than hooked into `tap` and
+   * `promote` separately, so a promotion is counted exactly once and neither
+   * path can be forgotten when one of them changes.
+   *
+   * A move undone by a rewind still counted: she jumped the knight, and the
+   * board taking it back does not unjump it.
+   */
+  const previous = useRef(state);
+  useEffect(() => {
+    const before = previous.current;
+    previous.current = state;
+    if (!onMove || !state.lastMove || state.moves <= before.moves) return;
+    onMove(describeMove(before.board, state));
+  }, [state, onMove]);
 
   useEffect(() => {
     if (state.phase !== 'won') return;
@@ -161,6 +241,10 @@ export function LevelPlayer({
   useEffect(() => {
     if (state.phase !== 'lost' || !state.punisher) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+    // Counted here, but nothing may be *shown* for it until the level ends:
+    // a reward landing mid-rewind would arrive on top of the moment her piece
+    // was taken, which is the one moment it must not.
+    onLost?.();
 
     const { from, to } = state.punisher;
     const strike = setTimeout(() => setPunished(movePiece(state.board, from, to)), PUNISH_DELAY_MS);
@@ -199,8 +283,10 @@ export function LevelPlayer({
     if (!isDeadEnd(state)) return;
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid).catch(() => {});
+    onStranded?.();
     const timer = setTimeout(() => setState(rewind), STRANDED_REWIND_MS);
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, level.danger]);
 
   const retry = useCallback(() => {
@@ -361,14 +447,6 @@ export function LevelPlayer({
               />
             ) : null}
 
-            {state.phase === 'won' ? (
-              <Celebration
-                earned={earned}
-                size={boardSize}
-                skipped={skipped}
-                onSkip={() => setSkipped(true)}
-              />
-            ) : null}
           </View>
         </BoardFrame>
       </View>
@@ -391,13 +469,31 @@ export function LevelPlayer({
         {state.phase !== 'won' && (hasEnemies || level.hint.length > 0) ? (
           <IconButton
             name="hint"
-            onPress={() => setShowHint(true)}
+            onPress={() => {
+              setShowHint(true);
+              // Counted as a thing she did, not as a thing she needed. The
+              // hint shows the danger, which is what these levels are for.
+              onHint?.();
+            }}
             accessibilityLabel={strings.play.hint}
           />
         ) : null}
-
-        {state.phase === 'won' ? wonActions : null}
       </View>
+
+      {/* Over everything, including the controls — what happens next lives on
+          the card now. Nesting a column of choices inside the centred controls
+          row was what left them hanging off to one side. */}
+      {state.phase === 'won' ? (
+        <WinDialog
+          earned={earned}
+          xpBefore={xpBefore.current}
+          xpAfter={xp}
+          size={boardSize}
+          onSkipped={() => setSkipped(true)}
+        >
+          {wonActions}
+        </WinDialog>
+      ) : null}
     </SafeAreaView>
   );
 }

@@ -181,7 +181,21 @@ and the only selector a child sees.
   puts a soft radial behind it — edgeless on purpose, because the badge must
   never look like a button.
 - **The win celebration must stay skippable mid-flight.** Levels get replayed
-  constantly; an unskippable cutscene becomes torture by the fifth attempt.
+  constantly; an unskippable cutscene becomes torture by the fifth attempt. One
+  tap settles every animation at once — it never *dismisses* the card, so a tap
+  always means "get on with it" and can never strand her on a finished board.
+- **The win is a card over a thin scrim** (`WinDialog`), not the board-anchored
+  overlay it used to be. That earlier decision was right while three stars were
+  the only thing to show; it stopped being right once the XP bar and the way
+  onward had to appear too, because neither is board-shaped and both landed on
+  top of the pieces. The scrim stays thin so the finished position is still
+  readable through it, which was the point of the original rule. `Celebration`
+  is now only the two moving parts — the confetti and the star that springs in.
+- **"Try again" and "Start over" are different acts and need different
+  glyphs.** They sit side by side at the end of a tier and are both coral,
+  because both mean "again" — so the circular arrow doing double duty made them
+  one button to a non-reader. Replaying this level is `retry`; going back to the
+  first level of the tier is `restart`, the rewind-to-start shape.
 - **Nothing she can reach may destroy progress.** "Start over" opens level 1
   and leaves every tick and star intact. She presses buttons constantly and
   often by accident, and there is no confirm dialog she could read. Destructive
@@ -275,6 +289,16 @@ position is **kingless**, which real chess libraries reject, and tiers 1–3 nee
 only "where can this piece go" and "what does the enemy cover".
 
 ## Rules worth not re-deriving
+
+- **Never pass a store action straight to `useEffect`.** `useEffect(bump, [])`
+  looks tidy and crashes on unmount with `destroy is not a function`: a zustand
+  action returns whatever `set` returns, and React reads an effect's return
+  value as its cleanup. Call it inside the effect body —
+  `useEffect(() => { bump(); }, [bump])`.
+- **Anything mounted beside `<Stack>` needs its own `SafeAreaProvider`.**
+  Screens get one from react-navigation; the root-level overlays
+  (`StickerChoiceDialog`, `AchievementToasts`) are siblings of the navigator
+  and do not, so `app/_layout.tsx` wraps the lot in one explicitly.
 
 - **Danger has a scope, set per level.** By default only the piece that just
   moved can be taken. A level can set `danger: 'allPieces'`, which checks every

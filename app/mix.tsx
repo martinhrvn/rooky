@@ -11,6 +11,7 @@ import { Button } from '../src/ui/Button';
 import { LevelPlayer } from '../src/ui/LevelPlayer';
 import { strings } from '../src/ui/strings';
 import { useCatalogue } from '../src/ui/useCatalogue';
+import { useRewards } from '../src/ui/useRewards';
 import { colors } from '../src/ui/theme';
 
 /**
@@ -30,6 +31,7 @@ export default function MixScreen() {
   const completed = useCompletedIds();
   const catalogue = useCatalogue();
   const recordResult = useProgress((s) => s.recordResult);
+  const rewards = useRewards('mix');
 
   // Fixed at mount. The pool grows as she plays, but reshuffling underneath
   // her mid-session would be more surprising than useful.
@@ -53,9 +55,13 @@ export default function MixScreen() {
 
   const onWin = useCallback(
     (stars: 1 | 2 | 3, moves: number) => {
-      if (level) recordResult(level.id, stars, moves);
+      if (!level) return;
+      // Mix only ever draws from levels she has already beaten, so it is never
+      // a first clear — the XP is replay-rate by construction.
+      recordResult(level.id, stars, moves);
+      rewards.settleWin({ stars, isFirstClear: false });
     },
-    [level, recordResult],
+    [level, recordResult, rewards],
   );
 
   // Reachable only if the pool were empty, which the home card prevents — but
@@ -74,6 +80,10 @@ export default function MixScreen() {
       level={level}
       onExit={() => router.back()}
       onWin={onWin}
+      onMove={rewards.onMove}
+      onLost={rewards.onLost}
+      onStranded={rewards.onStranded}
+      onHint={rewards.onHint}
       wonActions={<Button icon="shuffle" label={strings.mix.another} kind="go" onPress={another} />}
     />
   );

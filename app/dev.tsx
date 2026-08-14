@@ -4,7 +4,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FULL_CATALOGUE, type World } from '../src/content';
 import type { Level } from '../src/game/types';
+import { ACHIEVEMENTS } from '../src/progress/achievements';
 import { useCompletedIds, useProgress } from '../src/progress/store';
+import { XP_PER_STICKER } from '../src/progress/xp';
 import { Button } from '../src/ui/Button';
 import { IconButton } from '../src/ui/IconButton';
 import { PieceTile } from '../src/ui/PieceTile';
@@ -28,6 +30,10 @@ export default function DevScreen() {
   const completed = useCompletedIds();
   const resetProgress = useProgress((s) => s.resetProgress);
   const completeLevels = useProgress((s) => s.completeLevels);
+  const bump = useProgress((s) => s.bump);
+  const extendStreak = useProgress((s) => s.extendStreak);
+  const settle = useProgress((s) => s.settle);
+  const grantAlbum = useProgress((s) => s.grantAlbum);
   const results = useProgress((s) =>
     s.activeProfileId ? (s.results[s.activeProfileId] ?? {}) : {},
   );
@@ -97,6 +103,43 @@ export default function DevScreen() {
               </View>
             ))}
           </View>
+        </View>
+
+        {/* Reaching a reward state by hand. Without these, testing the choice
+            screen means playing five levels and testing "taken 25 times"
+            means losing a rook twenty-five times. */}
+        <View style={styles.section}>
+          <Text variant="title">{strings.dev.rewards}</Text>
+          <Button
+            icon="levelUp"
+            label={strings.dev.grantSticker}
+            kind="free"
+            onPress={() => settle(XP_PER_STICKER)}
+          />
+          <Button
+            icon="levelUp"
+            label={strings.dev.grantAchievements}
+            kind="free"
+            onPress={() =>
+              confirm(strings.dev.grantAchievements, () => {
+                // Every tally straight to its highest threshold, so one settle
+                // pays out the whole catalogue at once.
+                bump(ACHIEVEMENTS.flatMap((a) => Array<string>(a.threshold).fill(a.counter)));
+                for (const a of ACHIEVEMENTS) {
+                  if (a.kind === 'streak') {
+                    for (let i = 0; i < a.threshold; i += 1) extendStreak(a.counter);
+                  }
+                }
+                settle(0);
+              })
+            }
+          />
+          <Button
+            icon="shuffle"
+            label={strings.dev.grantAlbum}
+            kind="plain"
+            onPress={() => confirm(strings.dev.grantAlbum, grantAlbum)}
+          />
         </View>
 
         {/* The old world-card selector, kept alive while the numbered path
