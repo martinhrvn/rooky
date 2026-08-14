@@ -82,6 +82,55 @@ stickers is roughly 1.9 MB of the Android bundle — so narrowing
   by OpenMoji hexcode rather than by filename precisely so either could be
   swapped in without touching a single saved album.
 
+## Brand art — `brand/*.jpg`, and everything built from it
+
+| | |
+|---|---|
+| **Files** | `brand/rook-source.jpg` (the icon), `brand/board-source.jpg` (the banner) |
+| **Origin** | Generated with Google Gemini, from prompts written for this app |
+| **Licence** | Ours, under the app's MIT licence |
+
+Unlike everything else in this file these carry no third-party obligation —
+they are here because the rule is to record what artwork is and where it came
+from, and "a model made it" is a thing a future reader needs told.
+
+`scripts/build-brand.sh` derives every launcher icon, the splash art and the
+store graphics from those two files:
+
+| Built | From |
+|---|---|
+| `assets/icon.png` | rook on `colors.background` |
+| `assets/android-icon-{foreground,background,monochrome}.png` | the three adaptive layers |
+| `assets/splash-icon.png` | rook, transparent |
+| `assets/favicon.png` | rook on the ground |
+| `brand/icon-play-store.png`, `brand/feature-graphic.png` | the store listing |
+
+**Edit the sources and re-run the script; never touch the outputs by hand.**
+They are committed so no one needs ImageMagick to build the app, which makes
+them look editable and they are not — the next run silently reverts anything
+done to them.
+
+The rook is **cut off its background and re-composited onto `#221A26`** rather
+than used as rendered. The generated plum is a near miss (about `#261C25`), and
+a launcher icon sitting a shade off the splash behind it is the kind of thing
+nobody can name but everybody sees. The banner keeps its own ground, because
+nothing is ever placed against it closely enough for the difference to show.
+
+The flood fill keys on four **sampled corner colours**, so replacing a source
+means re-sampling them:
+
+```sh
+nix run nixpkgs#imagemagick -- brand/rook-source.jpg \
+  -format 'tl:%[pixel:p{5,5}] br:%[pixel:p{2040,2040}]' info:
+```
+
+**The style is deliberate.** Flat vector, chunky rounded pieces, gold stars —
+matching the OpenMoji stickers and the app's own flat artwork. The first pass
+was a photoreal 3D render and read as an adult chess app. Two things to hold on
+to if this is ever regenerated: **no faces on the pieces**, because the app has
+no characters (see the note on the shelf in AGENTS.md's Design section), and
+nothing pastel — the palette was pastel once and read as a toddler's toy.
+
 ## What is deliberately *not* used
 
 - **[lila](https://github.com/lichess-org/lila) level data** (AGPL-3.0) — we follow
