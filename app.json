@@ -10,6 +10,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "eu.hrvn.rooky",
       "adaptiveIcon": {
         "backgroundColor": "#221A26",
         "foregroundImage": "./assets/android-icon-foreground.png",
