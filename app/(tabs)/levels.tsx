@@ -82,7 +82,7 @@ export default function LevelsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.screen} edges={['top']}>
       <PathBackdrop scrollY={scrollY} />
 
       {/* No back arrow: this is a tab now, and there is nothing under it to go
@@ -236,21 +236,20 @@ const styles = StyleSheet.create({
   path: {
     padding: layout.screenPadding,
     gap: 20,
-    // Clears the FAB, which now stands on top of the nav bar — so the last
-    // circle on the path is never sitting under either of them.
-    paddingBottom: 140 + layout.tabBar,
+    // Clears the FAB, so the last circle on the path is never sitting under it.
+    paddingBottom: 140,
     width: '100%',
     maxWidth: layout.contentWidth,
     alignSelf: 'center',
   },
   nodes: { alignItems: 'center', gap: 18, paddingTop: 18 },
   node: { alignItems: 'center' },
-  // Lifted clear of the nav bar rather than moved or dropped: it is one tap to
-  // the next level from anywhere on a long path, and through the Home tab it
-  // would be two.
-  fab: {
-    position: 'absolute',
-    right: layout.screenPadding,
-    bottom: layout.screenPadding + layout.tabBar,
-  },
+  // Kept rather than dropped in favour of the Home tab: from halfway up a long
+  // path that would be two taps, and this is one.
+  //
+  // No offset for the nav bar. The tab navigator is a flex column — the screen
+  // area, then the bar — so this screen already *ends* at the top of the bar
+  // and `bottom` is measured from there. Adding the bar's height would float it
+  // a whole bar clear of nothing.
+  fab: { position: 'absolute', right: layout.screenPadding, bottom: layout.screenPadding },
 });

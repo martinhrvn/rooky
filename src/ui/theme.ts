@@ -216,13 +216,14 @@ export const layout = {
    */
   contentWidth: 560,
   /**
-   * The bottom nav bar, above the safe-area inset.
+   * The bottom nav bar — the bar itself, *not* counting the safe-area inset it
+   * stands on.
    *
-   * Declared here rather than read back from `useBottomTabBarHeight()` so the
-   * path screen can lift its FAB clear of it without importing from
-   * `@react-navigation/bottom-tabs` — that package is in the tree as one of
-   * expo-router's dependencies, not as one of ours, and reaching past
-   * expo-router into it is how a working app breaks on an unrelated upgrade.
+   * Nothing else needs to clear it: the tab navigator is a flex column of
+   * screen-then-bar, so a screen already ends where the bar begins and can
+   * position against its own bottom edge as if the bar were not there. The one
+   * place this is added to is the bar's own height, where the inset has to be
+   * added by hand — see the note in `app/(tabs)/_layout.tsx`.
    */
   tabBar: 64,
 } as const;

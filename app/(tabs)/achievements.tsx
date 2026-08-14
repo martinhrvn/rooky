@@ -45,7 +45,7 @@ export default function AchievementsScreen() {
   const coming = nextUp(tallies, mine, COMING_UP);
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.screen} edges={['top']}>
       {/* No back arrow: this is a tab now, and there is nothing under it to go
           back to. The bar is how you leave. */}
       <View style={styles.header}>

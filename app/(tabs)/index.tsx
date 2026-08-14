@@ -62,7 +62,7 @@ export default function HomeScreen() {
   // navigation flicker on the very first frame of the app.
   if (profiles.length === 0) {
     return (
-      <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+      <SafeAreaView style={styles.screen} edges={['top']}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.body}
@@ -86,7 +86,7 @@ export default function HomeScreen() {
   const played = piecesPlayed(catalogue.worlds, completed);
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.screen} edges={['top']}>
       <View style={styles.header}>
         {/* Who is playing, always visible. The switching matters less than the
             fact that a sibling can no longer quietly play on the wrong

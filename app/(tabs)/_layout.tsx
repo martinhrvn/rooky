@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 import type { ReactNode } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Glyph } from '../../src/ui/IconButton';
 import { Star } from '../../src/ui/Star';
@@ -33,6 +34,8 @@ const ICON = 30;
  * identity here, which is what the reading rule asks for anyway.
  */
 export default function TabsLayout() {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tabs
       screenOptions={{
@@ -40,7 +43,14 @@ export default function TabsLayout() {
         tabBarActiveTintColor: colors.text,
         tabBarInactiveTintColor: colors.textSoft,
         tabBarStyle: {
-          height: layout.tabBar,
+          // The inset has to be added by hand. `getTabBarHeight` returns a
+          // numeric `height` from this style *verbatim* and skips the inset it
+          // would otherwise add — so a fixed height puts the bar flush against
+          // the bottom of the screen, underneath Android's navigation buttons,
+          // while the bar's own `paddingBottom: insets.bottom` squeezes the
+          // icons into what is left. `layout.tabBar` is the bar proper; this is
+          // the ground it stands on.
+          height: layout.tabBar + insets.bottom,
           backgroundColor: colors.surface,
           // On a dark ground a shadow does nothing. Separation is the surface
           // step plus a hairline, the same as every card in the app.

@@ -144,9 +144,19 @@ puts the app's four places on screen at once instead of behind doors on home.
   achievements row left the stickers screen for the same reason; the XP bar on
   home stays pressable because it is a status display whose tap is a shortcut,
   not a second control doing the Stickers tab's job.
-- `layout.tabBar` is the bar's height. Anything needing to clear it reads that,
-  rather than `useBottomTabBarHeight()` — `@react-navigation/bottom-tabs` is in
-  the tree as one of expo-router's dependencies, not one of ours.
+- **A screen inside the bar already ends where the bar begins.** `BottomTabView`
+  is a flex column — screen area, then the bar — so a screen positions against
+  its own bottom edge as if the bar were not there. Do not offset anything by
+  `layout.tabBar`; the path's FAB was, and floated a whole bar clear of nothing.
+  For the same reason a tab screen's `SafeAreaView` takes `edges={['top']}`
+  only: the bottom inset belongs to the bar, and asking for it inside the screen
+  pads above the bar for something that is below it.
+- **A numeric `height` in `tabBarStyle` silently drops the safe-area inset.**
+  `getTabBarHeight` returns a custom numeric height verbatim and skips the
+  `+ insets.bottom` it would otherwise add, while the bar keeps applying
+  `paddingBottom: insets.bottom` *inside* that height — so the bar lands under
+  Android's navigation buttons with its icons squashed. Add the inset by hand:
+  `height: layout.tabBar + insets.bottom`. `layout.tabBar` is the bar proper.
 
 ## Choosing a level
 
@@ -168,9 +178,9 @@ lower down.
   every world after it — from a tap she cannot be talked out of.
 - **The FAB is the answer to a long path**, not a decoration. It opens
   `nextLevel(...)`, which is exactly what Play opens, so the two can never
-  disagree. It now sits `layout.tabBar` higher so it clears the nav bar, and
-  the scroll's bottom padding clears both. It was not dropped in favour of the
-  Home tab: from halfway up a long path that would be two taps, and this is one.
+  disagree. It was not dropped in favour of the Home tab: from halfway up a long
+  path that would be two taps, and this is one. It needs no offset for the nav
+  bar — see the note on that in Navigation.
 - `app/pieces.tsx` is the **previous** selector, kept while the path proves
   itself and reachable only from the developer panel. When the path is settled,
   delete it, `MixCard` and `TierRank` together — or bring `TierRank` back, per
