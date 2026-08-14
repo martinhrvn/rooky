@@ -1,13 +1,19 @@
 import { describe, expect, it } from 'vitest';
 
 import { parseSquare } from '../chess/types';
+import { strings } from '../ui/strings';
 import {
   ACHIEVEMENTS,
+  FAMILIES,
   LONG_SLIDE,
   type MoveEvent,
   TRIES,
   countersFor,
+  earnedFamilies,
+  moved,
   newlyEarned,
+  nextUp,
+  took,
   xpFor,
 } from './achievements';
 
@@ -170,5 +176,101 @@ describe('the streak', () => {
 
     expect(earned[`${TRIES}@5`]).toBeDefined();
     expect(newlyEarned(tallies({}, { [TRIES]: 0 }), earned)).toHaveLength(0);
+  });
+});
+
+describe('families', () => {
+  it('covers the catalogue exactly, losing and duplicating nothing', () => {
+    // The guard on the collection screen: a new entry with a fresh counter has
+    // to turn up in a family, or it would pay XP and then be invisible.
+    const grouped = FAMILIES.flatMap((f) => f.tiers.map((a) => a.id));
+
+    expect(new Set(grouped).size).toBe(grouped.length);
+    expect(new Set(grouped)).toEqual(new Set(ACHIEVEMENTS.map((a) => a.id)));
+  });
+
+  it('orders each family upwards, so the pips read left to right', () => {
+    for (const family of FAMILIES) {
+      const thresholds = family.tiers.map((t) => t.threshold);
+      expect(thresholds).toEqual([...thresholds].sort((a, b) => a - b));
+    }
+  });
+
+  it('takes its picture from the family, not from one tier', () => {
+    for (const family of FAMILIES) {
+      for (const tier of family.tiers) {
+        expect(tier.mark).toBe(family.mark);
+        expect(tier.piece).toBe(family.piece);
+      }
+    }
+  });
+
+  it('lists only what she has something of, and counts the tiers', () => {
+    const earned = { [`${moved('n')}@25`]: 1, [`${took('p')}@5`]: 1, [`${took('p')}@20`]: 1 };
+    const listed = earnedFamilies(earned);
+
+    expect(listed.map((e) => [e.family.counter, e.count])).toEqual([
+      [moved('n'), 1],
+      [took('p'), 2],
+    ]);
+  });
+});
+
+describe('what is coming up', () => {
+  it('offers three, none of them already started', () => {
+    const earned = Object.fromEntries(FAMILIES.slice(0, 4).map((f) => [f.tiers[0].id, 1]));
+    const up = nextUp(tallies(), earned);
+
+    expect(up).toHaveLength(3);
+    for (const family of up) expect(earned[family.tiers[0].id]).toBeUndefined();
+  });
+
+  it('puts a nearly-met family ahead of an untouched one', () => {
+    // Two moves off 25 with the knight, against everything else at zero.
+    const [first] = nextUp(tallies({ [moved('n')]: 23 }), {});
+
+    expect(first.counter).toBe(moved('n'));
+  });
+
+  it('reads a streak family from the streaks, not the totals', () => {
+    // The tally lands on `counters` under the same key, which would rank
+    // "Never give up" first if the kind were ignored.
+    expect(nextUp(tallies({ [TRIES]: 4 }), {})[0].counter).not.toBe(TRIES);
+    expect(nextUp(tallies({}, { [TRIES]: 4 }), {})[0].counter).toBe(TRIES);
+  });
+
+  it('is the same three twice over, so a fresh profile is not shuffled', () => {
+    expect(nextUp(tallies(), {})).toEqual(nextUp(tallies(), {}));
+  });
+
+  it('runs out rather than repeating, once every family has something', () => {
+    const earned = Object.fromEntries(FAMILIES.map((f) => [f.tiers[0].id, 1]));
+
+    expect(nextUp(tallies(), earned)).toHaveLength(0);
+  });
+
+  it('offers what is left when fewer than three remain', () => {
+    const earned = Object.fromEntries(FAMILIES.slice(2).map((f) => [f.tiers[0].id, 1]));
+
+    expect(nextUp(tallies(), earned)).toHaveLength(2);
+  });
+});
+
+describe('every family can be spoken about', () => {
+  // The collection reads two maps keyed by counter, and a counter missing from
+  // either one falls back to its raw id — "moved:n · 34 of 100" on a screen
+  // whose whole job is to be read aloud by a parent. Cheap to check, and the
+  // failure mode is otherwise only visible on a device.
+  it('has a name and a description of what it counts', () => {
+    for (const { counter } of FAMILIES) {
+      expect(strings.achievementNames[counter], counter).toBeTruthy();
+      expect(strings.achievementTallies[counter], counter).toBeTruthy();
+    }
+  });
+
+  it('has nothing spare in either map', () => {
+    const watched = new Set(FAMILIES.map((f) => f.counter));
+    for (const key of Object.keys(strings.achievementNames)) expect(watched.has(key), key).toBe(true);
+    for (const key of Object.keys(strings.achievementTallies)) expect(watched.has(key), key).toBe(true);
   });
 });

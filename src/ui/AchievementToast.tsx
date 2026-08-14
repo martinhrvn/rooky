@@ -12,11 +12,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { Achievement } from '../progress/achievements';
 import { useProgress } from '../progress/store';
-import { Glyph, type IconName } from './IconButton';
-import { Star } from './Star';
+import { AchievementIcon } from './AchievementIcon';
 import { Text } from './Text';
 import { XpBar } from './XpBar';
-import { pieceArt } from './pieces';
 import { strings } from './strings';
 import { colors, elevation, layout, rewardSpring } from './theme';
 
@@ -27,29 +25,6 @@ const SHOW_MS = 2800;
 const FIRST_DELAY_MS = 900;
 
 const FILL_MS = 600;
-
-/**
- * Which glyph stands in for an achievement that is not about a piece.
- *
- * Reuses the app's existing shapes rather than inventing twelve new ones.
- * These are stand-ins and read as approximate — proper achievement artwork is
- * still outstanding, and is the obvious next thing once she has met a few.
- */
-const MARKS: Record<string, IconName> = {
-  move: 'forward',
-  capture: 'next',
-  slide: 'forward',
-  promote: 'levelUp',
-  check: 'levelUp',
-  mate: 'levelUp',
-  flag: 'path',
-  hint: 'hint',
-  shuffle: 'shuffle',
-  endless: 'endless',
-  // Failing, and carrying on. The circular arrow is the app's "again" shape,
-  // which is exactly what these three are for.
-  rescue: 'retry',
-};
 
 /**
  * Announces achievements as they are earned, over whatever is on screen.
@@ -152,8 +127,7 @@ function Toast({
     transform: [{ translateY: -30 + drop.value * 30 }],
   }));
 
-  const Art = achievement.piece ? pieceArt('w', achievement.piece) : null;
-  const name = strings.achievements[achievement.counter] ?? achievement.counter;
+  const name = strings.achievementNames[achievement.counter] ?? achievement.counter;
 
   return (
     <Animated.View style={[styles.wrap, style]}>
@@ -169,13 +143,12 @@ function Toast({
         style={({ pressed }) => [styles.toast, pressed && styles.pressed]}
       >
         <View style={styles.icon}>
-          {Art ? (
-            <Art width={34} height={34} />
-          ) : achievement.mark === 'star' ? (
-            <Star size={30} id={`toast-${achievement.id}`} />
-          ) : (
-            <Glyph name={MARKS[achievement.mark] ?? 'levelUp'} size={30} color={colors.text} />
-          )}
+          <AchievementIcon
+            piece={achievement.piece}
+            mark={achievement.mark}
+            size={34}
+            id={`toast-${achievement.id}`}
+          />
         </View>
 
         <View style={styles.body}>

@@ -11,15 +11,23 @@ writing any code. Append `.md` to any docs URL to get the Markdown version.
 
 **1. The player cannot read.** The first tester is a four-year-old. Text may
 *support* meaning but must never be the only thing carrying it — every control
-has to read from its icon, shape, or position alone. **Counts are pips, not
-numerals** — "how many" has to be countable at a glance. *Ordinals* are the one
-exception, and only on the path: the circles there are numbered 1, 2, 3 because
-that says which order they go in rather than how many of anything, those three
-shapes are known long before words are, and the path is a screen where an adult
-is expected to help. Do not read that exception as permission for numerals
-anywhere else. The play screen stays icon-only because words are noise mid-task;
-the home and path screens carry titles and labels, because that is where an
-adult helps out.
+has to read from its icon, shape, or position alone.
+
+**Numerals fall under that same rule, not under a ban.** She knows her numbers,
+as do most children old enough to play chess at all — so a digit may support a
+count, it just may never be the thing carrying it. **A count that has to be read
+at a glance is pips**, because pips are countable without stopping to read; a
+digit beside them is fine and often useful to whoever is helping. Where a number
+is the *only* thing on offer, it has failed the rule, and that is what a bare
+`12 of 58` was doing on the stickers screen before the collection replaced it.
+
+*Ordinals* are a different case again and carry themselves: the circles on the
+path are numbered 1, 2, 3 because that says which order they go in rather than
+how many of anything.
+
+The play screen stays icon-only because words and numbers are both noise
+mid-task; the home, path and collection screens carry titles, labels and counts,
+because that is where an adult helps out.
 
 All user-facing copy lives in `src/ui/strings.ts`, and all text goes through
 `src/ui/Text.tsx` so nothing drifts into an ad-hoc `fontSize`.
@@ -200,6 +208,47 @@ and the only selector a child sees.
   and leaves every tick and star intact. She presses buttons constantly and
   often by accident, and there is no confirm dialog she could read. Destructive
   actions belong behind the parent-facing gear.
+
+## Rewards
+
+XP feeds one bar, the bar buys stickers, and achievements are one-shot lumps of
+XP on top — one economy, never two. `src/progress/achievements.ts` holds the
+catalogue and every pure part of it; nothing there imports React or the store.
+
+- **`AchievementIcon` is the only place an achievement is drawn.** The toast and
+  the collection both go through it, because two pictures for one achievement
+  are two achievements to a non-reader. It takes `{piece, mark}` rather than an
+  `Achievement`, so a whole `Family` passes straight in.
+- **The collection groups by tally, not by tier.** Names live in
+  `strings.achievementNames` keyed by *counter*, so all three tiers of `moved:n`
+  are "Hop, hop, hop" — listed flat that is the same row three times with
+  nothing to tell them apart. `FAMILIES` does the grouping, derived from
+  `ACHIEVEMENTS` so a new entry cannot be left out of one, and the tiers are a
+  row of pips.
+- **Pips carry the count; the `34 of 100` beside them is support.** Both are
+  wanted here — the question this screen answers ("what do I have to do to get
+  that one?") is asked out loud, and a digit answers it precisely for whoever is
+  helping. The order is what matters: the pips say how far along a tally is on
+  their own, so covering the numbers loses precision and nothing else.
+  `strings.achievementTallies` says what each one counts, as a noun phrase with
+  no number in it, so one line serves every tier. Two maps keyed by counter is
+  a drift risk, so `achievements.test.ts` fails on a family missing from either
+  and on a key in either that no family watches.
+- **Three unearned ones are silhouettes, and hold back their name only.** They
+  say what they count and how close she is — otherwise nobody in the house can
+  tell her how to get one — but the name stays back, on screen and in the
+  accessibility label, because that is the part worth discovering. `nextUp`
+  picks the three she is *closest* to, so what is dangled moves as she plays,
+  and it skips a family she has already started because that one is on the
+  screen above with an empty pip.
+- **Read a family's tally with `tallyOf`, never `counters[counter]`.** `tries`
+  has an entry in both records and only the streak one is the number its
+  achievements use.
+- **"Not yours yet" is opacity, everywhere.** React Native cannot blur a view
+  (`Board.tsx` says so where the glow is drawn in SVG instead), and the app
+  already dims for locked in `PathNode`, `PieceTile` and `TierRank`. Do not add
+  a blur dependency for this; one visual language for locked is worth more than
+  a truer effect.
 
 ## Worlds
 

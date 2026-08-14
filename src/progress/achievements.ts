@@ -214,6 +214,107 @@ const byId = new Map(ACHIEVEMENTS.map((a) => [a.id, a]));
 
 export const achievementById = (id: string): Achievement | undefined => byId.get(id);
 
+// --- families --------------------------------------------------------------
+
+/**
+ * Every tier of one counter, together.
+ *
+ * The collection screen groups by this rather than listing achievements flat,
+ * because names are keyed by *counter* — all three tiers of `moved:n` are
+ * called "Hop, hop, hop", so a flat list shows the same name three times with
+ * nothing to tell them apart. Grouped, the tiers become pips against one name,
+ * which is also the form a non-reader can count.
+ */
+export interface Family {
+  readonly counter: string;
+  /** Its achievements, ascending by threshold. */
+  readonly tiers: readonly Achievement[];
+  readonly kind: 'total' | 'streak';
+  readonly piece?: PieceType;
+  readonly mark: Mark;
+}
+
+/**
+ * Every counter, once, in catalogue order.
+ *
+ * Built from `ACHIEVEMENTS` rather than declared beside it, so a new entry
+ * joins its family — or starts one — without a second list to remember.
+ */
+export const FAMILIES: readonly Family[] = (() => {
+  const order: string[] = [];
+  const tiers = new Map<string, Achievement[]>();
+
+  for (const achievement of ACHIEVEMENTS) {
+    const existing = tiers.get(achievement.counter);
+    if (existing) {
+      existing.push(achievement);
+    } else {
+      order.push(achievement.counter);
+      tiers.set(achievement.counter, [achievement]);
+    }
+  }
+
+  return order.map((counter) => {
+    const group = tiers.get(counter)!.slice().sort((a, b) => a.threshold - b.threshold);
+    const [first] = group;
+    return {
+      counter,
+      tiers: group,
+      kind: first.kind,
+      mark: first.mark,
+      ...(first.piece ? { piece: first.piece } : {}),
+    };
+  });
+})();
+
+/** How many of a family's tiers have been earned. */
+const earnedCount = (family: Family, earned: Readonly<Record<string, number>>): number =>
+  family.tiers.filter((tier) => earned[tier.id]).length;
+
+/**
+ * The tally a family watches — its streak if it is one, otherwise its total.
+ *
+ * Exported because the collection shows how far along she is, and reading
+ * `counters[counter]` at the call site is exactly how a streak family ends up
+ * being read from the wrong record: `tries` has an entry in *both*, and the
+ * totals one is the number the achievement does not use.
+ */
+export const tallyOf = (family: Family, { counters, streaks }: Tallies): number =>
+  family.kind === 'streak' ? (streaks[family.counter] ?? 0) : (counters[family.counter] ?? 0);
+
+/** Families with at least one tier earned, in catalogue order. */
+export function earnedFamilies(
+  earned: Readonly<Record<string, number>>,
+): readonly { family: Family; count: number }[] {
+  return FAMILIES.map((family) => ({ family, count: earnedCount(family, earned) })).filter(
+    (entry) => entry.count > 0,
+  );
+}
+
+/**
+ * The families she has *nothing* of yet, nearest first.
+ *
+ * What the collection screen shows as silhouettes, so what is dangled in front
+ * of her moves as she plays instead of being a fixed three she may never
+ * approach. Ranked by how far along the first tier is, and ties broken by
+ * catalogue order — which matters most on a fresh profile, where every tally is
+ * zero and the order would otherwise be arbitrary.
+ *
+ * Families with a tier already earned are left out on purpose: those are
+ * already on the screen above, with an empty pip saying the same thing.
+ */
+export function nextUp(
+  tallies: Tallies,
+  earned: Readonly<Record<string, number>>,
+  count = 3,
+): readonly Family[] {
+  return FAMILIES.filter((family) => earnedCount(family, earned) === 0)
+    .map((family, i) => ({ family, i, progress: tallyOf(family, tallies) / family.tiers[0].threshold }))
+    .sort((a, b) => b.progress - a.progress || a.i - b.i)
+    .slice(0, count)
+    .map((entry) => entry.family);
+}
+
 // --- evaluation ------------------------------------------------------------
 
 export interface Tallies {

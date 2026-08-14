@@ -77,8 +77,10 @@ export const strings = {
    *
    * One name per tally rather than per tier: the second and third time she
    * crosses the same one it is honestly the same achievement, further along.
+   * That is also why the collection groups by tally — three rows all called
+   * "Hop, hop, hop" would be three achievements to anyone reading it.
    */
-  achievements: {
+  achievementNames: {
     'moved:p': 'Little steps',
     'moved:n': 'Hop, hop, hop',
     'moved:b': 'Diagonal dancer',
@@ -113,6 +115,72 @@ export const strings = {
   } as Record<string, string>,
 
   /**
+   * What each tally actually counts, keyed the same way as the names.
+   *
+   * A noun phrase rather than an instruction, and deliberately without a
+   * number in it: the count beside it supplies the threshold, so one line
+   * serves every tier of a tally instead of one per tier.
+   *
+   * This is the half of the collection that only an adult can use — the
+   * question it answers is "what does she have to do to get that?", which is a
+   * question a four-year-old asks out loud rather than reads. Every family
+   * needs one; `achievements.test.ts` fails if a new counter arrives without.
+   */
+  achievementTallies: {
+    'moved:p': 'Steps taken with a pawn',
+    'moved:n': 'Hops with the knight',
+    'moved:b': 'Moves with the bishop',
+    'moved:r': 'Moves with the rook',
+    'moved:q': 'Moves with the queen',
+    'moved:k': 'Moves with the king',
+
+    'took:p': 'Pieces taken with a pawn',
+    'took:n': 'Pieces taken with the knight',
+    'took:b': 'Pieces taken with the bishop',
+    'took:r': 'Pieces taken with the rook',
+    'took:q': 'Pieces taken with the queen',
+    'took:k': 'Pieces taken with the king',
+
+    'slid:b': 'Long diagonals crossed',
+    'slid:r': 'Long lines crossed',
+    'slid:q': 'Long moves by the queen',
+
+    promoted: 'Pawns that reached the far side',
+    checked: 'Checks given to the king',
+    mated: 'Checkmates',
+    stars: 'Stars collected',
+    levels: 'Levels finished',
+    hints: 'Times you looked at the danger',
+    mix: 'Rounds of Mix',
+    endless: 'Rounds of a piece on its own',
+
+    taken: 'Times a piece was taken',
+    stranded: 'Times there was nowhere to go',
+    /** The streak, so "in a row" is the whole of it. */
+    tries: 'Tries in a row on one level',
+  } as Record<string, string>,
+
+  /**
+   * The collection. Labels here are for the adult reading over her shoulder —
+   * the pictures and the pips carry it on their own.
+   */
+  achievements: {
+    title: 'Things you have done',
+    /** Nothing earned yet. */
+    empty: 'Play to start collecting',
+    /** Heads the three she has not got yet. */
+    upNext: 'Coming up',
+    /** Between a tally so far and the threshold it is heading for. */
+    of: 'of',
+    /**
+     * Stands in for a locked one's name, for a screen reader as well as on
+     * screen. Never the real name — the mystery is the whole point of drawing
+     * it as a silhouette, and a name read out loud spends it.
+     */
+    locked: 'Not yet',
+  },
+
+  /**
    * The rewards screen. Every label here is for the adult reading over her
    * shoulder — the stickers, the choice and the bar all carry themselves.
    */
@@ -124,8 +192,6 @@ export const strings = {
     choose: 'Pick one!',
     /** Nothing earned yet. */
     empty: 'Play to win stickers',
-    /** Heads the list of achievements she has earned. */
-    achievements: 'Things you have done',
   },
 
   pieces: {

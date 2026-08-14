@@ -1,16 +1,17 @@
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ACHIEVEMENTS, achievementById } from '../src/progress/achievements';
+import { type Achievement, achievementById } from '../src/progress/achievements';
 import { useAlbum, useProgress, useXp } from '../src/progress/store';
-import { IconButton } from '../src/ui/IconButton';
+import { AchievementIcon } from '../src/ui/AchievementIcon';
+import { Glyph, IconButton } from '../src/ui/IconButton';
 import { StickerArt } from '../src/ui/StickerArt';
 import { Text } from '../src/ui/Text';
 import { XpBar } from '../src/ui/XpBar';
 import { strings } from '../src/ui/strings';
-import { colors, elevation, layout } from '../src/ui/theme';
+import { colors, layout } from '../src/ui/theme';
 
 /**
  * Her stickers: the choice when one is owed, and everything she has won.
@@ -27,6 +28,15 @@ export default function StickersScreen() {
     s.activeProfileId ? s.earned[s.activeProfileId] : undefined,
   );
   const ensureOffer = useProgress((s) => s.ensureOffer);
+
+  // The last few she won, newest first — `earned` stores when, so "recent"
+  // costs nothing. Three at most: this is a signpost to the collection, not
+  // the collection.
+  const recent = Object.entries(earned ?? {})
+    .sort(([, a], [, b]) => b - a)
+    .map(([id]) => achievementById(id))
+    .filter((a): a is Achievement => Boolean(a))
+    .slice(0, 3);
 
   // Nudges the root dialog into opening if one is owed. Harmless if it is
   // already up, because `ensureOffer` does nothing when an offer stands.
@@ -69,18 +79,30 @@ export default function StickersScreen() {
           </Text>
         )}
 
-        {earned && Object.keys(earned).length > 0 ? (
-          <View style={styles.achievements}>
-            <Text variant="label" color={colors.textSoft}>
-              {strings.stickers.achievements}
-            </Text>
-            <Text variant="label" color={colors.text}>
-              {/* Adult-facing, and deliberately plain: the counted-out list is
-                  for whoever is asked "what did you get?" */}
-              {Object.keys(earned).filter(achievementById).length} of {ACHIEVEMENTS.length}
-            </Text>
-          </View>
-        ) : null}
+        {/* The way to the collection. It used to be "12 of 58" here, which is
+            the one form she cannot read — so the row leads with the last few
+            she actually won, drawn, and lets the achievements screen do the
+            rest. */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={strings.achievements.title}
+          onPress={() => router.push('/achievements')}
+          style={({ pressed }) => [styles.achievements, pressed && styles.pressed]}
+        >
+          <Text variant="label" style={styles.achievementsLabel}>
+            {strings.achievements.title}
+          </Text>
+          {recent.map((achievement) => (
+            <AchievementIcon
+              key={achievement.id}
+              piece={achievement.piece}
+              mark={achievement.mark}
+              size={24}
+              id={`recent-${achievement.id}`}
+            />
+          ))}
+          <Glyph name="forward" size={18} color={colors.textSoft} />
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -103,19 +125,7 @@ const styles = StyleSheet.create({
     maxWidth: layout.contentWidth,
     alignSelf: 'center',
   },
-  choice: { gap: 16 },
-  offer: { flexDirection: 'row', justifyContent: 'center', gap: 14 },
-  offered: {
-    backgroundColor: colors.surface,
-    borderRadius: layout.radius,
-    borderWidth: 1,
-    borderColor: colors.surfaceEdge,
-    paddingHorizontal: 14,
-    paddingVertical: 18,
-    ...elevation('raised'),
-  },
   pressed: { opacity: 0.7, transform: [{ scale: 0.98 }] },
-  bigEmoji: { fontSize: 56, lineHeight: 68 },
   album: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center' },
   slot: {
     width: 56,
@@ -128,9 +138,12 @@ const styles = StyleSheet.create({
     borderColor: colors.surfaceEdge,
   },
   achievements: {
-    gap: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     borderTopWidth: 1,
     borderTopColor: colors.surfaceEdge,
     paddingTop: 16,
   },
+  achievementsLabel: { flex: 1 },
 });
