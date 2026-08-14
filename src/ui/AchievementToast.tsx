@@ -134,11 +134,12 @@ function Toast({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={name}
-        // Straight to the stickers: the achievement paid XP, the XP buys
-        // stickers, so "what did I just get?" is answered on that screen.
+        // Straight to the achievements. It used to go to the stickers, because
+        // the achievements had nowhere of their own — now that they do, the
+        // badge she just tapped is on the screen she lands on.
         onPress={() => {
           onDismiss();
-          router.push('/stickers');
+          router.push('/achievements');
         }}
         style={({ pressed }) => [styles.toast, pressed && styles.pressed]}
       >

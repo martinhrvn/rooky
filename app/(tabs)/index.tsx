@@ -3,19 +3,19 @@ import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, View } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 
-import type { PieceType } from '../src/chess/types';
-import { nextLevel, worldOf } from '../src/content';
-import { currentWorld, piecesPlayed } from '../src/progress/selectors';
-import { useActiveProfile, useCompletedIds, useProgress, useXp } from '../src/progress/store';
-import { Avatar } from '../src/ui/Avatar';
-import { Button } from '../src/ui/Button';
-import { ProfileForm } from '../src/ui/ProfileForm';
-import { pieceArt } from '../src/ui/pieces';
-import { strings } from '../src/ui/strings';
-import { Text } from '../src/ui/Text';
-import { useCatalogue } from '../src/ui/useCatalogue';
-import { XpBar } from '../src/ui/XpBar';
-import { colors, elevation, layout } from '../src/ui/theme';
+import type { PieceType } from '../../src/chess/types';
+import { nextLevel, worldOf } from '../../src/content';
+import { currentWorld, piecesPlayed } from '../../src/progress/selectors';
+import { useActiveProfile, useCompletedIds, useProgress, useXp } from '../../src/progress/store';
+import { Avatar } from '../../src/ui/Avatar';
+import { Button } from '../../src/ui/Button';
+import { ProfileForm } from '../../src/ui/ProfileForm';
+import { pieceArt } from '../../src/ui/pieces';
+import { strings } from '../../src/ui/strings';
+import { Text } from '../../src/ui/Text';
+import { useCatalogue } from '../../src/ui/useCatalogue';
+import { XpBar } from '../../src/ui/XpBar';
+import { colors, elevation, layout } from '../../src/ui/theme';
 
 /**
  * Levels finished before Mix appears.
@@ -29,12 +29,17 @@ const MIN_FOR_MIX = 3;
 const MAX_MIX_PIECES = 5;
 
 /**
- * Home: where she is, and three ways in.
+ * Home: where she is, and the way on.
  *
  * Deliberately almost empty. Everything that used to live here — the rank of
  * squares, the world card, the per-world Endless button — either moved onto
- * the path behind "Choose a level" or went away, because the one job this
- * screen has is to be a Play button she cannot miss.
+ * the path or went away, because the one job this screen has is to be a Play
+ * button she cannot miss.
+ *
+ * The bottom bar took the last of the doorways with it: "Choose a level" is
+ * the Levels tab now. What is left is Play, and Mix — which stays only because
+ * it is the one mode with no tab, and cannot have one, since a tab that opened
+ * a board would put chrome under it.
  *
  * The hero is the piece rather than a heading: it says which world Play will
  * open to someone who cannot read the words underneath it.
@@ -158,12 +163,11 @@ export default function HomeScreen() {
             />
           ) : null}
 
-          <Button
-            icon="path"
-            label={strings.home.choose}
-            kind="plain"
-            onPress={() => router.push('/levels')}
-          />
+          {/* "Choose a level" used to sit here and is now the Levels tab, an
+              inch below itself. Mix stays because nothing on the bar is Mix —
+              it is the one mode without a place of its own, and it should not
+              get one: a tab for it would open a board, which is the line this
+              navigation draws. */}
         </View>
       </View>
     </SafeAreaView>

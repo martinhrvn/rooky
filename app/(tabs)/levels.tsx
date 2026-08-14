@@ -9,18 +9,18 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 
-import { TIERS, type World, nextLevel, soloPiece, tierLevels } from '../src/content';
-import type { Tier } from '../src/game/types';
-import { firstPlayableOfTier, isWorldUnlocked, tierState } from '../src/progress/selectors';
-import { useCompletedIds } from '../src/progress/store';
-import { IconButton } from '../src/ui/IconButton';
-import { PathBackdrop } from '../src/ui/PathBackdrop';
-import { PathNode } from '../src/ui/PathNode';
-import { strings } from '../src/ui/strings';
-import { Text } from '../src/ui/Text';
-import { useCatalogue } from '../src/ui/useCatalogue';
-import { WorldRibbon } from '../src/ui/WorldRibbon';
-import { colors, layout } from '../src/ui/theme';
+import { TIERS, type World, nextLevel, soloPiece, tierLevels } from '../../src/content';
+import type { Tier } from '../../src/game/types';
+import { firstPlayableOfTier, isWorldUnlocked, tierState } from '../../src/progress/selectors';
+import { useCompletedIds } from '../../src/progress/store';
+import { IconButton } from '../../src/ui/IconButton';
+import { PathBackdrop } from '../../src/ui/PathBackdrop';
+import { PathNode } from '../../src/ui/PathNode';
+import { strings } from '../../src/ui/strings';
+import { Text } from '../../src/ui/Text';
+import { useCatalogue } from '../../src/ui/useCatalogue';
+import { WorldRibbon } from '../../src/ui/WorldRibbon';
+import { colors, layout } from '../../src/ui/theme';
 
 /**
  * How far a circle steps off centre. The path winds left, centre, right so it
@@ -85,8 +85,9 @@ export default function LevelsScreen() {
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <PathBackdrop scrollY={scrollY} />
 
+      {/* No back arrow: this is a tab now, and there is nothing under it to go
+          back to. The bar is how you leave. */}
       <View style={styles.header}>
-        <IconButton name="back" onPress={() => router.back()} accessibilityLabel={strings.play.back} />
         <Text variant="title">{strings.path.title}</Text>
       </View>
 
@@ -235,13 +236,21 @@ const styles = StyleSheet.create({
   path: {
     padding: layout.screenPadding,
     gap: 20,
-    // Clears the FAB, so the last circle on the path is never sitting under it.
-    paddingBottom: 140,
+    // Clears the FAB, which now stands on top of the nav bar — so the last
+    // circle on the path is never sitting under either of them.
+    paddingBottom: 140 + layout.tabBar,
     width: '100%',
     maxWidth: layout.contentWidth,
     alignSelf: 'center',
   },
   nodes: { alignItems: 'center', gap: 18, paddingTop: 18 },
   node: { alignItems: 'center' },
-  fab: { position: 'absolute', right: layout.screenPadding, bottom: layout.screenPadding },
+  // Lifted clear of the nav bar rather than moved or dropped: it is one tap to
+  // the next level from anywhere on a long path, and through the Home tab it
+  // would be two.
+  fab: {
+    position: 'absolute',
+    right: layout.screenPadding,
+    bottom: layout.screenPadding + layout.tabBar,
+  },
 });

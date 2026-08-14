@@ -14,7 +14,9 @@ export type IconName =
   | 'endless'
   | 'shuffle'
   | 'levelUp'
-  | 'path';
+  | 'path'
+  | 'home'
+  | 'things';
 
 /**
  * Every glyph in the app.
@@ -107,6 +109,26 @@ export function Glyph({ name, size, color = colors.text }: { name: IconName; siz
           {/* Steps rising to the right — the next difficulty is a step up. */}
           <Path d="M18 78 L42 78 L42 56 L66 56 L66 34 L88 34" {...common} />
           <Polygon points="74,20 96,20 96,42" fill={color} />
+        </>
+      )}
+
+      {name === 'home' && (
+        <>
+          {/* A house. The one shape in this set that needs no explaining to
+              anybody, which is exactly what the first tab wants. */}
+          <Path d="M16 48 L50 20 L84 48" {...common} />
+          <Path d="M26 44 L26 82 L74 82 L74 44" {...common} />
+        </>
+      )}
+
+      {name === 'things' && (
+        <>
+          {/* A rosette: a disc on two ribbon tails. Next to the Stickers tab's
+              star it has to differ by *shape*, since both are rewards and both
+              would otherwise reach for gold — so this one is round and hangs,
+              and the star has points and does not. */}
+          <Path d="M38 58 L30 88 L50 78 L70 88 L62 58" {...common} />
+          <Circle cx={50} cy={38} r={24} {...common} />
         </>
       )}
     </Svg>

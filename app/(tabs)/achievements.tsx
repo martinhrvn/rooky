@@ -1,14 +1,12 @@
-import { useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { type Family, earnedFamilies, nextUp, tallyOf } from '../src/progress/achievements';
-import { useProgress } from '../src/progress/store';
-import { AchievementIcon } from '../src/ui/AchievementIcon';
-import { IconButton } from '../src/ui/IconButton';
-import { Text } from '../src/ui/Text';
-import { strings } from '../src/ui/strings';
-import { colors, layout } from '../src/ui/theme';
+import { type Family, earnedFamilies, nextUp, tallyOf } from '../../src/progress/achievements';
+import { useProgress } from '../../src/progress/store';
+import { AchievementIcon } from '../../src/ui/AchievementIcon';
+import { Text } from '../../src/ui/Text';
+import { strings } from '../../src/ui/strings';
+import { colors, layout } from '../../src/ui/theme';
 
 /** How many unearned ones are dangled. Three fits a row on the narrowest phone. */
 const COMING_UP = 3;
@@ -32,7 +30,6 @@ const EMPTY: Readonly<Record<string, number>> = {};
  * takes an achievement back off her.
  */
 export default function AchievementsScreen() {
-  const router = useRouter();
   const earned = useProgress((s) => (s.activeProfileId ? s.earned[s.activeProfileId] : undefined));
   const counters = useProgress((s) =>
     s.activeProfileId ? s.counters[s.activeProfileId] : undefined,
@@ -49,12 +46,9 @@ export default function AchievementsScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+      {/* No back arrow: this is a tab now, and there is nothing under it to go
+          back to. The bar is how you leave. */}
       <View style={styles.header}>
-        <IconButton
-          name="back"
-          onPress={() => router.back()}
-          accessibilityLabel={strings.play.back}
-        />
         <Text variant="title" style={styles.heading}>
           {strings.achievements.title}
         </Text>

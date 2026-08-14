@@ -215,6 +215,16 @@ export const layout = {
    * already capped by its own `height * 0.68`.
    */
   contentWidth: 560,
+  /**
+   * The bottom nav bar, above the safe-area inset.
+   *
+   * Declared here rather than read back from `useBottomTabBarHeight()` so the
+   * path screen can lift its FAB clear of it without importing from
+   * `@react-navigation/bottom-tabs` — that package is in the tree as one of
+   * expo-router's dependencies, not as one of ours, and reaching past
+   * expo-router into it is how a working app breaks on an unrelated upgrade.
+   */
+  tabBar: 64,
 } as const;
 
 export const fonts = {

@@ -9,6 +9,18 @@
 export const strings = {
   appName: 'Rooky',
 
+  /**
+   * The bottom bar. One word each, because a tab label has one line and the
+   * icon is doing the real work — these are for the adult being asked "where
+   * did my stickers go?".
+   */
+  tabs: {
+    home: 'Home',
+    path: 'Levels',
+    things: 'Things',
+    stickers: 'Stickers',
+  },
+
   home: {
     /** Nothing finished yet. */
     start: 'Start',

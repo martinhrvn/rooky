@@ -1,17 +1,13 @@
-import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { type Achievement, achievementById } from '../src/progress/achievements';
-import { useAlbum, useProgress, useXp } from '../src/progress/store';
-import { AchievementIcon } from '../src/ui/AchievementIcon';
-import { Glyph, IconButton } from '../src/ui/IconButton';
-import { StickerArt } from '../src/ui/StickerArt';
-import { Text } from '../src/ui/Text';
-import { XpBar } from '../src/ui/XpBar';
-import { strings } from '../src/ui/strings';
-import { colors, layout } from '../src/ui/theme';
+import { useAlbum, useProgress, useXp } from '../../src/progress/store';
+import { StickerArt } from '../../src/ui/StickerArt';
+import { Text } from '../../src/ui/Text';
+import { XpBar } from '../../src/ui/XpBar';
+import { strings } from '../../src/ui/strings';
+import { colors, layout } from '../../src/ui/theme';
 
 /**
  * Her stickers: the choice when one is owed, and everything she has won.
@@ -21,22 +17,9 @@ import { colors, layout } from '../src/ui/theme';
  * control on this screen that removes a sticker.
  */
 export default function StickersScreen() {
-  const router = useRouter();
   const album = useAlbum();
   const xp = useXp();
-  const earned = useProgress((s) =>
-    s.activeProfileId ? s.earned[s.activeProfileId] : undefined,
-  );
   const ensureOffer = useProgress((s) => s.ensureOffer);
-
-  // The last few she won, newest first — `earned` stores when, so "recent"
-  // costs nothing. Three at most: this is a signpost to the collection, not
-  // the collection.
-  const recent = Object.entries(earned ?? {})
-    .sort(([, a], [, b]) => b - a)
-    .map(([id]) => achievementById(id))
-    .filter((a): a is Achievement => Boolean(a))
-    .slice(0, 3);
 
   // Nudges the root dialog into opening if one is owed. Harmless if it is
   // already up, because `ensureOffer` does nothing when an offer stands.
@@ -51,8 +34,9 @@ export default function StickersScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+      {/* No back arrow: this is a tab now, and there is nothing under it to go
+          back to. The bar is how you leave. */}
       <View style={styles.header}>
-        <IconButton name="back" onPress={() => router.back()} accessibilityLabel={strings.play.back} />
         <Text variant="title" style={styles.heading}>
           {strings.stickers.title}
         </Text>
@@ -79,30 +63,9 @@ export default function StickersScreen() {
           </Text>
         )}
 
-        {/* The way to the collection. It used to be "12 of 58" here, which is
-            the one form she cannot read — so the row leads with the last few
-            she actually won, drawn, and lets the achievements screen do the
-            rest. */}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={strings.achievements.title}
-          onPress={() => router.push('/achievements')}
-          style={({ pressed }) => [styles.achievements, pressed && styles.pressed]}
-        >
-          <Text variant="label" style={styles.achievementsLabel}>
-            {strings.achievements.title}
-          </Text>
-          {recent.map((achievement) => (
-            <AchievementIcon
-              key={achievement.id}
-              piece={achievement.piece}
-              mark={achievement.mark}
-              size={24}
-              id={`recent-${achievement.id}`}
-            />
-          ))}
-          <Glyph name="forward" size={18} color={colors.textSoft} />
-        </Pressable>
+        {/* The row that led to the achievements has gone: they are the tab
+            next door now, and a control an inch above its own tab is the same
+            redundancy the bar removed from home. */}
       </ScrollView>
     </SafeAreaView>
   );
@@ -125,7 +88,6 @@ const styles = StyleSheet.create({
     maxWidth: layout.contentWidth,
     alignSelf: 'center',
   },
-  pressed: { opacity: 0.7, transform: [{ scale: 0.98 }] },
   album: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center' },
   slot: {
     width: 56,
@@ -137,13 +99,4 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.surfaceEdge,
   },
-  achievements: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    borderTopWidth: 1,
-    borderTopColor: colors.surfaceEdge,
-    paddingTop: 16,
-  },
-  achievementsLabel: { flex: 1 },
 });

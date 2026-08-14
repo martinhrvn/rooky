@@ -4,8 +4,14 @@ A chess-teaching app for young kids. Expo + React Native + TypeScript.
 
 ## Expo HAS CHANGED
 
-Read the exact versioned docs at https://docs.expo.dev/versions/v57.0.0/ before
+Read the exact versioned docs at https://docs.expo.dev/versions/v54.0.0/ before
 writing any code. Append `.md` to any docs URL to get the Markdown version.
+
+**The version here has to match `package.json`**, which pins `expo ~54.0.0`
+(installed: 54.0.36). This line said v57 for a while, three SDKs ahead of
+anything installed — docs for an SDK you are not on are worse than no pointer,
+because they read as authoritative and describe APIs that are not there. Bump
+both together or neither.
 
 ## The two constraints that decide most arguments
 
@@ -95,18 +101,60 @@ src/game/       engine.ts (pure reducer), solver.ts (BFS), generator.ts, types.t
 src/content/    level data, world metadata, ordering
 src/progress/   selectors.ts (pure unlock/progress) + zustand store on AsyncStorage
 src/ui/         Board, Celebration, PathNode, TierRank, icons, theme, strings
-app/            expo-router screens
+app/            expo-router screens; app/(tabs)/ is the four in the nav bar
 ```
 
 Unlock and completion logic belongs in `src/progress/selectors.ts` as pure
 functions, not inline in a screen — the home and path screens both read from
 it, and it is covered by vitest.
 
+## Navigation
+
+Four tabs, in `app/(tabs)/`: **Home · Levels · Things · Stickers**. A row of
+fixed icons in a fixed order is the strongest navigation available to someone
+who cannot read — position is learned in one sitting and never lost — and it
+puts the app's four places on screen at once instead of behind doors on home.
+
+- **A tab is a place; a board is not.** Everything showing a board — `mix.tsx`,
+  `play/[levelId].tsx`, `endless/[worldKey].tsx` — lives *outside* the group and
+  opens over the bar, full screen. That is structural, not only aesthetic:
+  `LevelPlayer` sizes the board off the whole window height (`height * 0.68`),
+  so a bar beneath it would eat into the board rather than the board making room
+  for it. **This is the reason Mix is not a tab** and stays a button on home.
+  The adults' screens (`settings`, `dev`, `profiles`) are outside for the second
+  reason — they are things you go and do, not places you live.
+- **Route groups do not appear in the URL**, so moving those four screens into
+  `(tabs)/` changed no path and no `router.push` call. `typedRoutes: true` in
+  `app.json` means typecheck catches it if that ever stops being true.
+- **The bar is uncoloured on purpose.** `theme.actions` spends jade, periwinkle
+  and coral on what a control *does*, and gold is rewards only — and two of
+  these four tabs *are* rewards, so colouring by meaning would either put gold
+  on navigation or hand two tabs the same hue. Active is `colors.text`,
+  inactive `colors.textSoft`; shape and position carry identity, which is what
+  the reading rule asks for anyway. The one exception is the Stickers tab's
+  star, which keeps its gold because that is what a reward looks like
+  everywhere else — and it is why the Things tab is a **rosette**, a different
+  shape rather than a second gold thing.
+- **Tab labels go through `Text`**, via `tabBarLabel` as a render function.
+  `tabBarLabelStyle` is an ad-hoc font size and the one thing `src/ui/Text.tsx`
+  exists to prevent.
+- **A tab screen has no back arrow.** There is nothing under it to pop to, and
+  a dead control is worse than no control. The bar is how you leave.
+- **Nothing sits an inch above its own tab.** "Choose a level" left home and the
+  achievements row left the stickers screen for the same reason; the XP bar on
+  home stays pressable because it is a status display whose tap is a shortcut,
+  not a second control doing the Stickers tab's job.
+- `layout.tabBar` is the bar's height. Anything needing to clear it reads that,
+  rather than `useBottomTabBarHeight()` — `@react-navigation/bottom-tabs` is in
+  the tree as one of expo-router's dependencies, not one of ours.
+
 ## Choosing a level
 
-`app/levels.tsx` is the path: a ribbon per world, and under it one numbered
-circle per difficulty the world actually has. It is what "Choose a level" opens
-and the only selector a child sees.
+`app/(tabs)/levels.tsx` is the path: a ribbon per world, and under it one
+numbered circle per difficulty the world actually has. It is the **Levels tab**
+and the only selector a child sees. It used to be behind a "Choose a level"
+button on home; that button is gone, because the tab is the same door one inch
+lower down.
 
 - **The circles are numbered by position, not by tier id.** A parent capping
   difficulty at *Watch out* leaves circles 1 and 2 — not 1 and 2-of-3. Theme
@@ -120,7 +168,9 @@ and the only selector a child sees.
   every world after it — from a tap she cannot be talked out of.
 - **The FAB is the answer to a long path**, not a decoration. It opens
   `nextLevel(...)`, which is exactly what Play opens, so the two can never
-  disagree.
+  disagree. It now sits `layout.tabBar` higher so it clears the nav bar, and
+  the scroll's bottom padding clears both. It was not dropped in favour of the
+  Home tab: from halfway up a long path that would be two taps, and this is one.
 - `app/pieces.tsx` is the **previous** selector, kept while the path proves
   itself and reachable only from the developer panel. When the path is settled,
   delete it, `MixCard` and `TierRank` together — or bring `TierRank` back, per
