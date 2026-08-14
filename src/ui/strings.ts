@@ -47,7 +47,7 @@ export const strings = {
    */
   mix: {
     title: 'Mix',
-    subtitle: 'Anything you have finished',
+    subtitle: 'Anything you have finished, and something new',
     play: 'Play a mix',
     another: 'Another one',
   },

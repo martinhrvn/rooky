@@ -237,20 +237,28 @@ in where levels come from and what happens on a win:
   or saved. The pressure-free mode, for when she's stuck and would rather mess
   about with a piece than fail the same puzzle again.
 - **Mix** (`app/mix.tsx`) — a shuffle of every level she has already beaten,
-  across every piece. Real authored levels, so results *are* recorded, and it
-  advances manually rather than automatically.
+  across every piece, with **every fourth one invented** by the generator.
+  The authored ones are recorded; the invented ones cannot be, because they
+  are not in the catalogue. It advances manually rather than automatically.
 
-**Endless and Mix must stay different in kind, not just in scope** — two
-buttons that both mean "play forever" is the confusion this design exists to
-avoid. Endless invents puzzles for one piece and records nothing; Mix replays
-real ones from every piece and records. That difference is carried visually by
-**one piece versus a row of them**, and by distinct glyphs — the lemniscate is
-Endless, the crossing arrows are Mix. Don't blur either.
+**Only one "play forever" button reaches the home screen, and it is Mix.**
+The two modes really are different in kind — one replays what she knows, the
+other invents — but that distinction was being asked to survive on one piece
+versus a row of them, and a four-year-old does not draw it. Rather than teach
+the difference, Mix absorbed it: it now serves an invented level every fourth
+round, so the variety arrives without a second button to choose between.
 
-They are also no longer on the same screen, which is the other half of keeping
-them apart. Mix is a button on home; the row of pieces that used to head the
-Mix card now rides on that button via `Button`'s `iconNode` — the row is the
-signal, so whatever carries it has to keep carrying it.
+**Endless is still its own mode and is not on home.** It lives on the path,
+reached by pressing a world's ribbon, where it is *contextual* — pressing that
+world plainly means "more of this piece", which is a thing the screen itself
+says. That is the difference between the two placements: on the ribbon Endless
+is an elaboration of the world she is looking at, and on home it would be a
+rival to Mix.
+
+The consequence for the Mix button is that its **row of pieces is no longer
+carrying a distinction** — nothing competes with it now. Keep it anyway: it
+says "everything you have played", which is still true and still the fastest
+way to see the mode's scope without reading.
 
 **Endless is reached by pressing the front of a world's ribbon** on the path,
 and by the "Keep playing" choice at the end of a tier. It had a button of its
