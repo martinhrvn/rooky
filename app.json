@@ -37,6 +37,13 @@
     "scheme": "rooky",
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "7327a20a-4ebb-4b44-9af1-d7507d2c5a2c"
+      }
+    },
+    "owner": "martinhrvn"
   }
 }

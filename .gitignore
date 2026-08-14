@@ -18,6 +18,11 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+# Play signing. `eas.json` points its submit profile at
+# secrets/play-service-account.json — that key can publish to the store as you,
+# so it never goes in the repo.
+secrets/
+
 # Metro
 .metro-health-check*
 
