@@ -8,7 +8,7 @@ export const DEFAULT_MAX_TIER: Tier = 3;
  * `migrate` in store.ts. This ships from day one on purpose: retrofitting
  * migrations later is how you end up wiping a kid's saved progress.
  */
-export const PROGRESS_VERSION = 4;
+export const PROGRESS_VERSION = 5;
 
 /**
  * Avatars, so a profile is recognisable without reading.
@@ -79,6 +79,55 @@ export interface LevelResult {
   readonly completedAt: number;
 }
 
+/**
+ * One sticker stuck on the picture.
+ *
+ * `x` and `y` are the sticker's **centre**, as fractions of the canvas box —
+ * never pixels. A picture made on a phone has to be the same picture on a
+ * tablet, and a canvas that rearranges itself has destroyed something she made.
+ */
+export interface Placement {
+  /** Unique within one canvas, and stable, so it is the React key too. */
+  readonly key: string;
+  readonly stickerId: string;
+  /** 0..1 across the canvas. */
+  readonly x: number;
+  /** 0..1 down the canvas. */
+  readonly y: number;
+  /**
+   * Multiple of the base size, and `1` everywhere today. It is stored anyway
+   * so that pinch-to-resize — the stretch goal — needs no second migration.
+   */
+  readonly scale: number;
+  /** Degrees, and `0` everywhere today. Same reason as `scale`. */
+  readonly rotation: number;
+}
+
+/**
+ * Her picture: what is stuck where, and on what.
+ *
+ * Back to front, so **the last placement is on top**. Moving one sends it to
+ * the end, which makes "the one you touched last is on top" the whole of the
+ * z-order rule — no control has to express it and nothing has to be explained.
+ */
+export interface CanvasState {
+  readonly backgroundId: string;
+  readonly placements: readonly Placement[];
+}
+
+/**
+ * A plain string rather than an import from `src/ui/canvasBackgrounds`: this
+ * file is the persisted shape and must stay free of anything that draws.
+ * `backgroundById` falls back for an id it does not know, the same rule
+ * `avatarById` and `stickerById` follow.
+ */
+export const DEFAULT_BACKGROUND_ID = 'hills';
+
+export const emptyCanvas: CanvasState = {
+  backgroundId: DEFAULT_BACKGROUND_ID,
+  placements: [],
+};
+
 /** profileId -> some per-profile record. Every reward store has this shape. */
 type ByProfile<T> = Readonly<Record<string, T>>;
 
@@ -123,6 +172,16 @@ export interface PersistedProgress {
    * reward evaporating because something more interesting happened.
    */
   readonly pending: ByProfile<readonly string[]>;
+
+  /**
+   * The picture she made: her placements and the ground under them.
+   *
+   * One record rather than two sibling ones, because the stickers and the
+   * background are one artefact and always change together — and because every
+   * per-profile code path (`partialize`, `resetProgress`, `deleteProfile`)
+   * stays one line instead of two.
+   */
+  readonly canvas: ByProfile<CanvasState>;
 }
 
 export const emptyProgress: PersistedProgress = {
@@ -135,4 +194,5 @@ export const emptyProgress: PersistedProgress = {
   earned: {},
   album: {},
   pending: {},
+  canvas: {},
 };

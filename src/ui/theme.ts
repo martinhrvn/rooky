@@ -193,6 +193,39 @@ export const ribbons = [
   { band: '#C96A8E', tail: '#894861' },
 ] as const;
 
+/**
+ * Grounds for the sticker canvas: the plain ones, and the parts the drawn
+ * scenes are built from.
+ *
+ * **Decorative, never actions** — the same licence the ribbons have, and for
+ * the same reason: a picture surface is something you stick things onto, not
+ * something you press, so it can hold a colour outside the `actions` set
+ * without muddying "one colour per meaning". Jade, periwinkle, coral and gold
+ * stay out; the night sky's stars are cream rather than gold, because a sky
+ * full of gold dots would compete with the stars that mean *reward*.
+ *
+ * Every one is light, because the stickers are drawn to sit on paper. This is
+ * the only bright surface in the app and the only place the dark-chrome rule
+ * bends — a canvas is the thing being looked at, like the board is.
+ */
+export const canvasGrounds = {
+  cream: '#F0D9B5',
+  mint: '#BFE3DC',
+  blossom: '#F2CEDA',
+  sky: '#8FC7EE',
+  skyHigh: '#5EA8DF',
+  grass: '#6FBF73',
+  grassDeep: '#4C9B57',
+  sun: '#FFD97A',
+  duskHigh: '#5B4A8A',
+  duskLow: '#F2A47C',
+  nightHigh: '#1E2450',
+  nightLow: '#48407A',
+  sea: '#3E9ECF',
+  seaDeep: '#2A7BAA',
+  sand: '#F2DDB0',
+} as const;
+
 export const layout = {
   /** Minimum comfortable tap target for small hands. */
   touchTarget: 64,

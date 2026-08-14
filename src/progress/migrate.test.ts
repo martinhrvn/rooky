@@ -126,6 +126,35 @@ describe('migrating from version 3', () => {
   });
 });
 
+describe('migrating from version 4', () => {
+  /** A v4 payload: rewards, but nowhere yet to stick them. */
+  const v4 = {
+    ...v1,
+    profiles: v1.profiles.map((p) => ({ ...p, maxTier: 3 as const, avatarId: 'fox' as const })),
+    xp: { p1: 450 },
+    counters: { p1: { 'moved:n': 12 } },
+    streaks: { p1: {} },
+    earned: { p1: { 'moved:n:1': 1700 } },
+    album: { p1: ['1F438', '1F98A'] },
+    pending: { p1: [] },
+  };
+  const migrated = migrateProgress(structuredClone(v4), 4);
+
+  it('starts everyone with an empty picture', () => {
+    // There is nothing in a v4 payload to derive a composition from, and an
+    // empty canvas is the correct starting state rather than anything lost.
+    expect(migrated.canvas).toEqual({});
+  });
+
+  it('leaves everything she had earned exactly as it was', () => {
+    expect(migrated.xp).toEqual(v4.xp);
+    expect(migrated.album).toEqual(v4.album);
+    expect(migrated.earned).toEqual(v4.earned);
+    expect(migrated.counters).toEqual(v4.counters);
+    expect(migrated.results.p1['rook-t1-01']).toEqual(v1.results.p1['rook-t1-01']);
+  });
+});
+
 describe('migrating from the current version', () => {
   it('passes a current payload through untouched', () => {
     const current = {
@@ -139,6 +168,16 @@ describe('migrating from the current version', () => {
     const migrated = migrateProgress(current, PROGRESS_VERSION);
     expect(migrated.profiles.map((p) => p.avatarId)).toEqual(['lion', 'owl']);
     expect(migrated.profiles.map((p) => p.maxTier)).toEqual([2, 2]);
+  });
+
+  it('leaves a picture she has already made alone', () => {
+    const canvas = {
+      p1: {
+        backgroundId: 'night',
+        placements: [{ key: 's1', stickerId: '1F438', x: 0.4, y: 0.6, scale: 1, rotation: 0 }],
+      },
+    };
+    expect(migrateProgress({ ...v1, canvas }, PROGRESS_VERSION).canvas).toEqual(canvas);
   });
 });
 

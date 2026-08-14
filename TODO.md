@@ -52,6 +52,17 @@ The loop works end to end except for the win-screen animation. In the app now:
   of the three is a wrong answer, and a "later" button would only ever be a way
   to lose a reward by pressing something.
 
+- **The canvas is built** (schema v5). `app/(tabs)/stickers.tsx` is now the
+  tray, the picture and the grounds; `src/ui/StickerTray.tsx`,
+  `StickerCanvas.tsx`, `DragGhost.tsx`, `BackgroundPicker.tsx`,
+  `canvasBackgrounds.tsx`, `canvasGeometry.ts`, `dragState.ts` and
+  `src/progress/canvas.ts` are the parts. Drag from the tray *or* tap to drop
+  one in the middle; drag a placed sticker to move it, or onto the tray to peel
+  it off. Seven grounds, drawn by us in SVG. **`AGENTS.md` has the section that
+  records every decision below**, including the two the plan below left open:
+  removal is drag-to-the-tray with no clear button anywhere, and
+  `resetProgress` *does* wipe the picture.
+
 **Still outstanding:** proper achievement artwork. The toast currently reuses
 the app's existing glyphs as stand-ins (`MARKS` in `AchievementToast.tsx`) and
 draws the piece itself when there is one, which covers most of the catalogue
@@ -467,6 +478,13 @@ own, and picks one. This is the moment the whole feature builds to, so:
 ---
 
 ## Step 5 — The album and the canvas
+
+**The canvas half is built** — see the list at the top of this file and the
+canvas section of `AGENTS.md`, which supersedes the sketch below wherever the
+two differ (placements carry a background alongside them; the album became the
+tray rather than a page of silhouettes; drag came in alongside tap). The
+**album half is still open**: fixed slots with silhouettes ahead, and pages
+with a loose theme, are unbuilt.
 
 **Files:** new `app/stickers.tsx`, new `src/ui/StickerAlbum.tsx`, new
 `src/ui/StickerCanvas.tsx`, `app/index.tsx`

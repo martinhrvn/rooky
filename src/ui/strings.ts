@@ -202,8 +202,27 @@ export const strings = {
     tada: 'Ta-da!',
     /** Shown above the three she picks from. */
     choose: 'Pick one!',
-    /** Nothing earned yet. */
+    /** Nothing earned yet — shown down the tray where the stickers would be. */
     empty: 'Play to win stickers',
+
+    /**
+     * The picture she makes.
+     *
+     * Every one of these is an accessibility label and none of them is drawn:
+     * the tray is a column of stickers, the canvas is a picture, and a swatch
+     * is the scene it will give her drawn small. Nothing on this screen needs
+     * a word to be understood, which is the point of it.
+     */
+    canvas: {
+      area: 'Your picture',
+      tray: 'Your stickers. Hold one to drag it onto the picture, or tap to drop it in the middle.',
+      /** The closed picker: the ground she is on, and the way to the others. */
+      grounds: (name: string) => `Background: ${name}. Tap to change it.`,
+      /** Names a ground in the picker. */
+      background: (name: string) => `Background: ${name}`,
+      /** Names a sticker already stuck on. */
+      placed: (name: string) => `${name}, on your picture`,
+    },
   },
 
   pieces: {
@@ -249,8 +268,10 @@ export const strings = {
       'Pick a face for this player. The name is shown only to you, so you can tell profiles apart.',
     namePlaceholder: 'Name',
     startOver: 'Start over',
-    startOverHelp: 'Clears every level for this player. Cannot be undone.',
-    startOverConfirm: 'Clear all progress for this player? This cannot be undone.',
+    startOverHelp:
+      'Clears every level, every sticker and the picture for this player. Cannot be undone.',
+    startOverConfirm:
+      'Clear all progress for this player? The stickers and the picture go too. This cannot be undone.',
     confirm: 'Clear it',
     cancel: 'Cancel',
     credits: 'Credits',

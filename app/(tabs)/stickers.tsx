@@ -1,25 +1,49 @@
-import { useEffect } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useAlbum, useProgress, useXp } from '../../src/progress/store';
-import { StickerArt } from '../../src/ui/StickerArt';
+import {
+  useAlbum,
+  useCanvasBackground,
+  useCanvasPlacements,
+  useProgress,
+  useXp,
+} from '../../src/progress/store';
+import { BackgroundPicker } from '../../src/ui/BackgroundPicker';
+import { DragGhost } from '../../src/ui/DragGhost';
+import { StickerCanvas } from '../../src/ui/StickerCanvas';
+import { StickerTray } from '../../src/ui/StickerTray';
 import { Text } from '../../src/ui/Text';
 import { XpBar } from '../../src/ui/XpBar';
+import { MIDDLE, type Size, fitCanvas } from '../../src/ui/canvasGeometry';
+import { type Held, useCanvasRects, useDragState } from '../../src/ui/dragState';
 import { strings } from '../../src/ui/strings';
 import { colors, layout } from '../../src/ui/theme';
 
 /**
- * Her stickers: the choice when one is owed, and everything she has won.
+ * Her stickers, and the picture she makes out of them.
  *
- * Reached by pressing the XP bar on home — the bar is the reward, so the thing
- * it leads to is the rewards. Nothing here can destroy anything: there is no
- * control on this screen that removes a sticker.
+ * The tray down the side is what the album used to be — a wrapped grid of
+ * everything she has won — except that now the stickers come *off* it. That is
+ * the whole change: a shelf is something you look at once, and a picture is
+ * something you come back to.
+ *
+ * Nothing on this screen can destroy anything. There is no clear button, and
+ * taking a sticker off the picture never takes it out of the tray.
  */
 export default function StickersScreen() {
   const album = useAlbum();
   const xp = useXp();
+  const placements = useCanvasPlacements();
+  const backgroundId = useCanvasBackground();
+
   const ensureOffer = useProgress((s) => s.ensureOffer);
+  const placeSticker = useProgress((s) => s.placeSticker);
+  const movePlacement = useProgress((s) => s.movePlacement);
+  const transformPlacement = useProgress((s) => s.transformPlacement);
+  const removePlacement = useProgress((s) => s.removePlacement);
+  const setCanvasBackground = useProgress((s) => s.setCanvasBackground);
 
   // Nudges the root dialog into opening if one is owed. Harmless if it is
   // already up, because `ensureOffer` does nothing when an offer stands.
@@ -32,71 +56,147 @@ export default function StickersScreen() {
     ensureOffer();
   }, [ensureOffer]);
 
+  const drag = useDragState();
+  const rects = useCanvasRects();
+
+  // The room the picture has, measured; the picture itself is the largest box
+  // of the fixed aspect that fits inside it. Fixed, so a composition made on a
+  // phone is the same composition on a tablet.
+  const [available, setAvailable] = useState<Size>({ width: 0, height: 0 });
+  const box = useMemo(() => fitCanvas(available), [available]);
+  useEffect(() => {
+    rects.box.value = box;
+  }, [box, rects.box]);
+
+  /**
+   * What is in the air.
+   *
+   * Every one of the handlers below **ends the drag in the same JS tick as it
+   * writes to the store**, which is the entire fix for the sticker flicking
+   * back to where it started before landing where she put it. React renders
+   * the placement's new home and the ghost's disappearance together; clearing
+   * this from the UI thread instead put them on different frames.
+   */
+  const [held, setHeld] = useState<Held | null>(null);
+
+  const liftFromTray = useCallback(
+    (stickerId: string, size: number) => setHeld({ stickerId, size, rotation: 0, fromKey: '' }),
+    [],
+  );
+  const liftFromCanvas = useCallback(
+    (stickerId: string, size: number, rotation: number, fromKey: string) =>
+      setHeld({ stickerId, size, rotation, fromKey }),
+    [],
+  );
+  const cancelDrag = useCallback(() => setHeld(null), []);
+
+  const place = useCallback(
+    (stickerId: string, x: number, y: number) => {
+      placeSticker(stickerId, x, y);
+      setHeld(null);
+    },
+    [placeSticker],
+  );
+  const dropInMiddle = useCallback(
+    (stickerId: string) => {
+      placeSticker(stickerId, MIDDLE.x, MIDDLE.y);
+      setHeld(null);
+    },
+    [placeSticker],
+  );
+  const movePlaced = useCallback(
+    (key: string, x: number, y: number) => {
+      movePlacement(key, x, y);
+      setHeld(null);
+    },
+    [movePlacement],
+  );
+  const removePlaced = useCallback(
+    (key: string) => {
+      removePlacement(key);
+      setHeld(null);
+    },
+    [removePlacement],
+  );
+
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
-      {/* No back arrow: this is a tab now, and there is nothing under it to go
-          back to. The bar is how you leave. */}
-      <View style={styles.header}>
-        <Text variant="title" style={styles.heading}>
-          {strings.stickers.title}
-        </Text>
-      </View>
+      {/* No back arrow: this is a tab, and there is nothing under it to go
+          back to. The bar is how you leave. And no bottom inset — that one
+          belongs to the tab bar, which sits below this screen already. */}
+      <Animated.View ref={rects.hostRef} style={styles.host}>
+        <View style={styles.header}>
+          <Text variant="title">{strings.stickers.title}</Text>
+          <XpBar xp={xp} height={18} />
+        </View>
 
-      <ScrollView contentContainerStyle={styles.body}>
-        {/* No choice UI here. `StickerChoiceDialog` sits at the root and opens
-            over whatever is on screen, including this — so the choice has one
-            implementation and cannot be half-made on one surface and finished
-            on the other. */}
-        <XpBar xp={xp} height={18} />
+        {/* No screen-level ScrollView: the tray scrolls inside itself, and a
+            vertical scroller inside a vertical scroller is a fight. `fitCanvas`
+            is what makes the rest fit without one. */}
+        <View style={styles.row}>
+          <StickerTray
+            album={album}
+            drag={drag}
+            rects={rects}
+            heldId={held?.stickerId ?? ''}
+            armed={(held?.fromKey ?? '') !== ''}
+            onLift={liftFromTray}
+            onPlace={place}
+            onDropInMiddle={dropInMiddle}
+            onCancel={cancelDrag}
+          />
 
-        {album.length > 0 ? (
-          <View style={styles.album}>
-            {album.map((id, i) => (
-              <View key={`${id}-${i}`} style={styles.slot}>
-                <StickerArt id={id} size={38} />
-              </View>
-            ))}
+          <View style={styles.column} onLayout={(e) => setAvailable(e.nativeEvent.layout)}>
+            <StickerCanvas
+              box={box}
+              backgroundId={backgroundId}
+              placements={placements}
+              drag={drag}
+              rects={rects}
+              heldKey={held?.fromKey ?? ''}
+              onLift={liftFromCanvas}
+              onMove={movePlaced}
+              onRemove={removePlaced}
+              onTransform={transformPlacement}
+              onCancel={cancelDrag}
+            />
           </View>
-        ) : (
-          <Text variant="label" color={colors.textSoft} align="center">
-            {strings.stickers.empty}
-          </Text>
-        )}
+        </View>
 
-        {/* The row that led to the achievements has gone: they are the tab
-            next door now, and a control an inch above its own tab is the same
-            redundancy the bar removed from home. */}
-      </ScrollView>
+        <View style={styles.picker}>
+          <BackgroundPicker
+            selected={backgroundId}
+            onSelect={setCanvasBackground}
+            width={box.width || undefined}
+          />
+        </View>
+
+        {/* Last, and above everything: the sticker that follows her finger. It
+            cannot live inside the tray or the canvas, because both clip. */}
+        <DragGhost held={held} drag={drag} rects={rects} />
+      </Animated.View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
+  host: { flex: 1 },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+    gap: 10,
     paddingHorizontal: layout.screenPadding,
-    paddingVertical: 12,
+    paddingTop: 8,
+    paddingBottom: 12,
   },
-  heading: { flex: 1 },
-  body: {
-    gap: 24,
-    padding: layout.screenPadding,
-    width: '100%',
-    maxWidth: layout.contentWidth,
-    alignSelf: 'center',
+  row: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 12,
   },
-  album: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center' },
-  slot: {
-    width: 56,
-    height: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.surfaceEdge,
-  },
+  // The canvas is centred in whatever the tray leaves, and deliberately
+  // ignores `layout.contentWidth`: that cap suits stacks of cards, and this
+  // screen's picture is its board.
+  column: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  picker: { alignItems: 'center', paddingTop: 4, paddingBottom: 6 },
 });

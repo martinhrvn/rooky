@@ -9,15 +9,20 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { STICKERS } from '../content/stickers';
 import type { Tier } from '../game/types';
 import { type Achievement, newlyEarned, xpFor } from './achievements';
+import * as canvasEdit from './canvas';
 import { offerFor } from './offer';
 import {
   AVATARS,
   type AvatarId,
+  type CanvasState,
+  DEFAULT_BACKGROUND_ID,
   DEFAULT_MAX_TIER,
   type LevelResult,
   type PersistedProgress,
   PROGRESS_VERSION,
+  type Placement,
   type Profile,
+  emptyCanvas,
   emptyProgress,
 } from './schema';
 import { stickersFor } from './xp';
@@ -80,12 +85,51 @@ interface ProgressStore extends PersistedProgress {
   ensureOffer: () => void;
   chooseSticker: (stickerId: string) => void;
 
+  /**
+   * Her picture. Coordinates are fractions of the canvas, never pixels.
+   *
+   * There is no `clearCanvas`, and that is a rule rather than an omission:
+   * a one-tap wipe of an afternoon's work is exactly what "nothing she can
+   * reach may destroy progress" forbids, and there is no confirm dialog she
+   * could read. Removal is one placement at a time, by a deliberate drag onto
+   * the tray, and it is undone by dragging back.
+   */
+  placeSticker: (stickerId: string, x: number, y: number) => void;
+  movePlacement: (key: string, x: number, y: number) => void;
+  /** Pinched and turned. Position comes with it, re-clamped for the new size. */
+  transformPlacement: (
+    key: string,
+    scale: number,
+    rotation: number,
+    x: number,
+    y: number,
+  ) => void;
+  removePlacement: (key: string) => void;
+  setCanvasBackground: (backgroundId: string) => void;
+
   /** Developer panel only. */
   grantAlbum: () => void;
 }
 
 let counter = 0;
 const makeId = () => `p${Date.now().toString(36)}${(counter++).toString(36)}`;
+
+/**
+ * The active profile's picture, run through a pure edit from `canvas.ts`.
+ *
+ * Written once so the guard is written once: no profile, or a reducer that
+ * changed nothing, and the store is left exactly as it was.
+ */
+const editCanvas = (
+  s: PersistedProgress,
+  edit: (canvas: CanvasState) => CanvasState,
+): Partial<PersistedProgress> => {
+  const id = s.activeProfileId;
+  if (!id) return {};
+  const before = s.canvas[id] ?? emptyCanvas;
+  const after = edit(before);
+  return after === before ? {} : { canvas: { ...s.canvas, [id]: after } };
+};
 
 /**
  * Brings a saved payload up to the current shape.
@@ -140,6 +184,14 @@ export function migrateProgress(persisted: unknown, version: number): PersistedP
       album: state.album ?? {},
       pending: state.pending ?? {},
     };
+  }
+
+  // v4 had the stickers but nowhere to stick them. Everyone starts with an
+  // empty picture on the default ground: there is nothing in a v4 payload to
+  // derive a composition from, and an empty canvas is the correct starting
+  // state rather than anything lost.
+  if (version < 5) {
+    state = { ...state, canvas: state.canvas ?? {} };
   }
 
   return state;
@@ -200,6 +252,12 @@ export const useProgress = create<ProgressStore>()(
        * is the part worth hesitating over — it is the only thing here she
        * *made* rather than earned — but leaving stickers behind after wiping
        * the XP that bought them is a state nothing else in the app can reach.
+       *
+       * The canvas goes too, and for the stronger version of that reason: a
+       * picture surviving a wiped album would leave her looking at a dozen
+       * stickers with an empty tray beside her, unable to add another copy of
+       * anything on the screen. That is not a memento, it is a picture she can
+       * only take apart.
        */
       resetProgress: () =>
         set((s) => {
@@ -213,6 +271,7 @@ export const useProgress = create<ProgressStore>()(
             earned: { ...s.earned, [id]: {} },
             album: { ...s.album, [id]: [] },
             pending: { ...s.pending, [id]: [] },
+            canvas: { ...s.canvas, [id]: emptyCanvas },
           };
         }),
 
@@ -247,6 +306,7 @@ export const useProgress = create<ProgressStore>()(
             earned: without(s.earned),
             album: without(s.album),
             pending: without(s.pending),
+            canvas: without(s.canvas),
             activeProfileId:
               s.activeProfileId === id ? (profiles[0]?.id ?? null) : s.activeProfileId,
           };
@@ -374,6 +434,23 @@ export const useProgress = create<ProgressStore>()(
           };
         }),
 
+      // The four canvas edits, all through one guard. `editCanvas` returns `{}`
+      // rather than a rebuilt record when the pure reducer changed nothing, so
+      // a stray commit at the end of a gesture cannot spin a re-render.
+      placeSticker: (stickerId, x, y) =>
+        set((s) => editCanvas(s, (c) => canvasEdit.place(c, stickerId, x, y))),
+
+      movePlacement: (key, x, y) =>
+        set((s) => editCanvas(s, (c) => canvasEdit.move(c, key, x, y))),
+
+      transformPlacement: (key, scale, rotation, x, y) =>
+        set((s) => editCanvas(s, (c) => canvasEdit.transform(c, key, scale, rotation, x, y))),
+
+      removePlacement: (key) => set((s) => editCanvas(s, (c) => canvasEdit.remove(c, key))),
+
+      setCanvasBackground: (backgroundId) =>
+        set((s) => editCanvas(s, (c) => canvasEdit.setBackground(c, backgroundId))),
+
       grantAlbum: () =>
         set((s) =>
           s.activeProfileId
@@ -419,6 +496,7 @@ export const useProgress = create<ProgressStore>()(
         earned,
         album,
         pending,
+        canvas,
       }) => ({
         activeProfileId,
         profiles,
@@ -429,6 +507,7 @@ export const useProgress = create<ProgressStore>()(
         earned,
         album,
         pending,
+        canvas,
       }),
       migrate: migrateProgress,
       onRehydrateStorage: () => (state) => state?.markHydrated(),
@@ -489,5 +568,30 @@ export function usePendingOffer(): readonly string[] {
   );
 }
 
+/**
+ * What is stuck on her picture, back to front.
+ *
+ * Two narrow selectors rather than one for the whole `CanvasState`, so
+ * changing the ground does not re-render forty placements and moving a sticker
+ * does not re-run the background's SVG tree.
+ */
+export function useCanvasPlacements(): readonly Placement[] {
+  return useProgress((s) =>
+    s.activeProfileId
+      ? (s.canvas[s.activeProfileId]?.placements ?? NO_PLACEMENTS)
+      : NO_PLACEMENTS,
+  );
+}
+
+/** The ground under it. */
+export function useCanvasBackground(): string {
+  return useProgress((s) =>
+    s.activeProfileId
+      ? (s.canvas[s.activeProfileId]?.backgroundId ?? DEFAULT_BACKGROUND_ID)
+      : DEFAULT_BACKGROUND_ID,
+  );
+}
+
 /** Shared so an absent record does not return a fresh array every render. */
 const EMPTY: readonly string[] = [];
+const NO_PLACEMENTS: readonly Placement[] = [];

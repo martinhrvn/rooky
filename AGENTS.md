@@ -310,6 +310,120 @@ catalogue and every pure part of it; nothing there imports React or the store.
   a blur dependency for this; one visual language for locked is worth more than
   a truer effect.
 
+## The canvas
+
+The Stickers tab is a picture she makes: a tray of everything she owns down one
+side, a fixed-shape canvas beside it, and a row of grounds under that. It is
+the reason the album is worth filling — a shelf is something you look at once,
+and this is a toy.
+
+- **Placements are normalised, and the canvas has a fixed aspect**
+  (`CANVAS_ASPECT`, 3:4) with the sticker size a fraction of its width
+  (`STICKER_FRACTION`). Both halves are needed for the same promise: a picture
+  made on a phone has to be the same picture on a tablet. Pixels anywhere in
+  here means a composition that rearranges itself, which is a composition
+  destroyed. The canvas therefore also ignores `layout.contentWidth` — that cap
+  suits stacks of cards, and this screen's picture is its board.
+- **Removal is a drag onto the tray, and there is no clear button anywhere she
+  can reach.** `resolvePlacedDrop` removes *only* on the tray and otherwise
+  puts the sticker back where it was, so an overshoot costs nothing and losing
+  one takes a deliberate aim at a target. A `clearCanvas` would be a one-tap
+  wipe of an afternoon's work with no confirm she could read; if one is ever
+  wanted it goes on `app/dev.tsx`. Taking a placement off never touches
+  `album`, which `store.test.ts` asserts — that is what makes the tray safe to
+  use as a bin.
+- **`resetProgress` does wipe the picture**, wholesale. It is behind the gear
+  and a confirm, so nothing she can reach is affected, and a picture surviving
+  a wiped album would leave her looking at a dozen stickers with an empty tray
+  beside her, unable to place another copy of anything on screen.
+- **The tray's drop reaction is the surface language, not an action colour** —
+  `surface` → `surfaceRaised`, `surfaceEdge` → `actionEdge`, a small scale bump.
+  Coral (`again`) is the tempting choice and would quietly make coral mean two
+  things: `theme.actions` is a *button* vocabulary and a drop target is
+  feedback, not a control.
+- **Pinch to resize and two fingers to turn**, both committed on gesture end
+  and both clamped (`clampScale`, `MIN_SCALE`/`MAX_SCALE`). The ceiling is not
+  tidiness: one sticker big enough to cover the picture makes everything under
+  it unreachable, and there is no send-to-back she could use to dig it out.
+  A pinch re-clamps the position too, so growing one near an edge pulls it back
+  on. **A placed sticker's drawn box ignores its scale** — all of it is in the
+  transform — which keeps a sticker she has shrunk as easy to grab as one she
+  has not.
+- **The grounds are drawn in `canvasBackgrounds.tsx`**, so there is no asset
+  and no `ASSETS.md` entry, and `canvasGrounds` in `theme.ts` holds their
+  colours under the same licence the ribbons have: decorative, never actions.
+  A swatch is the scene drawn small, which is the whole affordance — what she
+  presses is a miniature of what she gets, and no word is involved. The night
+  sky's stars are cream, because a sky of gold dots would compete with the
+  stars that mean *reward*.
+- **Closed, the picker is the ground she is on; open, it is all seven.** That
+  is how it shuts without inventing a close button — the control and the thing
+  it shows are one object, so there is nothing extra to find. Choosing closes
+  it, including choosing the one she is already on, which is how she backs out.
+- **The canvas is bright, and it is the only place besides the board where the
+  dark-chrome rule bends.** A canvas is the thing being looked at, so it is lit
+  like the board is and everything around it stays plum.
+
+### The drag
+
+This is the app's only drag, and `src/ui/canvasGeometry.ts` exists so that the
+rules deciding it are pure and tested rather than buried in a gesture callback.
+Every function there is `'worklet'`-marked, so the *same* code runs on the UI
+thread and in vitest.
+
+- **One ghost for the whole screen** (`DragGhost`), not one per item. Both the
+  tray and the canvas clip their children, so a ghost inside either is sliced
+  off at the edge exactly as it starts to travel — and one ghost means the two
+  drag sources share a single code path.
+- **`activateAfterLongPress` is what lets the tray both scroll and be dragged
+  from, and it must not be given a `minDistance`.** Any minimum distance makes
+  the pan activate on movement, which steals every scroll; with the hold as the
+  only way in, moving first *fails* the pan and hands the flick back to the
+  `ScrollView`. Do not declare `simultaneousWithExternalGesture` (the tray
+  would scroll while she drags) or `blocksExternalGesture` (every scroll waits
+  out the hold).
+- **`Gesture.Exclusive(pan, tap)`, never `Race`** — a `Tap` activates on
+  touch-down and would win a race before the hold timer fired. The tap needs an
+  explicit `maxDistance`: a `Tap` has no distance limit by default, so a flick
+  that scrolled would still end as a tap and drop a sticker she never asked
+  for. The tap path is also the only screen-reader-operable way to place one,
+  so it is not redundant with the drag and must not be dropped as such.
+- **`onFinalize`, not `onEnd`, resets the drag state.** A pan the `ScrollView`
+  cancels never ends, and a cancel that skipped the reset strands the ghost on
+  screen.
+- **One store write per gesture, in `onEnd`.** Committing mid-drag re-renders
+  the canvas under the finger, and a re-render that remounts a gesture's host
+  view cancels the gesture outright on Android. Everything that moves lives in
+  shared values (`dragState.ts`).
+- **What is *held* is React state; only where it is lives on the UI thread.**
+  This is the fix for the drag that flicked: whether a sticker is in the air
+  decides two things that must change in the same breath — the ghost
+  disappearing and the placement re-appearing where she left it. Driven from a
+  shared value those land on different frames, and she watches the sticker snap
+  back to where it started before jumping to where she put it. So every drop
+  handler **clears `held` in the same JS tick as the store write** (see
+  `app/(tabs)/stickers.tsx`), React renders both at once, and nothing moves
+  twice. For the same reason the ghost is mounted and unmounted rather than
+  faded, and the hidden placement uses a plain `opacity` prop rather than an
+  animated style.
+- **`maxPointers(1)` on the placed-sticker pan, and a small `minDistance`.**
+  The first keeps a second finger out of the pan so pinch and rotate can have
+  it; the second stops the first finger down lifting the sticker before the
+  second finger arrives, which would make every pinch start with a flinch.
+  `Gesture.Simultaneous(pan, pinch, rotation)` — sizing and turning are one
+  two-fingered act, and making her choose between them means neither works.
+- **Rects come from `measure()` in the gesture worklet, not `onLayout`**, taking
+  `pageX/pageY` — `onLayout` is parent-relative and a drop point arrives in
+  window coordinates. `rects.sync()` re-reads all three at the start of every
+  drag, so nothing is stale after a scroll or a rotation, and `measure` returns
+  `null` for an unlaid-out view, which `hitTest` treats as "never hit".
+- **`scheduleOnRN`, not `runOnJS`.** Worklets 0.5 deprecates `runOnJS`, and
+  Reanimated's re-export of it is deprecated on top of that.
+- **Do not add a `babel.config.js`.** SDK 54's `babel-preset-expo` injects
+  `react-native-worklets/plugin` automatically; adding
+  `react-native-reanimated/plugin` by hand is the RN-3 instruction and
+  double-transforms.
+
 ## Worlds
 
 Six worlds about a piece, then six about an idea — capture, protect, combat,

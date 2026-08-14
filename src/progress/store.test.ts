@@ -13,7 +13,7 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
 }));
 
 import { OFFER_SIZE } from './offer';
-import { emptyProgress } from './schema';
+import { emptyCanvas, emptyProgress } from './schema';
 import { useProgress } from './store';
 import { XP_PER_STICKER } from './xp';
 
@@ -85,7 +85,7 @@ describe('the profile that opens on relaunch', () => {
       ...state(),
     } as never) as Record<string, unknown>;
 
-    for (const key of ['xp', 'counters', 'streaks', 'earned', 'album', 'pending']) {
+    for (const key of ['xp', 'counters', 'streaks', 'earned', 'album', 'pending', 'canvas']) {
       expect(Object.keys(persisted), key).toContain(key);
     }
   });
@@ -360,6 +360,54 @@ describe('choosing a sticker', () => {
   });
 });
 
+describe('her picture', () => {
+  it('keeps the sticker in the album when a placement comes off', () => {
+    // The promise that makes the tray safe to use as a bin: peeling a sticker
+    // off the picture costs the placement and never the sticker.
+    reset();
+    const fox = state().createProfile('Fox', 'fox');
+    state().settle(XP_PER_STICKER);
+    const sticker = state().pending[fox][0];
+    state().chooseSticker(sticker);
+
+    state().placeSticker(sticker, 0.3, 0.4);
+    state().removePlacement(state().canvas[fox].placements[0].key);
+
+    expect(state().canvas[fox].placements).toHaveLength(0);
+    expect(state().album[fox]).toEqual([sticker]);
+  });
+
+  it('is one picture per player', () => {
+    reset();
+    const fox = state().createProfile('Fox', 'fox');
+    state().placeSticker('1F438', 0.5, 0.5);
+    const owl = state().createProfile('Owl', 'owl');
+
+    expect(state().canvas[owl]).toBeUndefined();
+    state().selectProfile(fox);
+    expect(state().canvas[fox].placements).toHaveLength(1);
+  });
+
+  it('leaves the store alone when an edit changes nothing', () => {
+    reset();
+    state().createProfile('Fox', 'fox');
+    state().placeSticker('1F438', 0.5, 0.5);
+    const before = state().canvas;
+
+    state().movePlacement('no-such-key', 0.1, 0.1);
+    state().removePlacement('no-such-key');
+
+    expect(state().canvas).toBe(before);
+  });
+
+  it('does nothing at all with no profile selected', () => {
+    reset();
+    state().placeSticker('1F438', 0.5, 0.5);
+    state().setCanvasBackground('night');
+    expect(state().canvas).toEqual({});
+  });
+});
+
 describe('a reset clears the rewards too', () => {
   it('takes the XP, the album and the tallies with it', () => {
     reset();
@@ -367,11 +415,16 @@ describe('a reset clears the rewards too', () => {
     state().bump(['moved:n']);
     state().settle(XP_PER_STICKER);
     state().chooseSticker(state().pending[fox][0]);
+    state().placeSticker(state().album[fox][0], 0.5, 0.5);
+    state().setCanvasBackground('night');
 
     state().resetProgress();
 
     expect(state().xp[fox]).toBe(0);
     expect(state().album[fox]).toEqual([]);
+    // The picture goes with the album. A composition surviving a wiped album
+    // would leave her looking at stickers she can no longer place a copy of.
+    expect(state().canvas[fox]).toEqual(emptyCanvas);
     expect(state().counters[fox]).toEqual({});
     expect(state().earned[fox]).toEqual({});
     expect(state().profiles).toHaveLength(1);
@@ -384,7 +437,13 @@ describe('a reset clears the rewards too', () => {
 
     state().deleteProfile(fox);
 
-    for (const record of [state().xp, state().album, state().counters, state().pending]) {
+    for (const record of [
+      state().xp,
+      state().album,
+      state().counters,
+      state().pending,
+      state().canvas,
+    ]) {
       expect(Object.keys(record)).not.toContain(fox);
     }
   });
