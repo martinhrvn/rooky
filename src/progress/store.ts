@@ -63,6 +63,7 @@ interface ProgressStore extends PersistedProgress {
   selectProfile: (id: string) => void;
   deleteProfile: (id: string) => void;
   resetProgress: () => void;
+  replayAll: () => void;
   completeLevels: (entries: readonly Omit<LevelResult, 'completedAt'>[]) => void;
   recordResult: (levelId: string, stars: 1 | 2 | 3, moves: number) => void;
 
@@ -258,6 +259,9 @@ export const useProgress = create<ProgressStore>()(
        * stickers with an empty tray beside her, unable to add another copy of
        * anything on the screen. That is not a memento, it is a picture she can
        * only take apart.
+       *
+       * `replayAll` below is the other half of this: the same journey again,
+       * with everything earned left standing. Read the two together.
        */
       resetProgress: () =>
         set((s) => {
@@ -273,6 +277,31 @@ export const useProgress = create<ProgressStore>()(
             pending: { ...s.pending, [id]: [] },
             canvas: { ...s.canvas, [id]: emptyCanvas },
           };
+        }),
+
+      /**
+       * Clears the active profile's results and *nothing else*: the whole path
+       * locks back to the rook with every level to win again, while the XP,
+       * the stickers, the picture and everything she has done stay exactly as
+       * they are. For a child who has finished the lot, this is the way to
+       * have it all to play again without paying for it in treasure.
+       *
+       * The argument against a half-reset above does not reach this one. That
+       * objection is about **orphaning** the album — stickers left behind after
+       * the XP that bought them is wiped, a state nothing else can produce.
+       * Clearing results alone leaves every sticker still paid for by XP that
+       * is still there, so nothing is orphaned; the album is simply kept.
+       *
+       * A second lap does re-earn XP from levels already beaten. That is
+       * harmless: XP only ever buys stickers, and achievements are one-shot
+       * through `earned`, which is untouched here, so none of them can be
+       * farmed by replaying.
+       */
+      replayAll: () =>
+        set((s) => {
+          const id = s.activeProfileId;
+          if (!id) return {};
+          return { results: { ...s.results, [id]: {} } };
         }),
 
       /** Bulk write, for the developer panel. */

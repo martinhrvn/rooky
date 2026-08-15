@@ -93,6 +93,33 @@ times, and is never linked. Everything there writes straight to saved progress
 with no undo, so it must stay somewhere a child mashing the screen cannot reach
 by accident. Do not add a shortcut to it from a play screen.
 
+**"Replay all" and "Start over" are a scale, not a duplicate.** `replayAll`
+clears the active profile's `results` and *nothing else* — the path locks back
+to the rook with everything to win again, while the XP, the stickers, the
+picture and the achievements stay. `resetProgress` still takes the lot. The
+argument against a half-reset written on `resetProgress` does not reach the new
+one: that objection is about **orphaning** the album, and clearing results alone
+leaves every sticker still paid for by XP that is still there. A second lap
+re-earns XP from levels already beaten, which is harmless — XP only buys
+stickers, and achievements are one-shot through `earned`, so nothing can be
+farmed by replaying.
+
+**The two acts that destroy something are behind `GrownUpGate`, and the
+challenge is spelled in words because that is the whole mechanism.** She knows
+her numbers — the reading rule says so — so a keypad showing `157` would stop
+nobody; written as *one five seven* it becomes a reading test, the one test
+every adult passes and the player does not. "Show the digits, it's clearer"
+would remove the guard while looking like a fix. It gates "Start over" and
+"Delete profile" only: "Replay all" keeps a plain `Alert`, because it destroys
+nothing she earned and a keypad there is friction with no risk behind it. The
+gate carries its own warning text, so there is one dialog rather than a confirm
+behind a confirm — the second of which gets tapped through by anyone who just
+typed a number to reach it. It is a speed bump, not a password: no lockout, no
+attempt counter, and a screen reader reads the challenge aloud, which is the
+correct trade — an adult who needs VoiceOver must still be able to reset the
+app. Wrong entries redraw the challenge rather than merely clearing it. The pure
+half is `src/ui/grownUpGate.ts`, tested without React.
+
 ## Layout
 
 ```

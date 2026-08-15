@@ -430,6 +430,52 @@ describe('a reset clears the rewards too', () => {
     expect(state().profiles).toHaveLength(1);
   });
 
+  it('but replaying it all keeps every one of them', () => {
+    // The distinction between the two buttons in settings, and the whole
+    // reason "Replay all" is allowed to exist beside "Start over": the journey
+    // begins again, the treasures do not move.
+    reset();
+    const fox = state().createProfile('Fox', 'fox');
+    state().bump(['moved:n']);
+    state().settle(XP_PER_STICKER);
+    state().chooseSticker(state().pending[fox][0]);
+    state().placeSticker(state().album[fox][0], 0.5, 0.5);
+    state().setCanvasBackground('night');
+    state().recordResult('rook-t1-01', 3, 2);
+
+    const xp = state().xp[fox];
+    const album = state().album[fox];
+    const canvas = state().canvas[fox];
+    const counters = state().counters[fox];
+    const earned = state().earned[fox];
+
+    state().replayAll();
+
+    // Only the path resets.
+    expect(state().results[fox]).toEqual({});
+
+    // Nothing she earned is orphaned, which is what makes this safe: the
+    // stickers are still paid for by XP that is still there.
+    expect(state().xp[fox]).toBe(xp);
+    expect(state().album[fox]).toEqual(album);
+    expect(state().canvas[fox]).toEqual(canvas);
+    expect(state().counters[fox]).toEqual(counters);
+    expect(state().earned[fox]).toEqual(earned);
+  });
+
+  it('replays only the player who asked for it', () => {
+    reset();
+    const fox = state().createProfile('Fox', 'fox');
+    state().recordResult('rook-t1-01', 3, 2);
+    const owl = state().createProfile('Owl', 'owl');
+    state().recordResult('rook-t1-01', 2, 4);
+
+    state().replayAll();
+
+    expect(state().results[owl]).toEqual({});
+    expect(Object.keys(state().results[fox] ?? {})).toEqual(['rook-t1-01']);
+  });
+
   it('leaves nothing behind when a profile is deleted', () => {
     reset();
     const fox = state().createProfile('Fox', 'fox');

@@ -9,6 +9,7 @@ import { AVATARS, avatarById } from '../src/progress/schema';
 import { useActiveProfile, useMaxTier, useProgress } from '../src/progress/store';
 import { AvatarPicker } from '../src/ui/AvatarPicker';
 import { Button } from '../src/ui/Button';
+import { GrownUpGate } from '../src/ui/GrownUpGate';
 import { IconButton } from '../src/ui/IconButton';
 import { strings } from '../src/ui/strings';
 import { Text } from '../src/ui/Text';
@@ -32,14 +33,25 @@ export default function SettingsScreen() {
   const renameProfile = useProgress((s) => s.renameProfile);
   const setProfileAvatar = useProgress((s) => s.setProfileAvatar);
   const resetProgress = useProgress((s) => s.resetProgress);
+  const replayAll = useProgress((s) => s.replayAll);
   const deleteProfile = useProgress((s) => s.deleteProfile);
 
   const [taps, setTaps] = useState(0);
 
-  const confirmReset = () =>
-    Alert.alert(strings.settings.startOver, strings.settings.startOverConfirm, [
+  /**
+   * Which destructive act is waiting on the grown-up gate, if any.
+   *
+   * Only the two that take something away are gated. "Replay all" keeps its
+   * plain confirm below: it locks the path back to the beginning but destroys
+   * nothing she earned, so a keypad there would be friction with no risk
+   * behind it.
+   */
+  const [gated, setGated] = useState<'reset' | 'delete' | null>(null);
+
+  const confirmReplay = () =>
+    Alert.alert(strings.settings.replayAll, strings.settings.replayAllConfirm, [
       { text: strings.settings.cancel, style: 'cancel' },
-      { text: strings.settings.confirm, style: 'destructive', onPress: resetProgress },
+      { text: strings.settings.replayAllConfirmAction, onPress: replayAll },
     ]);
 
   const onVersionTap = () => {
@@ -106,8 +118,29 @@ export default function SettingsScreen() {
           ) : null}
         </Section>
 
+        {/* The whole journey again with everything earned left standing. It
+            sits above "Start over" because it is the one most people actually
+            want, and the pair of them read as a scale: play it again, or wipe
+            it. `restart` is the rewind-to-start shape; "Start over" keeps
+            `retry`. Both are coral, which is correct on the adults' screen —
+            the title and help text carry the difference, and the icon-alone
+            rule governs the screens she uses. */}
+        <Section title={strings.settings.replayAll} help={strings.settings.replayAllHelp}>
+          <Button
+            icon="restart"
+            label={strings.settings.replayAll}
+            kind="again"
+            onPress={confirmReplay}
+          />
+        </Section>
+
         <Section title={strings.settings.startOver} help={strings.settings.startOverHelp}>
-          <Button icon="retry" label={strings.settings.startOver} kind="again" onPress={confirmReset} />
+          <Button
+            icon="retry"
+            label={strings.settings.startOver}
+            kind="again"
+            onPress={() => setGated('reset')}
+          />
         </Section>
 
         {/* Destructive, so it lives behind the gear rather than in the
@@ -117,20 +150,7 @@ export default function SettingsScreen() {
             icon="retry"
             label={strings.profiles.remove}
             kind="again"
-            onPress={() =>
-              profile &&
-              Alert.alert(strings.profiles.remove, strings.profiles.removeConfirm, [
-                { text: strings.settings.cancel, style: 'cancel' },
-                {
-                  text: strings.settings.confirm,
-                  style: 'destructive',
-                  onPress: () => {
-                    deleteProfile(profile.id);
-                    router.back();
-                  },
-                },
-              ])
-            }
+            onPress={() => profile && setGated('delete')}
           />
         </Section>
 
@@ -151,6 +171,30 @@ export default function SettingsScreen() {
           </Text>
         </Pressable>
       </ScrollView>
+
+      {/* Rendered inside the screen rather than beside the navigator, so it
+          inherits react-navigation's `SafeAreaProvider` — a root-level overlay
+          would need its own, which is the trap `app/_layout.tsx` documents. */}
+      {gated ? (
+        <GrownUpGate
+          title={gated === 'reset' ? strings.settings.startOver : strings.profiles.remove}
+          warning={
+            gated === 'reset' ? strings.settings.startOverConfirm : strings.profiles.removeConfirm
+          }
+          onCancel={() => setGated(null)}
+          onConfirm={() => {
+            setGated(null);
+            if (gated === 'reset') {
+              resetProgress();
+              return;
+            }
+            if (profile) {
+              deleteProfile(profile.id);
+              router.back();
+            }
+          }}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
