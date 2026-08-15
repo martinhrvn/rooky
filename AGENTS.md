@@ -361,8 +361,13 @@ a week, and over the corner it costs a thumbnail.
   suits stacks of cards, and this screen's picture is its board.
 - **Removal is a drag onto the tray, and there is no clear button anywhere she
   can reach.** `resolvePlacedDrop` removes *only* on the tray and otherwise
-  puts the sticker back where it was, so an overshoot costs nothing and losing
-  one takes a deliberate aim at a target. A `clearCanvas` would be a one-tap
+  puts the sticker on the picture, as near to where she let go as the edge
+  allows, so an overshoot costs nothing and losing one takes a deliberate aim
+  at a target. It used to go back to where the drag *started* instead, which
+  cost her the move every time her finger crossed the edge — which is exactly
+  where a finger is when she is placing something against that edge. The only
+  drop with no answer, a canvas not yet measured, still uses the fallback.
+  A `clearCanvas` would be a one-tap
   wipe of an afternoon's work with no confirm she could read; if one is ever
   wanted it goes on `app/dev.tsx`. Taking a placement off never touches
   `album`, which `store.test.ts` asserts — that is what makes the tray safe to
@@ -395,10 +400,20 @@ a week, and over the corner it costs a thumbnail.
   both clamped (`clampScale`, `MIN_SCALE`/`MAX_SCALE`). The ceiling is not
   tidiness: one sticker big enough to cover the picture makes everything under
   it unreachable, and there is no send-to-back she could use to dig it out.
-  A pinch re-clamps the position too, so growing one near an edge pulls it back
-  on. **A placed sticker's drawn box ignores its scale** — all of it is in the
+  It is arithmetic rather than a round number — at `STICKER_FRACTION` a sticker
+  is 18% of the width, so 3.5 is 63% of the width and covering the picture
+  outright would take about 5.5. A pinch re-clamps the position too.
+  **A placed sticker's drawn box ignores its scale** — all of it is in the
   transform — which keeps a sticker she has shrunk as easy to grab as one she
   has not.
+- **A sticker may hang half off the edge, and no further** (`MAX_OVERHANG`).
+  The whole thing used to have to fit, on the reasoning that a sticker mostly
+  gone reads as one she lost; in the hand it read as the picture shoving her
+  stickers around, and overlapping the edge is most of what a sticker book is.
+  A half is the natural stop rather than a taste — it is exactly "the centre
+  stays on the picture", so what she aimed at is always somewhere she can aim
+  at again. Past that the anchor is off the canvas, which clips and takes no
+  touches, and the sticker is genuinely out of reach.
 - **With nothing selected the same pinch zooms the picture, and one finger on
   it pans.** `clampViewport` is what makes that safe: it will not zoom out past
   fit and the pan range falls straight out of the zoom, so at fit the picture

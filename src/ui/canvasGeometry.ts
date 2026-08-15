@@ -48,9 +48,14 @@ export const STICKER_FRACTION = 0.18;
  * again; above the ceiling one sticker covers the picture and everything under
  * it becomes unreachable — and there is no "send to back" she could use to dig
  * anything out.
+ *
+ * The ceiling is a real limit rather than a round number: at `STICKER_FRACTION`
+ * a sticker is 18% of the width, so 3.5 puts it at 63% of the width and 47% of
+ * the height. Covering the picture outright would take about 5.5, which is what
+ * this has to stay clear of.
  */
 export const MIN_SCALE = 0.5;
-export const MAX_SCALE = 2.5;
+export const MAX_SCALE = 3.5;
 
 export function clampScale(scale: number): number {
   'worklet';
@@ -94,19 +99,32 @@ export function hitTest(rect: Rect | null, x: number, y: number): boolean {
 }
 
 /**
- * Pulls a centre far enough from the edge that the **whole** sticker stays on
- * the picture.
+ * How much of a sticker may hang off the edge of the picture.
  *
- * Half-off-the-edge would look better and is the wrong trade at four: a
- * sticker that is mostly gone reads as a sticker she lost, and there is
- * nothing on screen to say it is still there.
+ * This was zero — the whole sticker had to fit — on the reasoning that a
+ * sticker mostly gone reads as a sticker she lost. In the hand it read as the
+ * picture shoving her stickers around: put one against the edge and it slid
+ * back inwards, which is the composition being overruled. Overlapping the edge
+ * is most of what a sticker book *is*.
+ *
+ * A half is the natural ceiling rather than a taste: it is exactly "the centre
+ * stays on the picture", so what she aimed at is always somewhere she can aim
+ * at again. Past that the anchor itself would be off the canvas, which clips
+ * and stops taking touches — a sticker genuinely out of reach.
+ */
+export const MAX_OVERHANG = 0.5;
+
+/**
+ * Pulls a centre far enough from the edge that the sticker still overlaps the
+ * picture by `1 - MAX_OVERHANG` of itself.
  */
 export function clampPlacement(point: Point, box: Size, stickerSize: number): Point {
   'worklet';
   // A box of zero (before layout) or a sticker wider than the canvas would
   // otherwise invert the range and hand back NaN.
-  const mx = box.width > 0 ? Math.min(0.5, stickerSize / 2 / box.width) : 0.5;
-  const my = box.height > 0 ? Math.min(0.5, stickerSize / 2 / box.height) : 0.5;
+  const inset = stickerSize * (0.5 - MAX_OVERHANG);
+  const mx = box.width > 0 ? Math.min(0.5, inset / box.width) : 0.5;
+  const my = box.height > 0 ? Math.min(0.5, inset / box.height) : 0.5;
   return {
     x: Math.min(1 - mx, Math.max(mx, point.x)),
     y: Math.min(1 - my, Math.max(my, point.y)),
@@ -281,6 +299,15 @@ export type PlacedDrop =
  * back on, clamped to the nearest legal spot. Losing a sticker takes a
  * deliberate aim at a target — which is "nothing by accident" applied to a
  * gesture rather than to a button.
+ *
+ * It used to say that and do something else: anything landing off the canvas
+ * went back to where the drag *started*. Combined with a clamp that kept the
+ * whole sticker on, a finger a few pixels past the edge — which is exactly
+ * where a finger is when she is placing something against the edge — threw the
+ * move away and snapped the sticker home. Now the only question a drop asks is
+ * whether it was on the tray; everything else lands as near to where she let go
+ * as the edge allows, and `fallback` is left for the one case that has no
+ * answer, a canvas that has not been measured.
  */
 export function resolvePlacedDrop(args: {
   readonly x: number;
@@ -293,9 +320,7 @@ export function resolvePlacedDrop(args: {
 }): PlacedDrop {
   'worklet';
   if (hitTest(args.tray, args.x, args.y)) return { kind: 'remove' };
-  if (hitTest(args.canvas, args.x, args.y)) {
-    const p = normalise(args.x, args.y, args.canvas as Rect, args.stickerSize, args.view);
-    return { kind: 'move', x: p.x, y: p.y };
-  }
-  return { kind: 'move', x: args.fallback.x, y: args.fallback.y };
+  if (args.canvas === null) return { kind: 'move', x: args.fallback.x, y: args.fallback.y };
+  const p = normalise(args.x, args.y, args.canvas, args.stickerSize, args.view);
+  return { kind: 'move', x: p.x, y: p.y };
 }

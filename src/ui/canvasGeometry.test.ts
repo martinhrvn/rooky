@@ -53,20 +53,22 @@ describe('fitting the picture into the room it has', () => {
 
 describe('keeping a sticker on the picture', () => {
   const box = { width: 300, height: 400 };
-  const half = { x: SIZE / 2 / 300, y: SIZE / 2 / 400 };
 
   it('leaves an interior point exactly where it is', () => {
     expect(clampPlacement({ x: 0.42, y: 0.61 }, box, SIZE)).toEqual({ x: 0.42, y: 0.61 });
   });
 
-  it('pulls a corner in far enough that the whole sticker shows', () => {
-    expect(clampPlacement({ x: 0, y: 0 }, box, SIZE)).toEqual(half);
-    expect(clampPlacement({ x: 1, y: 1 }, box, SIZE)).toEqual({ x: 1 - half.x, y: 1 - half.y });
+  it('lets a sticker hang over the edge, because that is what a sticker does', () => {
+    // It used to slide back in until the whole thing showed, which read as the
+    // picture overruling where she put it.
+    expect(clampPlacement({ x: 0, y: 0 }, box, SIZE)).toEqual({ x: 0, y: 0 });
+    expect(clampPlacement({ x: 1, y: 1 }, box, SIZE)).toEqual({ x: 1, y: 1 });
   });
 
-  it('collapses to the middle for a sticker wider than the picture', () => {
-    // Rather than inverting the range and handing back something nonsensical.
-    expect(clampPlacement({ x: 0.1, y: 0.9 }, box, 5000)).toEqual({ x: 0.5, y: 0.5 });
+  it('keeps the middle of it on the picture, so it can always be grabbed again', () => {
+    // Past the edge the anchor itself would be off the canvas, which clips and
+    // stops taking touches — a sticker genuinely out of reach.
+    expect(clampPlacement({ x: -0.4, y: 1.9 }, box, SIZE)).toEqual({ x: 0, y: 1 });
   });
 
   it('survives a box of zero', () => {
@@ -213,7 +215,9 @@ describe('what a drag out of the tray meant', () => {
     }
   });
 
-  it('pulls a drop in the very corner far enough in to be seen', () => {
+  it('leaves a drop in the very corner in the corner, overhanging', () => {
+    // It used to be pulled inwards until the whole sticker showed. Now the
+    // corner is a place she can actually put something.
     const drop = resolveTrayDrop({
       x: 100,
       y: 200,
@@ -222,7 +226,7 @@ describe('what a drag out of the tray meant', () => {
       stickerSize: SIZE,
       view: FIT,
     });
-    expect(drop.kind === 'canvas' && drop.x > 0).toBe(true);
+    expect(drop).toEqual({ kind: 'canvas', x: 0, y: 0 });
   });
 
   it('drops one in the middle when the finger barely moved', () => {
@@ -260,10 +264,29 @@ describe('what a drag of a placed sticker meant', () => {
     if (drop.kind === 'move') expect(drop.x).toBeCloseTo(0.6);
   });
 
-  it('puts it back where it was when it is dropped on neither, never removing it', () => {
-    // The rule that makes the tray safe to aim at: everywhere that is not the
-    // bin is "put it back", so an overshoot she did not mean costs nothing.
-    expect(resolvePlacedDrop({ ...args, x: 250, y: 40 })).toEqual({ kind: 'move', ...fallback });
-    expect(resolvePlacedDrop({ ...args, x: 250, y: 900 })).toEqual({ kind: 'move', ...fallback });
+  it('lands one dropped just past the edge against that edge, not back where it started', () => {
+    // The bug this replaced: placing a sticker against the edge puts her finger
+    // a few pixels off the canvas, which threw the whole move away.
+    const drop = resolvePlacedDrop({ ...args, x: 100 - 5, y: 200 + 0.5 * 400 });
+    expect(drop.kind).toBe('move');
+    if (drop.kind === 'move') {
+      expect(drop.x).toBe(0);
+      expect(drop.y).toBeCloseTo(0.5);
+    }
+  });
+
+  it('still never removes one dropped on anything that is not the tray', () => {
+    // The rule that makes the tray safe to aim at is unchanged: it is the only
+    // thing in the app that takes a sticker off, so an overshoot costs nothing.
+    expect(resolvePlacedDrop({ ...args, x: 250, y: 40 }).kind).toBe('move');
+    expect(resolvePlacedDrop({ ...args, x: 250, y: 900 }).kind).toBe('move');
+  });
+
+  it('puts it back where it was when the picture has not been measured', () => {
+    // The one drop with no answer: there is no canvas to clamp against.
+    expect(resolvePlacedDrop({ ...args, canvas: null, x: 250, y: 400 })).toEqual({
+      kind: 'move',
+      ...fallback,
+    });
   });
 });
