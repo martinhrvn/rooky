@@ -5,7 +5,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 
 import type { PieceType } from '../../src/chess/types';
 import { nextLevel, worldOf } from '../../src/content';
-import { currentWorld, piecesPlayed } from '../../src/progress/selectors';
+import { piecesPlayed } from '../../src/progress/selectors';
 import { useActiveProfile, useCompletedIds, useProgress, useXp } from '../../src/progress/store';
 import { Avatar } from '../../src/ui/Avatar';
 import { Button } from '../../src/ui/Button';
@@ -43,6 +43,11 @@ const MAX_MIX_PIECES = 5;
  *
  * The hero is the piece rather than a heading: it says which world Play will
  * open to someone who cannot read the words underneath it.
+ *
+ * Once every level is finished the screen has a state of its own — the pieces
+ * she has played, and Mix where Play was. Before that it kept naming the last
+ * world she was in and handing her its final level again, which is the one
+ * thing a Play button must never do.
  */
 export default function HomeScreen() {
   const router = useRouter();
@@ -79,11 +84,46 @@ export default function HomeScreen() {
   }
 
   const resume = nextLevel(catalogue, completed);
-  const world = resume ? worldOf(catalogue, resume) : currentWorld(catalogue.worlds, completed);
-
-  if (!resume || !world) return <SafeAreaView style={styles.screen} />;
-
+  const world = resume ? worldOf(catalogue, resume) : undefined;
   const played = piecesPlayed(catalogue.worlds, completed);
+
+  // `nextLevel` says nothing in two cases — every level finished, or no content
+  // at all — and only the first is worth drawing.
+  if (catalogue.levels.length === 0 || (resume && !world)) {
+    return <SafeAreaView style={styles.screen} />;
+  }
+
+  /**
+   * The hero, in its two states.
+   *
+   * Finished, it is every piece she has played rather than one world's cast:
+   * the screen used to freeze on whichever world she happened to end in, which
+   * named a place instead of saying she was done. The row is what carries it —
+   * five pieces where there is usually one is a different picture before a word
+   * is read.
+   */
+  const hero =
+    resume && world ? (
+      <>
+        <Cast pieces={world.cast} size={96} />
+        <Text variant="display" align="center">
+          {world.title}
+        </Text>
+        <Text variant="label" color={colors.textSoft} align="center">
+          {strings.tiers[resume.tier]}
+        </Text>
+      </>
+    ) : (
+      <>
+        <Cast pieces={played} size={96} />
+        <Text variant="display" align="center">
+          {strings.home.allDone}
+        </Text>
+        <Text variant="label" color={colors.textSoft} align="center">
+          {strings.home.allDoneHelp}
+        </Text>
+      </>
+    );
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -131,23 +171,21 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.body}>
-        <View style={styles.hero}>
-          <Cast pieces={world.cast} size={96} />
-          <Text variant="display" align="center">
-            {world.title}
-          </Text>
-          <Text variant="label" color={colors.textSoft} align="center">
-            {strings.tiers[resume.tier]}
-          </Text>
-        </View>
+        <View style={styles.hero}>{hero}</View>
 
         <View style={styles.actions}>
-          <Button
-            icon="play"
-            label={strings.home.play}
-            kind="go"
-            onPress={() => router.push(`/play/${resume.id}`)}
-          />
+          {/* Gone once there is nothing left unplayed. Jade means "go on", and
+              at that point there is nowhere on: Mix moves up into this slot
+              and is the only thing here, keeping its own colour and its row of
+              pieces so it is the button she already knows, an inch higher. */}
+          {resume ? (
+            <Button
+              icon="play"
+              label={strings.home.play}
+              kind="go"
+              onPress={() => router.push(`/play/${resume.id}`)}
+            />
+          ) : null}
 
           {/* Only once there is genuinely something to mix. The row of pieces
               is what keeps this distinct from Endless without a word being

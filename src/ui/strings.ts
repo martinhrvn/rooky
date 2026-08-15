@@ -24,8 +24,14 @@ export const strings = {
   home: {
     /** Nothing finished yet. */
     start: 'Start',
-    /** Mid-way through, and once everything is done. */
+    /** Mid-way through. Gone once there is nothing left unplayed. */
     play: 'Play',
+    /**
+     * Every level finished — a real state, not the last world she happened to
+     * land in. The row of pieces above it is what says so to a non-reader.
+     */
+    allDone: 'All finished!',
+    allDoneHelp: 'Play anything you like',
     /** Opens level 1 again. Never destroys progress. */
     reset: 'Start over',
     /** Opens the path. Named for what she gets, not for what the screen is. */
@@ -267,13 +273,28 @@ export const strings = {
     playerHelp:
       'Pick a face for this player. The name is shown only to you, so you can tell profiles apart.',
     namePlaceholder: 'Name',
+    replayAll: 'Replay all',
+    replayAllHelp:
+      'Sends this player back to the first level with everything to win again. Stars and the path start over; stickers, the picture and everything earned are kept.',
+    replayAllConfirm:
+      'Play it all again? The levels lock back to the beginning. Stickers, the picture and the things she has done all stay.',
+    replayAllConfirmAction: 'Play it again',
     startOver: 'Start over',
     startOverHelp:
       'Clears every level, every sticker and the picture for this player. Cannot be undone.',
     startOverConfirm:
-      'Clear all progress for this player? The stickers and the picture go too. This cannot be undone.',
+      'This clears every level, every sticker and the picture for this player. It cannot be undone.',
     confirm: 'Clear it',
     cancel: 'Cancel',
+    /**
+     * The grown-up gate. `challenge` is spelled out in words on purpose — see
+     * the note in `GrownUpGate.tsx`. The keypad shows digits, so reading is the
+     * only thing standing between a four-year-old and a wiped profile.
+     */
+    gate: 'Type these numbers to carry on',
+    gateNumbers: ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'] as const,
+    gateBack: 'Delete the last number',
+    gateClose: 'Leave this alone',
     credits: 'Credits',
     creditsBody:
       'Chess pieces are the Cburnett set by Colin M.L. Burnett, used under CC BY-SA 3.0. Type is Fredoka, used under the SIL Open Font License 1.1.',

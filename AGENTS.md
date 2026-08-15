@@ -517,6 +517,33 @@ in where levels come from and what happens on a win:
   The authored ones are recorded; the invented ones cannot be, because they
   are not in the catalogue. It advances manually rather than automatically.
 
+**Running out of levels is a state the app has, and Mix is what it opens.**
+`nextLevel` returns **undefined** once nothing is unplayed — it used to fall
+back to the catalogue's last level, which made "here is your next one" and "you
+have finished everything" the same return value, so Play sat there replaying the
+final level forever. Undefined now means one of two things, and a caller that
+has to tell them apart checks `catalogue.levels.length`:
+
+- **Home** drops the jade Play button entirely and gives Mix its slot. There is
+  no "go on" left, so nothing on the screen is jade; Mix keeps its own
+  periwinkle and its row of pieces, so it is the button she already knows an
+  inch higher. The hero becomes every piece she has played rather than freezing
+  on whichever world she happened to end in, which named a place instead of
+  saying she was done.
+- **The Levels FAB** becomes Mix for the same reason, which is what keeps the
+  invariant it is worth having at all: it opens whatever Play opens, so the two
+  can never disagree. The path then opens at the top, because there is no "where
+  she is up to" left to settle on.
+- **The final win** offers Mix above "Start over". Before that it rendered one
+  lone coral button — `mate`'s cast is three pieces, so Endless is hidden there
+  too — which was the least the app ever offers at the proudest moment it has.
+
+Mix is the right destination and not a consolation: `mixPool` filters by
+completion, so when everything is done the pool *is* the whole catalogue, the
+largest and most varied it ever gets, with every fourth round invented. Note
+this is not a rare corner — a parent capping at *Stars only* means a keen child
+hits it at the ceiling, nowhere near Checkmate.
+
 **Only one "play forever" button reaches the home screen, and it is Mix.**
 The two modes really are different in kind — one replays what she knows, the
 other invents — but that distinction was being asked to survive on one piece

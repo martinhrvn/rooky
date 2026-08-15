@@ -75,6 +75,11 @@ export default function LevelsScreen() {
    * Called from both layout and content-size because either alone can run while
    * the other measurement is still missing. Stops as soon as she drags it
    * herself: past that point, where the path sits is her business.
+   *
+   * With every level finished there is no `resume`, so nothing reports a
+   * position and the path simply opens at the top. That is right rather than a
+   * regression — there is no "where she is up to" left to open on, and the FAB
+   * below is the way on either way.
    */
   const settle = () => {
     if (touched.current || currentY.current === null) return;
@@ -121,7 +126,13 @@ export default function LevelsScreen() {
       </Animated.ScrollView>
 
       {/* Fixed, so the way on is always one tap away however far she has
-          wandered up the path. */}
+          wandered up the path.
+
+          With every level finished it becomes Mix rather than disappearing.
+          That keeps the invariant this button is worth having at all — it
+          opens whatever Play opens, so the two can never disagree — and it
+          changes colour with its meaning: jade while there is something new,
+          periwinkle once the only thing left is to play freely. */}
       {resume ? (
         <View style={styles.fab}>
           <IconButton
@@ -130,6 +141,16 @@ export default function LevelsScreen() {
             prominent
             accessibilityLabel={strings.path.playNext}
             onPress={() => router.push(`/play/${resume.id}`)}
+          />
+        </View>
+      ) : catalogue.levels.length > 0 ? (
+        <View style={styles.fab}>
+          <IconButton
+            name="shuffle"
+            kind="free"
+            prominent
+            accessibilityLabel={strings.mix.play}
+            onPress={() => router.push('/mix')}
           />
         </View>
       ) : null}

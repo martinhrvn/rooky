@@ -53,12 +53,18 @@ describe('the catalogue as a whole', () => {
     });
 
     it('lands Continue on the next world once one is finished', () => {
-      // Only meaningful with somewhere to go: with a single world, Continue
-      // correctly falls back to that world's last level.
+      // Only meaningful with somewhere to go.
       if (playable.length < 2) return;
 
       const done = new Set(playable[0].levels.map((l) => l.id));
       expect(nextLevel(FULL_CATALOGUE, done)).toBe(playable[1].levels[0]);
+    });
+
+    it('offers nothing once every level is finished, rather than the last one again', () => {
+      // The whole reason home can tell "carry on" from "you have finished it".
+      // A fallback here would put Play back on the final level forever.
+      const everything = new Set(ALL_LEVELS.map((l) => l.id));
+      expect(nextLevel(FULL_CATALOGUE, everything)).toBeUndefined();
     });
   });
 });

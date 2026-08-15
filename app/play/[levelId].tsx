@@ -13,7 +13,8 @@ import {
   tierLevels,
   worldOf,
 } from '../../src/content';
-import { useProgress } from '../../src/progress/store';
+import { piecesPlayed } from '../../src/progress/selectors';
+import { useCompletedIds, useProgress } from '../../src/progress/store';
 import { Button } from '../../src/ui/Button';
 import { LevelPlayer } from '../../src/ui/LevelPlayer';
 import { pieceArt } from '../../src/ui/pieces';
@@ -30,10 +31,14 @@ export default function PlayScreen() {
   return level ? <Play key={level.id} levelId={level.id} /> : <View style={styles.blank} />;
 }
 
+/** Most pieces on the Mix button before the row starts to crowd it. */
+const MAX_MIX_PIECES = 5;
+
 function Play({ levelId }: { levelId: string }) {
   const level = levelById(levelId)!;
   const router = useRouter();
   const catalogue = useCatalogue();
+  const completed = useCompletedIds();
   const recordResult = useProgress((s) => s.recordResult);
   const rewards = useRewards('campaign');
 
@@ -63,6 +68,13 @@ function Play({ levelId }: { levelId: string }) {
   const upcomingWorld =
     world && !upcomingTier ? nextWorldWithLevels(catalogue, world) : undefined;
 
+  // No next difficulty and no next piece means she has just finished the whole
+  // catalogue. This used to leave the dialog with one coral "Start over" on it
+  // — the least the app ever offers, at the proudest moment it has — because
+  // `mate`'s cast is three pieces, so Endless is hidden here too.
+  const finishedEverything = tierDone && !upcomingTier && !upcomingWorld;
+  const played = piecesPlayed(catalogue.worlds, completed);
+
   const wonActions =
     tierDone && world ? (
       <View style={styles.choices}>
@@ -89,6 +101,20 @@ function Play({ levelId }: { levelId: string }) {
             onPress={() => router.replace(`/play/${upcomingWorld.levels[0].id}`)}
           />
         ) : null}
+        {/* The end of the content, so the way on is the mode that never runs
+            out. Above "Start over" because onward outranks back, and drawn
+            with her pieces rather than the shuffle glyph alone so it is the
+            same button she is handed on home. */}
+        {finishedEverything ? (
+          <Button
+            icon="shuffle"
+            iconNode={<NextWorldArt cast={played.slice(0, MAX_MIX_PIECES)} />}
+            label={strings.mix.play}
+            kind="free"
+            onPress={() => router.replace('/mix')}
+          />
+        ) : null}
+
         {/* Theme worlds have nothing to generate — see the note on the home
             screen's Endless button. */}
         {soloPiece(world) ? (

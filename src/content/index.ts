@@ -215,15 +215,24 @@ export const tierLevels = (world: World, tier: Tier): readonly Level[] =>
   world.levels.filter((level) => level.tier === tier);
 
 /**
- * What Play opens: the first level with no recorded result, falling back to
- * the last level once everything is done. Undefined only if there is no
- * content at all, which callers should render around rather than crash on.
+ * What Play opens: the first level with no recorded result, or **undefined**
+ * once there is nothing left unplayed.
+ *
+ * This used to fall back to the catalogue's last level, which made "here is
+ * your next one" and "you have finished everything" the same return value —
+ * so no caller could tell them apart, and Play sat there replaying the final
+ * level forever. Saying nothing is what lets home and the path offer Mix
+ * instead. Its neighbours below already end rather than wrap, and this now
+ * matches them.
+ *
+ * Undefined also means "no content at all", so a caller that has to tell the
+ * two apart checks `levels.length` as well.
  */
 export function nextLevel(
   { levels }: Catalogue,
   completedIds: ReadonlySet<string>,
 ): Level | undefined {
-  return levels.find((level) => !completedIds.has(level.id)) ?? levels[levels.length - 1];
+  return levels.find((level) => !completedIds.has(level.id));
 }
 
 /** The level immediately after `id` in play order, or undefined at the end. */
