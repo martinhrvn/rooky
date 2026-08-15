@@ -29,10 +29,19 @@ import { colors, layout, pieceSpring } from './theme';
  */
 const LIFT_MS = 200;
 
-/** One column, a comfortable target wide, with the art inset inside it. */
-export const TRAY_WIDTH = layout.touchTarget + 16;
-const SLOT = layout.touchTarget;
-const TRAY_ART = 44;
+/**
+ * A band along the bottom, two rows deep and scrolling to the rest.
+ *
+ * It was a column down the side first, which showed six stickers and gave the
+ * canvas a narrow slot to live in. Across the bottom it shows a dozen at the
+ * same height, and the picture gets the full width of the screen — the tray is
+ * a drawer she rummages in, and a drawer is wide.
+ */
+const ROWS = 2;
+const SLOT = 60;
+const GAP = 6;
+const TRAY_ART = 42;
+export const TRAY_HEIGHT = ROWS * SLOT + (ROWS - 1) * GAP + 16;
 
 interface TrayProps {
   readonly album: readonly string[];
@@ -80,10 +89,7 @@ export function StickerTray({ album, drag, rects, heldId, armed, ...rest }: Tray
       style={[styles.tray, binStyle]}
     >
       {album.length > 0 ? (
-        <ScrollView
-          contentContainerStyle={styles.column}
-          showsVerticalScrollIndicator={false}
-        >
+        <ScrollView contentContainerStyle={styles.grid} showsVerticalScrollIndicator={false}>
           {album.map((id, i) => (
             <TrayItem
               key={`${id}-${i}`}
@@ -150,6 +156,7 @@ function TrayItem({
           travelled: Math.sqrt(e.translationX ** 2 + e.translationY ** 2),
           canvas: rects.canvas.value,
           stickerSize: stickerSizeFor(rects.box.value),
+          view: rects.view.value,
         });
         if (drop.kind === 'canvas') scheduleOnRN(onPlace, stickerId, drop.x, drop.y);
         else if (drop.kind === 'middle') scheduleOnRN(onDropInMiddle, stickerId);
@@ -201,18 +208,24 @@ const tick = () => {
 
 const styles = StyleSheet.create({
   tray: {
-    width: TRAY_WIDTH,
+    height: TRAY_HEIGHT,
     borderRadius: layout.radius,
     borderWidth: 1,
-    paddingVertical: 8,
     justifyContent: 'center',
   },
-  column: { alignItems: 'center', gap: 6, paddingVertical: 2 },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: GAP,
+    padding: 8,
+  },
   slot: {
     width: SLOT,
     height: SLOT,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  empty: { paddingHorizontal: 6 },
+  empty: { paddingHorizontal: 16 },
 });

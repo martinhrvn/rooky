@@ -8,7 +8,7 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 
-import type { Rect, Size } from './canvasGeometry';
+import { FIT, type Rect, type Size, type Viewport } from './canvasGeometry';
 
 /**
  * What is currently in the air.
@@ -75,6 +75,12 @@ export interface CanvasRects {
   readonly host: SharedValue<Rect | null>;
   /** The fitted canvas box. Comes from layout, not from `measure`. */
   readonly box: SharedValue<Size>;
+  /**
+   * How she is looking at the picture. Lives here beside the frames because
+   * every drop has to undo it, and the tray needs it as much as the canvas
+   * does. Deliberately not persisted — see `Viewport`.
+   */
+  readonly view: SharedValue<Viewport>;
 
   /**
    * Re-reads all three frames. A **worklet** — `measure()` only works on the
@@ -92,6 +98,7 @@ export function useCanvasRects(): CanvasRects {
   const tray = useSharedValue<Rect | null>(null);
   const host = useSharedValue<Rect | null>(null);
   const box = useSharedValue<Size>({ width: 0, height: 0 });
+  const view = useSharedValue<Viewport>(FIT);
 
   const sync = useCallback(() => {
     'worklet';
@@ -106,5 +113,5 @@ export function useCanvasRects(): CanvasRects {
     host.value = toRect(measure(hostRef));
   }, [canvasRef, trayRef, hostRef, canvas, tray, host]);
 
-  return { canvasRef, trayRef, hostRef, canvas, tray, host, box, sync };
+  return { canvasRef, trayRef, hostRef, canvas, tray, host, box, view, sync };
 }

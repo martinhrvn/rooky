@@ -2,17 +2,23 @@ import { describe, expect, it } from 'vitest';
 
 import {
   CANVAS_ASPECT,
+  FIT,
   MAX_SCALE,
+  MAX_ZOOM,
   MIN_SCALE,
   type Rect,
+  type Viewport,
   clampPlacement,
   clampScale,
+  clampViewport,
   fitCanvas,
   hitTest,
   normalise,
   resolvePlacedDrop,
   resolveTrayDrop,
   stickerSizeFor,
+  visibleCentre,
+  zoomAbout,
 } from './canvasGeometry';
 
 /** A 300x400 picture whose top-left corner sits 100 across and 200 down. */
@@ -89,6 +95,79 @@ describe('how far a sticker may be pinched', () => {
   });
 });
 
+describe('how she is looking at the picture', () => {
+  const box = { width: 300, height: 400 };
+
+  it('will not zoom out past the whole picture', () => {
+    // Zooming out past fit is the one thing that could genuinely lose it: a
+    // small square adrift in a dark frame, with nothing saying which way to go.
+    expect(clampViewport({ zoom: 0.3, panX: 0, panY: 0 }, box).zoom).toBe(1);
+    expect(clampViewport({ zoom: 99, panX: 0, panY: 0 }, box).zoom).toBe(MAX_ZOOM);
+  });
+
+  it('pins the pan to nothing at all when the picture already fits', () => {
+    // So a tap-and-drag on a picture at fit cannot nudge it off-centre.
+    expect(clampViewport({ zoom: 1, panX: 200, panY: -90 }, box)).toEqual(FIT);
+  });
+
+  it('never lets an edge of the picture come inside the frame', () => {
+    const view = clampViewport({ zoom: 2, panX: 9999, panY: -9999 }, box);
+    // At 2x the picture is twice the frame, so half of it — 150 across, 200
+    // down — is the furthest either way.
+    expect(view.panX).toBe(150);
+    expect(view.panY).toBe(-200);
+  });
+
+  it('survives nonsense rather than storing it', () => {
+    expect(clampViewport({ zoom: Number.NaN, panX: Number.NaN, panY: 0 }, box)).toEqual(FIT);
+  });
+
+  it('keeps what is under her fingers under her fingers', () => {
+    // The corner she pinched has to stay put; zooming about the centre instead
+    // slides it out from under her while she is holding it.
+    const focal = { x: 40, y: 60 };
+    const after = zoomAbout(FIT, focal, 2, box);
+    const local = (p: number, c: number, pan: number, zoom: number) =>
+      c + (p - c - pan) / zoom;
+    expect(local(focal.x, 150, after.panX, after.zoom)).toBeCloseTo(focal.x);
+    expect(local(focal.y, 200, after.panY, after.zoom)).toBeCloseTo(focal.y);
+  });
+
+  it('comes back to the exact middle when it is pinched back out', () => {
+    const inAndOut = zoomAbout(zoomAbout(FIT, { x: 20, y: 20 }, 2.4, box), { x: 90, y: 5 }, 1, box);
+    expect(inAndOut).toEqual(FIT);
+  });
+});
+
+describe('a drop while she is zoomed in', () => {
+  const view: Viewport = { zoom: 2, panX: 60, panY: -40 };
+
+  it('stores where it landed on the picture, not where it landed on the glass', () => {
+    // Round-trip: take a known fraction, work out where it appears on screen
+    // under this viewport, and drop there.
+    const fraction = { x: 0.55, y: 0.4 };
+    const cx = CANVAS.width / 2;
+    const cy = CANVAS.height / 2;
+    const screenX =
+      CANVAS.x + cx + view.panX + view.zoom * (fraction.x * CANVAS.width - cx);
+    const screenY =
+      CANVAS.y + cy + view.panY + view.zoom * (fraction.y * CANVAS.height - cy);
+
+    const there = normalise(screenX, screenY, CANVAS, SIZE, view);
+    expect(there.x).toBeCloseTo(fraction.x);
+    expect(there.y).toBeCloseTo(fraction.y);
+  });
+
+  it('drops a tapped sticker where she is looking, not in the true centre', () => {
+    const box = { width: 300, height: 400 };
+    const centre = visibleCentre(box, view);
+    // Panned right and up, so what she can see is left of and below middle.
+    expect(centre.x).toBeLessThan(0.5);
+    expect(centre.y).toBeGreaterThan(0.5);
+    expect(visibleCentre(box, FIT)).toEqual({ x: 0.5, y: 0.5 });
+  });
+});
+
 describe('hit-testing', () => {
   it('is true inside and on every edge', () => {
     expect(hitTest(CANVAS, 250, 400)).toBe(true);
@@ -125,6 +204,7 @@ describe('what a drag out of the tray meant', () => {
       travelled: 200,
       canvas: CANVAS,
       stickerSize: SIZE,
+      view: FIT,
     });
     expect(drop.kind).toBe('canvas');
     if (drop.kind === 'canvas') {
@@ -140,6 +220,7 @@ describe('what a drag out of the tray meant', () => {
       travelled: 200,
       canvas: CANVAS,
       stickerSize: SIZE,
+      view: FIT,
     });
     expect(drop.kind === 'canvas' && drop.x > 0).toBe(true);
   });
@@ -148,26 +229,26 @@ describe('what a drag out of the tray meant', () => {
     // She held a sticker, meant to let go, and her hand shifted. That has to
     // put a sticker on the picture rather than do nothing at all.
     expect(
-      resolveTrayDrop({ x: 40, y: 300, travelled: 3, canvas: CANVAS, stickerSize: SIZE }).kind,
+      resolveTrayDrop({ x: 40, y: 300, travelled: 3, canvas: CANVAS, stickerSize: SIZE, view: FIT }).kind,
     ).toBe('middle');
   });
 
   it('does nothing for a long drag that ended off the picture', () => {
     expect(
-      resolveTrayDrop({ x: 250, y: 40, travelled: 300, canvas: CANVAS, stickerSize: SIZE }).kind,
+      resolveTrayDrop({ x: 250, y: 40, travelled: 300, canvas: CANVAS, stickerSize: SIZE, view: FIT }).kind,
     ).toBe('nothing');
   });
 
   it('does not throw before the picture has been measured', () => {
     expect(
-      resolveTrayDrop({ x: 250, y: 400, travelled: 300, canvas: null, stickerSize: SIZE }).kind,
+      resolveTrayDrop({ x: 250, y: 400, travelled: 300, canvas: null, stickerSize: SIZE, view: FIT }).kind,
     ).toBe('nothing');
   });
 });
 
 describe('what a drag of a placed sticker meant', () => {
   const fallback = { x: 0.2, y: 0.2 };
-  const args = { canvas: CANVAS, tray: TRAY, stickerSize: SIZE, fallback };
+  const args = { canvas: CANVAS, tray: TRAY, stickerSize: SIZE, fallback, view: FIT };
 
   it('takes it off the picture when it is dropped on the tray', () => {
     expect(resolvePlacedDrop({ ...args, x: 40, y: 300 })).toEqual({ kind: 'remove' });

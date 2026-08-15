@@ -113,18 +113,134 @@ export function clampPlacement(point: Point, box: Size, stickerSize: number): Po
   };
 }
 
-/** A window point as clamped fractions of the canvas it landed on. */
-export function normalise(x: number, y: number, canvas: Rect, stickerSize: number): Point {
+/**
+ * How the picture is being looked at: magnified by `zoom`, shifted by `pan`.
+ *
+ * **Never persisted.** Every visit opens at `FIT`, which is the whole safety
+ * net for a zoom she cannot read her way out of — the worst state she can
+ * reach is one screen away from being forgotten, and pinching back out fixes
+ * it in the meantime.
+ */
+export interface Viewport {
+  readonly zoom: number;
+  readonly panX: number;
+  readonly panY: number;
+}
+
+/** The whole picture, filling its frame. */
+export const FIT: Viewport = { zoom: 1, panX: 0, panY: 0 };
+
+/**
+ * Three is as far in as it goes, and one is as far out.
+ *
+ * Zooming *out* past fit is what would let her lose the picture — a small
+ * square adrift in a big dark frame, with nothing on screen saying which way
+ * to go. So the picture always fills its frame, and the pan is clamped to
+ * match.
+ */
+export const MAX_ZOOM = 3;
+
+const between = (v: number, lo: number, hi: number) => {
   'worklet';
+  // The `+ 0` is not decoration: `Math.max(-0, -90)` is `-0`, which compares
+  // equal to zero but is a different value once it has been through JSON — so
+  // without it a picture at fit can be saved holding a negative nothing.
+  return Math.min(hi, Math.max(lo, v)) + 0;
+};
+
+/**
+ * The nearest viewport that still covers the frame.
+ *
+ * The pan range falls straight out of the zoom: at `1` it is zero, so a
+ * picture at fit cannot be nudged off-centre at all, and there is no way to
+ * end up looking at nothing.
+ */
+export function clampViewport(view: Viewport, box: Size): Viewport {
+  'worklet';
+  const zoom = Number.isFinite(view.zoom) ? between(view.zoom, 1, MAX_ZOOM) : 1;
+  const spanX = (box.width * (zoom - 1)) / 2;
+  const spanY = (box.height * (zoom - 1)) / 2;
+  return {
+    zoom,
+    panX: Number.isFinite(view.panX) ? between(view.panX, -spanX, spanX) : 0,
+    panY: Number.isFinite(view.panY) ? between(view.panY, -spanY, spanY) : 0,
+  };
+}
+
+/**
+ * Zooms to `nextZoom` keeping whatever is under her fingers under her fingers.
+ *
+ * Zooming about the centre instead is a third of the code and feels broken the
+ * moment she pinches a corner: the thing she was looking at slides away from
+ * her while she is holding it.
+ *
+ * `focal` is relative to the canvas's own top-left, which is what RNGH's
+ * `focalX/focalY` already report.
+ */
+export function zoomAbout(
+  from: Viewport,
+  focal: Point,
+  nextZoom: number,
+  box: Size,
+): Viewport {
+  'worklet';
+  const zoom = Number.isFinite(nextZoom) ? between(nextZoom, 1, MAX_ZOOM) : 1;
+  const cx = box.width / 2;
+  const cy = box.height / 2;
+  // The view scales about its own centre, so holding a point still means
+  // moving the pan by however much that point would otherwise have travelled.
+  const k = zoom / from.zoom;
+  return clampViewport(
+    {
+      zoom,
+      panX: focal.x - cx - k * (focal.x - cx - from.panX),
+      panY: focal.y - cy - k * (focal.y - cy - from.panY),
+    },
+    box,
+  );
+}
+
+/**
+ * A window point as clamped fractions of the picture underneath it.
+ *
+ * The viewport has to be undone here, and this is the one place it is: a
+ * placement is stored against the *picture*, not against however she happened
+ * to be looking at it when she let go.
+ */
+export function normalise(
+  x: number,
+  y: number,
+  canvas: Rect,
+  stickerSize: number,
+  view: Viewport = FIT,
+): Point {
+  'worklet';
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+  const localX = cx + (x - canvas.x - cx - view.panX) / view.zoom;
+  const localY = cy + (y - canvas.y - cy - view.panY) / view.zoom;
   return clampPlacement(
-    { x: (x - canvas.x) / canvas.width, y: (y - canvas.y) / canvas.height },
+    { x: localX / canvas.width, y: localY / canvas.height },
     canvas,
     stickerSize,
   );
 }
 
-/** The exact middle, where a tap drops one. */
-export const MIDDLE: Point = { x: 0.5, y: 0.5 };
+/**
+ * The middle of what she can *see*, where a tap drops one.
+ *
+ * Not the middle of the picture: zoomed into a corner, a sticker landing in
+ * the true centre lands somewhere off screen, which reads as the tap having
+ * done nothing.
+ */
+export function visibleCentre(box: Size, view: Viewport = FIT): Point {
+  'worklet';
+  if (box.width <= 0 || box.height <= 0) return { x: 0.5, y: 0.5 };
+  return {
+    x: 0.5 - view.panX / (view.zoom * box.width),
+    y: 0.5 - view.panY / (view.zoom * box.height),
+  };
+}
 
 /** What a drag that started in the tray meant, where it ended. */
 export type TrayDrop =
@@ -137,11 +253,13 @@ export function resolveTrayDrop(args: {
   readonly y: number;
   readonly travelled: number;
   readonly canvas: Rect | null;
+  /** In picture points, so it is the same number however she is looking. */
   readonly stickerSize: number;
+  readonly view: Viewport;
 }): TrayDrop {
   'worklet';
   if (hitTest(args.canvas, args.x, args.y)) {
-    const p = normalise(args.x, args.y, args.canvas as Rect, args.stickerSize);
+    const p = normalise(args.x, args.y, args.canvas as Rect, args.stickerSize, args.view);
     return { kind: 'canvas', x: p.x, y: p.y };
   }
   // A gesture that barely moved is a tap, wherever the long-press timer
@@ -171,11 +289,12 @@ export function resolvePlacedDrop(args: {
   readonly tray: Rect | null;
   readonly stickerSize: number;
   readonly fallback: Point;
+  readonly view: Viewport;
 }): PlacedDrop {
   'worklet';
   if (hitTest(args.tray, args.x, args.y)) return { kind: 'remove' };
   if (hitTest(args.canvas, args.x, args.y)) {
-    const p = normalise(args.x, args.y, args.canvas as Rect, args.stickerSize);
+    const p = normalise(args.x, args.y, args.canvas as Rect, args.stickerSize, args.view);
     return { kind: 'move', x: p.x, y: p.y };
   }
   return { kind: 'move', x: args.fallback.x, y: args.fallback.y };

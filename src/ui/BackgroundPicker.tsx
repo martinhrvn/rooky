@@ -4,28 +4,34 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { CANVAS_BACKGROUNDS, backgroundById } from './canvasBackgrounds';
 import { CANVAS_ASPECT } from './canvasGeometry';
 import { strings } from './strings';
-import { colors } from './theme';
+import { colors, elevation, layout } from './theme';
 
 /**
  * How high a swatch is. The width follows the canvas's aspect, so what she
  * presses is a miniature of what she gets — which is the whole affordance and
- * the reason this row needs no words at all.
+ * the reason this control needs no words at all.
  */
-const SWATCH_H = 52;
+const SWATCH_H = 44;
 const SWATCH_W = Math.round(SWATCH_H * CANVAS_ASPECT);
 
 /**
- * The grounds, under the picture they change.
+ * The grounds, floating over the corner of the picture they change.
  *
  * **Closed, it is the one ground she is on; open, it is all seven.** That is
  * how it shuts without inventing a close button: the control and the thing it
  * shows are the same object, so there is nothing extra to find and nothing
  * extra to understand. Picking one closes it again, which means the row is
- * only ever on screen while she is actually choosing — the rest of the time
- * that space belongs to the picture.
+ * only ever on screen while she is actually choosing.
+ *
+ * It floats rather than sitting under the canvas because a row of swatches in
+ * the layout cost the picture its height all day for a control she touches
+ * once a week. Over the corner it costs a thumbnail.
  *
  * Selection is a cream ring **and** full size, never colour alone: every
- * swatch is already a different colour, so one more would say nothing.
+ * swatch is already a different colour, so one more would say nothing. The
+ * dark surround is what makes the whole thing read as a tool laid on top of
+ * the picture rather than as part of it — and what stops a cream ring
+ * disappearing against the cream ground.
  */
 export function BackgroundPicker({
   selected,
@@ -34,7 +40,7 @@ export function BackgroundPicker({
 }: {
   readonly selected: string;
   readonly onSelect: (id: string) => void;
-  /** The canvas's width, so the row never grows wider than the picture. */
+  /** The canvas's width, so the open row never grows wider than the picture. */
   readonly width?: number;
 }) {
   const [open, setOpen] = useState(false);
@@ -47,7 +53,7 @@ export function BackgroundPicker({
         accessibilityRole="button"
         accessibilityState={{ expanded: false }}
         accessibilityLabel={strings.stickers.canvas.grounds(name)}
-        style={styles.target}
+        style={[styles.shell, styles.closed]}
       >
         <View style={[styles.swatch, styles.chosen]}>
           <Scene width={SWATCH_W} height={SWATCH_H} />
@@ -60,7 +66,7 @@ export function BackgroundPicker({
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      style={width ? { maxWidth: width } : undefined}
+      style={[styles.shell, width ? { maxWidth: width - 16 } : null]}
       contentContainerStyle={styles.row}
     >
       {CANVAS_BACKGROUNDS.map(({ id, name, Scene }) => {
@@ -77,7 +83,6 @@ export function BackgroundPicker({
             accessibilityRole="button"
             accessibilityState={{ selected: chosen }}
             accessibilityLabel={strings.stickers.canvas.background(name)}
-            style={styles.target}
           >
             <View
               style={[
@@ -96,10 +101,16 @@ export function BackgroundPicker({
 }
 
 const styles = StyleSheet.create({
-  row: { gap: 8, paddingHorizontal: 2, alignItems: 'center' },
-  // Padded out to a comfortable target without making the swatches themselves
-  // large enough to compete with the picture above them.
-  target: { paddingVertical: 6 },
+  // The plum tray the swatches sit on, so they read as laid over the picture.
+  shell: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.surfaceEdge,
+    ...elevation('lifted'),
+  },
+  closed: { padding: 6 },
+  row: { gap: 6, padding: 6, alignItems: 'center' },
   swatch: {
     width: SWATCH_W,
     height: SWATCH_H,
@@ -110,3 +121,6 @@ const styles = StyleSheet.create({
   chosen: { borderColor: colors.text },
   unchosen: { borderColor: colors.surfaceEdge },
 });
+
+/** How far the floating control sits inside the picture's corner. */
+export const PICKER_INSET = layout.gap - 4;

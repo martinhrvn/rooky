@@ -312,10 +312,18 @@ catalogue and every pure part of it; nothing there imports React or the store.
 
 ## The canvas
 
-The Stickers tab is a picture she makes: a tray of everything she owns down one
-side, a fixed-shape canvas beside it, and a row of grounds under that. It is
-the reason the album is worth filling — a shelf is something you look at once,
-and this is a toy.
+The Stickers tab is a picture she makes: a fixed-shape canvas filling the
+screen, a two-row tray of everything she owns along the bottom, and the grounds
+floating over one corner. It is the reason the album is worth filling — a shelf
+is something you look at once, and this is a toy.
+
+**The tray is a band at the bottom, not a column down the side.** The column
+showed six stickers and left the picture a narrow slot to live in; the band
+shows a dozen in the same height and gives the picture the whole width. A tray
+is a drawer she rummages in, and a drawer is wide. For the same accounting the
+grounds float over the picture's corner instead of sitting under it: a row in
+the layout costs the picture its height all day for a control she touches once
+a week, and over the corner it costs a thumbnail.
 
 - **Placements are normalised, and the canvas has a fixed aspect**
   (`CANVAS_ASPECT`, 3:4) with the sticker size a fraction of its width
@@ -341,14 +349,51 @@ and this is a toy.
   Coral (`again`) is the tempting choice and would quietly make coral mean two
   things: `theme.actions` is a *button* vocabulary and a drop target is
   feedback, not a control.
-- **Pinch to resize and two fingers to turn**, both committed on gesture end
-  and both clamped (`clampScale`, `MIN_SCALE`/`MAX_SCALE`). The ceiling is not
+- **Pinch and rotate live on the canvas, never on a sticker.** This was a real
+  bug and is the kind that reads as "gestures are flaky" rather than as a
+  mistake: **a gesture only receives fingers that land inside the view it is
+  attached to**, and a sticker is smaller than the gap between two adult
+  fingertips, so a pinch attached to one could never start. Up on the canvas
+  both fingers land wherever is comfortable, and the ring says which sticker
+  they are talking to. The same trap is waiting for any future two-fingered
+  gesture on a small target.
+- **A ring means "this one", and it is what the two-fingered gestures act on.**
+  Tapping a sticker selects it, tapping the picture clears it, and the ring is
+  cream — the same one the ground picker uses for the swatch that is chosen, so
+  there is one visual language for *selected*. It is never an action colour: a
+  ring is a state, not a control. Selection is React state and deliberately not
+  stored, because a ring left around a sticker from last week is a state she
+  never asked for and cannot clear without knowing it is there.
+- **Pinch resizes and two fingers turn**, both committed on gesture end and
+  both clamped (`clampScale`, `MIN_SCALE`/`MAX_SCALE`). The ceiling is not
   tidiness: one sticker big enough to cover the picture makes everything under
   it unreachable, and there is no send-to-back she could use to dig it out.
   A pinch re-clamps the position too, so growing one near an edge pulls it back
   on. **A placed sticker's drawn box ignores its scale** — all of it is in the
   transform — which keeps a sticker she has shrunk as easy to grab as one she
   has not.
+- **With nothing selected the same pinch zooms the picture, and one finger on
+  it pans.** `clampViewport` is what makes that safe: it will not zoom out past
+  fit and the pan range falls straight out of the zoom, so at fit the picture
+  cannot be nudged off-centre at all and there is no way to end up looking at
+  nothing. Zooming is about the focal point rather than the centre, because
+  zooming about the centre slides the corner she is pinching out from under
+  her. Rotation is left out of this — a crooked frame with no way to say "put
+  it back" is exactly the state she cannot recover from.
+- **The viewport is never persisted.** Every visit opens at `FIT`, so the worst
+  state she can reach is one screen away from being forgotten. It is also why
+  it lives in `CanvasRects` beside the measured frames rather than in the
+  store.
+- **Every drop undoes the viewport, in exactly one place** (`normalise`). A
+  placement is stored against the *picture*, never against however she happened
+  to be looking at it when she let go. `visibleCentre` is the same rule for
+  tap-to-drop: the middle of what she can see, because zoomed into a corner the
+  true centre is off screen and the tap reads as a miss.
+- **The floating picker is a sibling of the canvas, not a child of it.** Same
+  reason the board's overlays sit next to `Board` rather than inside
+  `BoardFrame`: the canvas clips, and everything inside it rides the viewport
+  transform — a control that zoomed with the artwork would be unusable the
+  moment she pinched.
 - **The grounds are drawn in `canvasBackgrounds.tsx`**, so there is no asset
   and no `ASSETS.md` entry, and `canvasGrounds` in `theme.ts` holds their
   colours under the same licence the ribbons have: decorative, never actions.
@@ -360,6 +405,8 @@ and this is a toy.
   is how it shuts without inventing a close button — the control and the thing
   it shows are one object, so there is nothing extra to find. Choosing closes
   it, including choosing the one she is already on, which is how she backs out.
+  It sits on a plum shell so it reads as a tool laid over the picture, and so
+  that a cream ring does not vanish against the cream ground.
 - **The canvas is bright, and it is the only place besides the board where the
   dark-chrome rule bends.** A canvas is the thing being looked at, so it is lit
   like the board is and everything around it stays plum.
@@ -406,12 +453,18 @@ thread and in vitest.
   twice. For the same reason the ghost is mounted and unmounted rather than
   faded, and the hidden placement uses a plain `opacity` prop rather than an
   animated style.
-- **`maxPointers(1)` on the placed-sticker pan, and a small `minDistance`.**
-  The first keeps a second finger out of the pan so pinch and rotate can have
-  it; the second stops the first finger down lifting the sticker before the
-  second finger arrives, which would make every pinch start with a flinch.
-  `Gesture.Simultaneous(pan, pinch, rotation)` — sizing and turning are one
+- **`maxPointers(1)` on the one-finger pans, and a small `minDistance`.** The
+  first keeps a second finger out of them so the canvas's pinch can have it;
+  the second stops the first finger down lifting a sticker before the second
+  finger arrives, which would make every pinch start with a flinch.
+  `Gesture.Simultaneous(pinch, rotation)` — sizing and turning are one
   two-fingered act, and making her choose between them means neither works.
+- **Layering does the work gesture relations would otherwise have to.** The
+  canvas backdrop is a full-size view *under* the placed stickers, so a tap on
+  a sticker never reaches it and a tap on the picture never reaches a sticker —
+  which is how "tap away to deselect" and the viewport pan both work without a
+  single `requireExternalGestureToFail` against a list of children that changes
+  every time she places something.
 - **Rects come from `measure()` in the gesture worklet, not `onLayout`**, taking
   `pageX/pageY` — `onLayout` is parent-relative and a drop point arrives in
   window coordinates. `rects.sync()` re-reads all three at the start of every

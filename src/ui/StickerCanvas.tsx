@@ -1,8 +1,12 @@
 import * as Haptics from 'expo-haptics';
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { StyleSheet } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Animated, {
+  type SharedValue,
+  useAnimatedStyle,
+  useSharedValue,
+} from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { stickerById } from '../content/stickers';
@@ -13,13 +17,18 @@ import {
   type Size,
   clampPlacement,
   clampScale,
+  clampViewport,
   hitTest,
   resolvePlacedDrop,
   stickerSizeFor,
+  zoomAbout,
 } from './canvasGeometry';
 import type { CanvasRects, DragState } from './dragState';
 import { strings } from './strings';
 import { colors, layout } from './theme';
+
+/** How far outside a sticker its ring sits. */
+const RING_INSET = 4;
 
 interface CanvasProps {
   /** The fitted box. Nothing draws until this has a width. */
@@ -30,6 +39,9 @@ interface CanvasProps {
   readonly rects: CanvasRects;
   /** The placement currently in the air, or `''`. */
   readonly heldKey: string;
+  /** The one with the ring around it, or `''`. */
+  readonly selectedKey: string;
+  readonly onSelect: (key: string) => void;
   readonly onLift: (stickerId: string, size: number, rotation: number, key: string) => void;
   readonly onMove: (key: string, x: number, y: number) => void;
   readonly onRemove: (key: string) => void;
@@ -53,71 +65,260 @@ interface CanvasProps {
  * Placements are drawn in array order, so the last one is on top. Nothing here
  * decides that: `canvas.ts` moves a placement to the end when it is touched,
  * and "the one you touched last is on top" needs no control to say it.
+ *
+ * **Pinch and rotate live here, not on the stickers.** A gesture attached to a
+ * sticker only receives fingers that land inside it, and a sticker is smaller
+ * than the gap between two adult fingertips — so a pinch on one could never
+ * start. Up here both fingers land wherever is comfortable and the ring says
+ * which sticker they are talking to.
  */
 export function StickerCanvas({
   box,
   backgroundId,
   placements,
-  ...rest
+  drag,
+  rects,
+  heldKey,
+  selectedKey,
+  onSelect,
+  onTransform,
+  ...forPlaced
 }: CanvasProps) {
+  const selected = placements.find((p) => p.key === selectedKey) ?? null;
+  const base = stickerSizeFor(box);
+
+  // One live transform for the whole canvas rather than a pair per sticker:
+  // only ever one thing is being pinched, and the gesture doing the pinching
+  // lives up here.
+  const liveKey = useSharedValue('');
+  const liveScale = useSharedValue(1);
+  const liveRotation = useSharedValue(0);
+  const from = useSharedValue({ scale: 1, rotation: 0 });
+  const viewFrom = useSharedValue({ zoom: 1, panX: 0, panY: 0 });
+
+  const gesture = useMemo(() => {
+    /** Grabs whatever the two fingers are about to change. */
+    const begin = () => {
+      'worklet';
+      viewFrom.value = rects.view.value;
+      if (selected === null) return;
+      liveKey.value = selected.key;
+      liveScale.value = selected.scale;
+      liveRotation.value = selected.rotation;
+      from.value = { scale: selected.scale, rotation: selected.rotation };
+    };
+
+    /**
+     * Writes the size and angle she settled on.
+     *
+     * `liveKey` is deliberately **not** cleared here. Once the store has the
+     * same numbers the live values hold, the two agree and there is nothing to
+     * clear — whereas clearing it from the UI thread would snap the sticker
+     * back to its old size for the frame before React catches up, which is the
+     * same flicker the drag had.
+     */
+    const commit = () => {
+      'worklet';
+      if (selected === null) return;
+      const there = clampPlacement(
+        { x: selected.x, y: selected.y },
+        box,
+        base * liveScale.value,
+      );
+      scheduleOnRN(
+        onTransform,
+        selected.key,
+        liveScale.value,
+        liveRotation.value,
+        there.x,
+        there.y,
+      );
+    };
+
+    const pinch = Gesture.Pinch()
+      .onStart(begin)
+      .onUpdate((e) => {
+        if (selected !== null) {
+          liveScale.value = clampScale(from.value.scale * e.scale);
+          return;
+        }
+        // Nothing selected, so the fingers are talking to the whole picture.
+        rects.view.value = zoomAbout(
+          viewFrom.value,
+          { x: e.focalX, y: e.focalY },
+          viewFrom.value.zoom * e.scale,
+          box,
+        );
+      })
+      .onEnd(commit);
+
+    // Turning the whole picture is a step too far — it would leave her looking
+    // at a crooked frame with no way to say "put it back". So this one only
+    // ever acts on a selected sticker.
+    const turn = Gesture.Rotation()
+      .onStart(begin)
+      .onUpdate((e) => {
+        if (selected === null) return;
+        liveRotation.value = from.value.rotation + (e.rotation * 180) / Math.PI;
+      })
+      .onEnd(commit);
+
+    return Gesture.Simultaneous(pinch, turn);
+  }, [selected, box, base, rects, liveKey, liveScale, liveRotation, from, viewFrom, onTransform]);
+
+  // The whole picture moves under the viewport: the ground, every sticker and
+  // every ring together, so nothing drifts out of register when she zooms.
+  const viewStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: rects.view.value.panX },
+      { translateY: rects.view.value.panY },
+      { scale: rects.view.value.zoom },
+    ],
+  }));
+
   return (
-    <Animated.View
-      ref={rest.rects.canvasRef}
-      accessibilityLabel={strings.stickers.canvas.area}
-      style={[styles.canvas, { width: box.width, height: box.height }]}
-    >
-      {box.width > 0 ? (
-        <>
-          <CanvasGround id={backgroundId} width={box.width} height={box.height} />
-          {placements.map((placement) => (
-            <PlacedSticker key={placement.key} placement={placement} box={box} {...rest} />
-          ))}
-        </>
-      ) : null}
-    </Animated.View>
+    <GestureDetector gesture={gesture}>
+      <Animated.View
+        ref={rects.canvasRef}
+        accessibilityLabel={strings.stickers.canvas.area}
+        style={[styles.canvas, { width: box.width, height: box.height }]}
+      >
+        {box.width > 0 ? (
+          <Animated.View style={[styles.content, viewStyle]}>
+            <CanvasGround id={backgroundId} width={box.width} height={box.height} />
+
+            {/* Under every sticker, so a tap only reaches it when it landed on
+                nothing — which is what makes "tap away to deselect" work with
+                no gesture relations to declare. It carries the one-finger pan
+                for the same reason. */}
+            <CanvasBackdrop rects={rects} box={box} onSelect={onSelect} />
+
+            {placements.map((placement) => (
+              <PlacedSticker
+                key={placement.key}
+                placement={placement}
+                box={box}
+                base={base}
+                drag={drag}
+                rects={rects}
+                held={heldKey === placement.key}
+                selected={selectedKey === placement.key}
+                live={{ key: liveKey, scale: liveScale, rotation: liveRotation }}
+                onSelect={onSelect}
+                {...forPlaced}
+              />
+            ))}
+          </Animated.View>
+        ) : null}
+      </Animated.View>
+    </GestureDetector>
+  );
+}
+
+/**
+ * The picture itself, as a thing that can be touched.
+ *
+ * A tap here means "none of them", and a drag means "move the picture" — which
+ * does nothing at all until she has zoomed in, because `clampViewport` pins
+ * the pan to zero at fit. That is deliberate: there is no mode to be in and
+ * nothing to learn, the picture simply stops sliding when there is nothing
+ * off screen to slide to.
+ */
+function CanvasBackdrop({
+  rects,
+  box,
+  onSelect,
+}: {
+  rects: CanvasRects;
+  box: Size;
+  onSelect: (key: string) => void;
+}) {
+  const from = useSharedValue({ zoom: 1, panX: 0, panY: 0 });
+
+  const gesture = useMemo(() => {
+    const pan = Gesture.Pan()
+      .minDistance(6)
+      .maxPointers(1)
+      .onStart(() => {
+        from.value = rects.view.value;
+      })
+      .onUpdate((e) => {
+        // A plain screen-space offset, not one divided by the zoom: the
+        // translate is applied *outside* the scale in the transform below, so
+        // a finger travelling ten points moves the picture ten points however
+        // far in she is.
+        rects.view.value = clampViewport(
+          {
+            zoom: from.value.zoom,
+            panX: from.value.panX + e.translationX,
+            panY: from.value.panY + e.translationY,
+          },
+          box,
+        );
+      });
+
+    const tap = Gesture.Tap()
+      .maxDistance(8)
+      .onEnd((_e, ok) => {
+        if (ok) scheduleOnRN(onSelect, '');
+      });
+
+    return Gesture.Exclusive(pan, tap);
+  }, [box, rects, from, onSelect]);
+
+  return (
+    <GestureDetector gesture={gesture}>
+      <Animated.View style={StyleSheet.absoluteFill} />
+    </GestureDetector>
   );
 }
 
 function PlacedSticker({
   placement,
   box,
+  base,
   drag,
   rects,
-  heldKey,
+  held,
+  selected,
+  live,
+  onSelect,
   onLift,
   onMove,
   onRemove,
-  onTransform,
   onCancel,
-}: Omit<CanvasProps, 'backgroundId' | 'placements'> & { placement: Placement }) {
+}: {
+  placement: Placement;
+  box: Size;
+  base: number;
+  drag: DragState;
+  rects: CanvasRects;
+  held: boolean;
+  selected: boolean;
+  live: {
+    key: SharedValue<string>;
+    scale: SharedValue<number>;
+    rotation: SharedValue<number>;
+  };
+  onSelect: (key: string) => void;
+  onLift: (stickerId: string, size: number, rotation: number, key: string) => void;
+  onMove: (key: string, x: number, y: number) => void;
+  onRemove: (key: string) => void;
+  onCancel: () => void;
+}) {
   // The drawn box ignores her scale — all of it lives in the transform below,
   // which keeps the touch target the same size however small she pinches a
   // sticker, and keeps a scaled sticker centred on the point it is stored at.
-  const base = stickerSizeFor(box);
   const size = base * placement.scale;
-
-  const scale = useSharedValue(placement.scale);
-  const rotation = useSharedValue(placement.rotation);
-  const scaleFrom = useSharedValue(1);
-  const rotationFrom = useSharedValue(0);
-
-  // Follows a committed transform back down, and — more importantly — a
-  // placement that arrived from somewhere else entirely, such as a reset.
-  useEffect(() => {
-    scale.value = placement.scale;
-    rotation.value = placement.rotation;
-  }, [placement.scale, placement.rotation, scale, rotation]);
 
   const gesture = useMemo(() => {
     const pan = Gesture.Pan()
       // No hold — nothing scrolls under the picture, so a sticker lifts as
-      // soon as she moves it. A small distance rather than none, for the sake
-      // of the two-fingered gestures below: with a hair trigger the first
-      // finger down lifts the sticker and the second drops it again, so every
-      // pinch would start with a flinch.
+      // soon as she moves it. A small distance rather than none, so that a
+      // finger landing on a sticker on its way to a two-fingered pinch does
+      // not pick the sticker up and put it down again.
       .minDistance(6)
-      // One finger only, so a second finger landing hands the sticker to the
-      // pinch and rotate below instead of dragging it across the picture.
+      // One finger only: a second finger belongs to the canvas's pinch.
       .maxPointers(1)
       .shouldCancelWhenOutside(false)
       .hitSlop({ top: 10, bottom: 10, left: 10, right: 10 })
@@ -125,7 +326,16 @@ function PlacedSticker({
         rects.sync();
         drag.x.value = e.absoluteX;
         drag.y.value = e.absoluteY;
-        scheduleOnRN(onLift, placement.stickerId, size, placement.rotation, placement.key);
+        scheduleOnRN(onSelect, placement.key);
+        // The ghost is drawn at the size it looks on screen, which is the size
+        // it is *plus* however far she has zoomed in.
+        scheduleOnRN(
+          onLift,
+          placement.stickerId,
+          size * rects.view.value.zoom,
+          placement.rotation,
+          placement.key,
+        );
         scheduleOnRN(tick);
       })
       .onUpdate((e) => {
@@ -147,6 +357,7 @@ function PlacedSticker({
           tray: rects.tray.value,
           stickerSize: size,
           fallback: { x: placement.x, y: placement.y },
+          view: rects.view.value,
         });
         // The only write of the whole gesture, and it clears the held sticker
         // in the same JS tick — that is what stops the placement flashing back
@@ -161,85 +372,53 @@ function PlacedSticker({
         scheduleOnRN(onCancel);
       });
 
-    const commit = () => {
-      'worklet';
-      // Re-clamped against the size she just pinched it to, so growing a
-      // sticker near the edge pulls it back on rather than off.
-      const there = clampPlacement(
-        { x: placement.x, y: placement.y },
-        box,
-        base * scale.value,
-      );
-      scheduleOnRN(onTransform, placement.key, scale.value, rotation.value, there.x, there.y);
+    // Picking one out to work on it, without moving it a hair.
+    const tap = Gesture.Tap()
+      .maxDistance(8)
+      .onEnd((_e, ok) => {
+        if (ok) scheduleOnRN(onSelect, placement.key);
+      });
+
+    return Gesture.Exclusive(pan, tap);
+  }, [placement, size, drag, rects, onSelect, onLift, onMove, onRemove, onCancel]);
+
+  const transform = useAnimatedStyle(() => {
+    const mine = live.key.value === placement.key;
+    return {
+      transform: [
+        { scale: (mine ? live.scale.value : placement.scale) / placement.scale },
+        { rotate: `${mine ? live.rotation.value : placement.rotation}deg` },
+      ],
     };
-
-    const pinch = Gesture.Pinch()
-      .onStart(() => {
-        scaleFrom.value = scale.value;
-      })
-      .onUpdate((e) => {
-        scale.value = clampScale(scaleFrom.value * e.scale);
-      })
-      .onEnd(commit);
-
-    const turn = Gesture.Rotation()
-      .onStart(() => {
-        rotationFrom.value = rotation.value;
-      })
-      .onUpdate((e) => {
-        rotation.value = rotationFrom.value + (e.rotation * 180) / Math.PI;
-      })
-      .onEnd(commit);
-
-    // Simultaneous rather than a race: sizing and turning are one two-fingered
-    // act, and making her choose between them means neither works. The pan is
-    // in the same set only because `maxPointers(1)` already keeps it out of
-    // the way — with two fingers down it cannot be the gesture that is running.
-    return Gesture.Simultaneous(pan, pinch, turn);
-  }, [
-    placement,
-    box,
-    base,
-    size,
-    drag,
-    rects,
-    scale,
-    rotation,
-    scaleFrom,
-    rotationFrom,
-    onLift,
-    onMove,
-    onRemove,
-    onTransform,
-    onCancel,
-  ]);
-
-  const live = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }, { rotate: `${rotation.value}deg` }],
-  }));
+  });
 
   return (
     <GestureDetector gesture={gesture}>
       <Animated.View
         accessibilityRole="image"
+        accessibilityState={{ selected }}
         accessibilityLabel={strings.stickers.canvas.placed(stickerById(placement.stickerId).name)}
         style={[
           styles.placed,
           {
-            left: placement.x * box.width - base / 2,
-            top: placement.y * box.height - base / 2,
-            width: base,
-            height: base,
+            left: placement.x * box.width - size / 2,
+            top: placement.y * box.height - size / 2,
+            width: size,
+            height: size,
             // Hidden outright while it is in the air, because the ghost above
             // *is* this sticker and two of them read as two stickers. A plain
             // prop rather than an animated style, so it comes back in the same
             // render that moves it.
-            opacity: heldKey === placement.key ? 0 : 1,
+            opacity: held ? 0 : 1,
           },
-          live,
+          transform,
         ]}
       >
-        <StickerArt id={placement.stickerId} size={base} />
+        {/* Cream, the same ring the background picker uses for the one that is
+            chosen — one visual language for "this is the one", and never an
+            action colour, because the ring is a state and not a control. */}
+        {selected ? <Animated.View style={styles.ring} /> : null}
+        <StickerArt id={placement.stickerId} size={size} />
       </Animated.View>
     </GestureDetector>
   );
@@ -261,5 +440,21 @@ const styles = StyleSheet.create({
     borderColor: colors.surfaceEdge,
     backgroundColor: colors.surface,
   },
+  content: { flex: 1 },
   placed: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
+  ring: {
+    position: 'absolute',
+    top: -RING_INSET,
+    left: -RING_INSET,
+    right: -RING_INSET,
+    bottom: -RING_INSET,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: colors.text,
+    // A dark wash inside the ring as well. Cream on its own vanishes against
+    // the cream ground and the sand, and the wash is what makes the ring read
+    // on all seven — it sits *behind* the sticker, so it frames it rather than
+    // tinting it.
+    backgroundColor: 'rgba(13,8,16,0.22)',
+  },
 });

@@ -10,13 +10,13 @@ import {
   useProgress,
   useXp,
 } from '../../src/progress/store';
-import { BackgroundPicker } from '../../src/ui/BackgroundPicker';
+import { BackgroundPicker, PICKER_INSET } from '../../src/ui/BackgroundPicker';
 import { DragGhost } from '../../src/ui/DragGhost';
 import { StickerCanvas } from '../../src/ui/StickerCanvas';
 import { StickerTray } from '../../src/ui/StickerTray';
 import { Text } from '../../src/ui/Text';
 import { XpBar } from '../../src/ui/XpBar';
-import { MIDDLE, type Size, fitCanvas } from '../../src/ui/canvasGeometry';
+import { type Size, fitCanvas, visibleCentre } from '../../src/ui/canvasGeometry';
 import { type Held, useCanvasRects, useDragState } from '../../src/ui/dragState';
 import { strings } from '../../src/ui/strings';
 import { colors, layout } from '../../src/ui/theme';
@@ -24,7 +24,7 @@ import { colors, layout } from '../../src/ui/theme';
 /**
  * Her stickers, and the picture she makes out of them.
  *
- * The tray down the side is what the album used to be — a wrapped grid of
+ * The tray along the bottom is what the album used to be — a wrapped grid of
  * everything she has won — except that now the stickers come *off* it. That is
  * the whole change: a shelf is something you look at once, and a picture is
  * something you come back to.
@@ -69,6 +69,15 @@ export default function StickersScreen() {
   }, [box, rects.box]);
 
   /**
+   * Which sticker the two-fingered gestures are talking to.
+   *
+   * Transient by design and never stored: a ring left around a sticker from
+   * last week would be a state she never asked for and cannot clear without
+   * knowing it is there.
+   */
+  const [selectedKey, setSelectedKey] = useState('');
+
+  /**
    * What is in the air.
    *
    * Every one of the handlers below **ends the drag in the same JS tick as it
@@ -99,10 +108,13 @@ export default function StickersScreen() {
   );
   const dropInMiddle = useCallback(
     (stickerId: string) => {
-      placeSticker(stickerId, MIDDLE.x, MIDDLE.y);
+      // The middle of what she can see rather than of the picture: zoomed into
+      // a corner, the true centre is off screen and the tap reads as a miss.
+      const centre = visibleCentre(box, rects.view.value);
+      placeSticker(stickerId, centre.x, centre.y);
       setHeld(null);
     },
-    [placeSticker],
+    [placeSticker, box, rects.view],
   );
   const movePlaced = useCallback(
     (key: string, x: number, y: number) => {
@@ -115,6 +127,8 @@ export default function StickersScreen() {
     (key: string) => {
       removePlacement(key);
       setHeld(null);
+      // Nothing may keep a ring around a sticker that is no longer there.
+      setSelectedKey((current) => (current === key ? '' : current));
     },
     [removePlacement],
   );
@@ -133,7 +147,42 @@ export default function StickersScreen() {
         {/* No screen-level ScrollView: the tray scrolls inside itself, and a
             vertical scroller inside a vertical scroller is a fight. `fitCanvas`
             is what makes the rest fit without one. */}
-        <View style={styles.row}>
+        <View style={styles.column} onLayout={(e) => setAvailable(e.nativeEvent.layout)}>
+          {/* A wrapper exactly the picture's size, so the floating control can
+              be positioned against the picture's own corner. It sits beside
+              the canvas rather than inside it: the canvas clips for its
+              rounded corners, and everything inside it is carried by the
+              viewport transform — a control that zoomed with the artwork would
+              be unusable the moment she pinched. */}
+          <View style={{ width: box.width, height: box.height }}>
+            <StickerCanvas
+              box={box}
+              backgroundId={backgroundId}
+              placements={placements}
+              drag={drag}
+              rects={rects}
+              heldKey={held?.fromKey ?? ''}
+              selectedKey={selectedKey}
+              onSelect={setSelectedKey}
+              onLift={liftFromCanvas}
+              onMove={movePlaced}
+              onRemove={removePlaced}
+              onTransform={transformPlacement}
+              onCancel={cancelDrag}
+            />
+            {box.width > 0 ? (
+              <View style={styles.picker}>
+                <BackgroundPicker
+                  selected={backgroundId}
+                  onSelect={setCanvasBackground}
+                  width={box.width}
+                />
+              </View>
+            ) : null}
+          </View>
+        </View>
+
+        <View style={styles.trayRow}>
           <StickerTray
             album={album}
             drag={drag}
@@ -144,30 +193,6 @@ export default function StickersScreen() {
             onPlace={place}
             onDropInMiddle={dropInMiddle}
             onCancel={cancelDrag}
-          />
-
-          <View style={styles.column} onLayout={(e) => setAvailable(e.nativeEvent.layout)}>
-            <StickerCanvas
-              box={box}
-              backgroundId={backgroundId}
-              placements={placements}
-              drag={drag}
-              rects={rects}
-              heldKey={held?.fromKey ?? ''}
-              onLift={liftFromCanvas}
-              onMove={movePlaced}
-              onRemove={removePlaced}
-              onTransform={transformPlacement}
-              onCancel={cancelDrag}
-            />
-          </View>
-        </View>
-
-        <View style={styles.picker}>
-          <BackgroundPicker
-            selected={backgroundId}
-            onSelect={setCanvasBackground}
-            width={box.width || undefined}
           />
         </View>
 
@@ -186,17 +211,12 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: layout.screenPadding,
     paddingTop: 8,
-    paddingBottom: 12,
+    paddingBottom: 10,
   },
-  row: {
-    flex: 1,
-    flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: 12,
-  },
-  // The canvas is centred in whatever the tray leaves, and deliberately
-  // ignores `layout.contentWidth`: that cap suits stacks of cards, and this
-  // screen's picture is its board.
-  column: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  picker: { alignItems: 'center', paddingTop: 4, paddingBottom: 6 },
+  // The canvas is centred in everything the header and the tray leave, and
+  // deliberately ignores `layout.contentWidth`: that cap suits stacks of
+  // cards, and this screen's picture is its board.
+  column: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
+  picker: { position: 'absolute', right: PICKER_INSET, bottom: PICKER_INSET },
+  trayRow: { paddingHorizontal: 12, paddingBottom: 8 },
 });
