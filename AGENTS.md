@@ -127,7 +127,9 @@ src/chess/      pure move generation and attack maps. No React, no I/O.
 src/game/       engine.ts (pure reducer), solver.ts (BFS), generator.ts, types.ts
 src/content/    level data, world metadata, ordering
 src/progress/   selectors.ts (pure unlock/progress) + zustand store on AsyncStorage
-src/ui/         Board, Celebration, PathNode, TierRank, icons, theme, strings
+src/ui/         Board, Celebration, PathNode, TierRank, Shelf, icons, theme, strings
+src/ui/toys/    the objects on the home shelf
+mockups/        static HTML design mockups, not shipped
 app/            expo-router screens; app/(tabs)/ is the four in the nav bar
 ```
 
@@ -519,6 +521,49 @@ thread and in vitest.
   `react-native-reanimated/plugin` by hand is the RN-3 instruction and
   double-transforms.
 
+## The home shelf
+
+Home is Play on top and a **shelf** underneath: a walnut plank on the wall with
+an object standing on it for each activity she can do on her own — the Mix jar
+today, a board-setup exercise next. `src/ui/Shelf.tsx` draws it, the toys live
+in `src/ui/toys/`, and the pure layout is `src/ui/shelf.ts`. The design it was
+built from is `mockups/home-shelf.html`.
+
+- **A toy is an object, never a pill.** Every activity on the shelf means "play
+  freely", so as buttons they would all be periwinkle — and two same-coloured
+  pills are one button to a non-reader. An object's outline is its identity,
+  the same way a sticker ground's swatch is the scene drawn small. A new
+  activity therefore means **drawing a new object** whose silhouette is unlike
+  every other toy's, not picking a glyph.
+- **Play stays the only coloured pill on home.** Nothing on the shelf takes an
+  action colour as its body. The jar's lid is periwinkle because Mix always
+  was, and it stands on its own darker block like every periwinkle control.
+- **The plank is the button shelf made literal**, cut from the board's walnut
+  (`frame`, `frameEdge`, `walnut`) so it reads as part of the table the board
+  sits on. Reusing those constants is fine; restyling them is not. No gold on
+  the shelf — gold means a reward.
+- **A toy answers before its screen opens.** It squashes under her finger and
+  hops on release, and the screen opens when the hop lands (`HOP_MS`). Reduced
+  motion skips the hop and opens at once. A second tap mid-hop is ignored, or
+  the screen would open twice.
+- **Locked toys stand on the shelf from day one, dimmed.** "Not yours yet" is
+  opacity everywhere in the app, and seeing the shape early is what makes it
+  familiar by the time it opens. The jar is empty while locked; it fills with
+  the pieces she has played once `isMixOpen` says so. `isMixOpen` counts the
+  *filtered* pool, so a lowered ceiling closes Mix rather than opening an empty
+  jar.
+- **Only things that open a board go on the shelf** — the one kind of place
+  that can never be a tab. Rewards stay on their tabs; a trophy here would be a
+  second Things screen an inch above the Things tab. Endless stays on the
+  world ribbons, because it belongs to one world and the shelf holds what does
+  not.
+- **Three to a plank, then a new plank** (`PER_PLANK`). A fourth toy never
+  shrinks the first three, because that would make every toy harder to hit the
+  moment one is added.
+- **A toy is in one place at a time.** When everything is finished the jar
+  moves to the hero spot and leaves the shelf, and a shelf with nothing on it
+  is not drawn.
+
 ## Worlds
 
 Six worlds about a piece, then six about an idea — capture, protect, combat,
@@ -567,11 +612,12 @@ final level forever. Undefined now means one of two things, and a caller that
 has to tell them apart checks `catalogue.levels.length`:
 
 - **Home** drops the jade Play button entirely and gives Mix its slot. There is
-  no "go on" left, so nothing on the screen is jade; Mix keeps its own
-  periwinkle and its row of pieces, so it is the button she already knows an
-  inch higher. The hero becomes every piece she has played rather than freezing
-  on whichever world she happened to end in, which named a place instead of
-  saying she was done.
+  no "go on" left, so nothing on the screen is jade. The Mix jar comes down off
+  the shelf into the hero spot, full of every piece she has played, with a
+  periwinkle "Play a mix" button under it — so the jar she already knows from
+  the shelf is the thing standing there. It leaves the shelf rather than being
+  in both places. That replaced a hero that froze on whichever world she
+  happened to end in, which named a place instead of saying she was done.
 - **The Levels FAB** becomes Mix for the same reason, which is what keeps the
   invariant it is worth having at all: it opens whatever Play opens, so the two
   can never disagree. The path then opens at the top, because there is no "where
@@ -586,7 +632,7 @@ largest and most varied it ever gets, with every fourth round invented. Note
 this is not a rare corner — a parent capping at *Stars only* means a keen child
 hits it at the ceiling, nowhere near Checkmate.
 
-**Only one "play forever" button reaches the home screen, and it is Mix.**
+**Only one "play forever" activity reaches the home screen, and it is Mix.**
 The two modes really are different in kind — one replays what she knows, the
 other invents — but that distinction was being asked to survive on one piece
 versus a row of them, and a four-year-old does not draw it. Rather than teach
@@ -600,10 +646,10 @@ says. That is the difference between the two placements: on the ribbon Endless
 is an elaboration of the world she is looking at, and on home it would be a
 rival to Mix.
 
-The consequence for the Mix button is that its **row of pieces is no longer
-carrying a distinction** — nothing competes with it now. Keep it anyway: it
-says "everything you have played", which is still true and still the fastest
-way to see the mode's scope without reading.
+The consequence for Mix is that the **pieces in its jar are no longer carrying
+a distinction** — nothing competes with it now. Keep them anyway: they say
+"everything you have played", which is still true and still the fastest way to
+see the mode's scope without reading.
 
 **Endless is reached by pressing the front of a world's ribbon** on the path,
 and by the "Keep playing" choice at the end of a tier. It had a button of its

@@ -5,41 +5,28 @@ import Svg, { Circle, Path } from 'react-native-svg';
 
 import type { PieceType } from '../../src/chess/types';
 import { nextLevel, worldOf } from '../../src/content';
-import { piecesPlayed } from '../../src/progress/selectors';
+import { isMixOpen, piecesPlayed } from '../../src/progress/selectors';
 import { useActiveProfile, useCompletedIds, useProgress, useXp } from '../../src/progress/store';
 import { Avatar } from '../../src/ui/Avatar';
 import { Button } from '../../src/ui/Button';
 import { ProfileForm } from '../../src/ui/ProfileForm';
+import { Shelf, type Toy } from '../../src/ui/Shelf';
 import { pieceArt } from '../../src/ui/pieces';
 import { strings } from '../../src/ui/strings';
 import { Text } from '../../src/ui/Text';
+import { MixJar } from '../../src/ui/toys/MixJar';
 import { useCatalogue } from '../../src/ui/useCatalogue';
 import { XpBar } from '../../src/ui/XpBar';
 import { colors, elevation, layout } from '../../src/ui/theme';
 
 /**
- * Levels finished before Mix appears.
+ * Home: where she is, the way on, and the shelf.
  *
- * A "mix" of one or two levels is not a mix, and an extra button on a home
- * screen this bare is exactly the confusion the mode had to avoid.
- */
-const MIN_FOR_MIX = 3;
-
-/** Most pieces on the Mix button before the row starts to crowd it. */
-const MAX_MIX_PIECES = 5;
-
-/**
- * Home: where she is, and the way on.
- *
- * Deliberately almost empty. Everything that used to live here — the rank of
- * squares, the world card, the per-world Endless button — either moved onto
- * the path or went away, because the one job this screen has is to be a Play
- * button she cannot miss.
- *
- * The bottom bar took the last of the doorways with it: "Choose a level" is
- * the Levels tab now. What is left is Play, and Mix — which stays only because
- * it is the one mode with no tab, and cannot have one, since a tab that opened
- * a board would put chrome under it.
+ * The one job of the top half is to be a Play button she cannot miss, and it
+ * is the only coloured pill on the screen. Everything else she can do on her
+ * own stands on the shelf underneath as an object — see `Shelf` for why an
+ * object rather than another button. Those are the activities that open a
+ * board, which is the one kind of place that cannot be a tab.
  *
  * The hero is the piece rather than a heading: it says which world Play will
  * open to someone who cannot read the words underneath it.
@@ -86,6 +73,7 @@ export default function HomeScreen() {
   const resume = nextLevel(catalogue, completed);
   const world = resume ? worldOf(catalogue, resume) : undefined;
   const played = piecesPlayed(catalogue.worlds, completed);
+  const mixOpen = isMixOpen(catalogue, completed);
 
   // `nextLevel` says nothing in two cases — every level finished, or no content
   // at all — and only the first is worth drawing.
@@ -96,11 +84,12 @@ export default function HomeScreen() {
   /**
    * The hero, in its two states.
    *
-   * Finished, it is every piece she has played rather than one world's cast:
-   * the screen used to freeze on whichever world she happened to end in, which
-   * named a place instead of saying she was done. The row is what carries it —
-   * five pieces where there is usually one is a different picture before a word
-   * is read.
+   * Finished, it is the Mix jar, brought down off the shelf and full of every
+   * piece she has played. The screen used to freeze on whichever world she
+   * happened to end in, which named a place instead of saying she was done; a
+   * full jar where one piece usually stands is a different picture before a
+   * word is read. It is a picture here, not a control — the button under it
+   * is the way in, so the same act is not offered twice an inch apart.
    */
   const hero =
     resume && world ? (
@@ -115,7 +104,7 @@ export default function HomeScreen() {
       </>
     ) : (
       <>
-        <Cast pieces={played} size={96} />
+        <MixJar pieces={played} width={120} />
         <Text variant="display" align="center">
           {strings.home.allDone}
         </Text>
@@ -124,6 +113,24 @@ export default function HomeScreen() {
         </Text>
       </>
     );
+
+  /**
+   * What stands on the shelf. The jar is there from the first day, dim until
+   * there is enough to mix, so its shape is already familiar by the time it
+   * opens. Once everything is finished it leaves the shelf for the hero spot
+   * rather than standing in both places.
+   */
+  const toys: Toy[] = resume
+    ? [
+        {
+          key: 'mix',
+          label: strings.mix.play,
+          art: <MixJar pieces={mixOpen ? played : []} />,
+          locked: !mixOpen,
+          onPress: () => router.push('/mix'),
+        },
+      ]
+    : [];
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -173,41 +180,28 @@ export default function HomeScreen() {
       <View style={styles.body}>
         <View style={styles.hero}>{hero}</View>
 
-        <View style={styles.actions}>
-          {/* Gone once there is nothing left unplayed. Jade means "go on", and
-              at that point there is nowhere on: Mix moves up into this slot
-              and is the only thing here, keeping its own colour and its row of
-              pieces so it is the button she already knows, an inch higher. */}
-          {resume ? (
-            <Button
-              icon="play"
-              label={strings.home.play}
-              kind="go"
-              onPress={() => router.push(`/play/${resume.id}`)}
-            />
-          ) : null}
-
-          {/* Only once there is genuinely something to mix. The row of pieces
-              is what keeps this distinct from Endless without a word being
-              read — one piece means a single world, several mean all of them —
-              so it survives the Mix card no longer being on this screen. */}
-          {completed.size >= MIN_FOR_MIX ? (
-            <Button
-              icon="shuffle"
-              iconNode={<Cast pieces={played.slice(0, MAX_MIX_PIECES)} size={30} />}
-              label={strings.mix.play}
-              kind="free"
-              onPress={() => router.push('/mix')}
-            />
-          ) : null}
-
-          {/* "Choose a level" used to sit here and is now the Levels tab, an
-              inch below itself. Mix stays because nothing on the bar is Mix —
-              it is the one mode without a place of its own, and it should not
-              get one: a tab for it would open a board, which is the line this
-              navigation draws. */}
-        </View>
+        {/* Jade Play while there is somewhere on. Once there is not, Mix takes
+            this slot with its own periwinkle — the jar has come down off the
+            shelf to stand above it — so this is always whatever the Levels
+            FAB opens, and the two can never disagree. */}
+        {resume ? (
+          <Button
+            icon="play"
+            label={strings.home.play}
+            kind="go"
+            onPress={() => router.push(`/play/${resume.id}`)}
+          />
+        ) : mixOpen ? (
+          <Button
+            icon="shuffle"
+            label={strings.mix.play}
+            kind="free"
+            onPress={() => router.push('/mix')}
+          />
+        ) : null}
       </View>
+
+      <Shelf toys={toys} />
     </SafeAreaView>
   );
 }
@@ -216,9 +210,7 @@ export default function HomeScreen() {
  * A world's pieces, overlapped like a hand of cards.
  *
  * One piece means a world about that piece; several mean a world about an
- * idea, or — on the Mix button — every piece she has played. The count is the
- * whole signal, which is why both callers share this rather than drawing it
- * twice and drifting apart.
+ * idea. The count is the whole signal.
  */
 function Cast({ pieces, size }: { pieces: readonly PieceType[]; size: number }) {
   return (
@@ -264,7 +256,7 @@ const styles = StyleSheet.create({
   body: {
     flex: 1,
     justifyContent: 'center',
-    gap: 40,
+    gap: 28,
     padding: layout.screenPadding,
     width: '100%',
     maxWidth: layout.contentWidth,
@@ -272,7 +264,6 @@ const styles = StyleSheet.create({
   },
   hero: { alignItems: 'center', gap: 6 },
   cast: { flexDirection: 'row', alignItems: 'center' },
-  actions: { gap: 14 },
   card: {
     backgroundColor: colors.surface,
     borderRadius: layout.radius,

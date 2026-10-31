@@ -13,7 +13,9 @@ import {
   currentWorld,
   firstPlayableOfTier,
   isLevelUnlocked,
+  isMixOpen,
   isWorldUnlocked,
+  MIN_FOR_MIX,
   mixPool,
   piecesPlayed,
   tierState,
@@ -136,6 +138,19 @@ describe('the Mix pool', () => {
 
   it('ignores ids that match no level', () => {
     expect(mixPool(FULL_CATALOGUE, allOf('not-a-level'))).toEqual([]);
+  });
+
+  it('opens only once there are enough levels to make a mix', () => {
+    const ids = FULL_CATALOGUE.levels.slice(0, MIN_FOR_MIX).map((l) => l.id);
+    expect(isMixOpen(FULL_CATALOGUE, allOf(...ids.slice(0, -1)))).toBe(false);
+    expect(isMixOpen(FULL_CATALOGUE, allOf(...ids))).toBe(true);
+  });
+
+  it('counts only what the ceiling still shows', () => {
+    const above = FULL_CATALOGUE.levels.filter((l) => l.tier === 3).slice(0, MIN_FOR_MIX);
+    const capped = catalogueFor(2);
+    expect(isMixOpen(FULL_CATALOGUE, allOf(...above.map((l) => l.id)))).toBe(true);
+    expect(isMixOpen(capped, allOf(...above.map((l) => l.id)))).toBe(false);
   });
 
   it('lists each piece once, in world order', () => {

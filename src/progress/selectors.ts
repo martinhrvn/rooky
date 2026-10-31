@@ -125,6 +125,24 @@ export const mixPool = (
 ): readonly Level[] => levels.filter((level) => completedIds.has(level.id));
 
 /**
+ * Levels finished before Mix opens.
+ *
+ * A "mix" of one or two levels is not a mix. Until then the jar stands on the
+ * home shelf dimmed, the way every locked thing in the app looks.
+ */
+export const MIN_FOR_MIX = 3;
+
+/**
+ * Whether Mix can be played yet.
+ *
+ * Counted from the pool rather than from every id she has ever finished, so a
+ * difficulty ceiling that hides what she played above it closes Mix again
+ * rather than opening a jar with nothing in it.
+ */
+export const isMixOpen = (catalogue: Catalogue, completedIds: ReadonlySet<string>): boolean =>
+  mixPool(catalogue, completedIds).length >= MIN_FOR_MIX;
+
+/**
  * The pieces she has finished something with, in world order.
  *
  * Heads the Mix card, where the piece card is headed by a single piece — so
