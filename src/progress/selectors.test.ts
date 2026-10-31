@@ -14,6 +14,7 @@ import {
   firstPlayableOfTier,
   isLevelUnlocked,
   isMixOpen,
+  isSetupOpen,
   isWorldUnlocked,
   MIN_FOR_MIX,
   mixPool,
@@ -256,5 +257,18 @@ describe('the path under a difficulty ceiling', () => {
   it('drops a world the ceiling has emptied rather than showing a shut ribbon', () => {
     const capped = catalogueFor(1);
     expect(capped.worlds.some((w) => w.key === 'capture')).toBe(false);
+  });
+});
+
+describe('isSetupOpen', () => {
+  it('stays shut until she has finished a level, then opens', () => {
+    expect(isSetupOpen(FULL_CATALOGUE, new Set())).toBe(false);
+    expect(isSetupOpen(FULL_CATALOGUE, new Set([FULL_CATALOGUE.levels[0].id]))).toBe(true);
+  });
+
+  it('ignores results the ceiling is hiding', () => {
+    const starsOnly = catalogueFor(1);
+    const hidden = FULL_CATALOGUE.levels.find((l) => l.tier === 3)!;
+    expect(isSetupOpen(starsOnly, new Set([hidden.id]))).toBe(false);
   });
 });

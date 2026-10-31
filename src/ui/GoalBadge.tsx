@@ -46,19 +46,22 @@ export function GoalBadge({ goal, size = 38 }: { goal: GoalKind; size?: number }
  *
  * Drawn larger than the badge and allowed to spill: an edge that lined up with
  * the artwork would read as a plate the piece is standing on.
+ *
+ * Also behind the black pieces waiting in the board-setup tray, for the same
+ * reason. `id` must be unique per SVG root there, since several are on screen.
  */
-function Halo({ size }: { size: number }) {
+export function Halo({ size, id = 'goal-halo' }: { size: number; id?: string }) {
   return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.badge]}>
       <Svg width={size} height={size} viewBox="0 0 100 100">
         <Defs>
-          <RadialGradient id="goal-halo" cx="50%" cy="50%" r="50%">
+          <RadialGradient id={id} cx="50%" cy="50%" r="50%">
             <Stop offset="0%" stopColor={colors.lightSquare} stopOpacity={0.5} />
             <Stop offset="55%" stopColor={colors.lightSquare} stopOpacity={0.22} />
             <Stop offset="100%" stopColor={colors.lightSquare} stopOpacity={0} />
           </RadialGradient>
         </Defs>
-        <Circle cx={50} cy={50} r={50} fill="url(#goal-halo)" />
+        <Circle cx={50} cy={50} r={50} fill={`url(#${id})`} />
       </Svg>
     </View>
   );

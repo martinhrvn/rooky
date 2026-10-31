@@ -108,6 +108,12 @@ interface ProgressStore extends PersistedProgress {
   removePlacement: (key: string) => void;
   setCanvasBackground: (backgroundId: string) => void;
 
+  /**
+   * Board setup: stage `stage` is done. Keeps the furthest she has got, so
+   * replaying an early stage can never lock a later one again.
+   */
+  finishSetupStage: (stage: number) => void;
+
   /** Developer panel only. */
   grantAlbum: () => void;
 }
@@ -195,6 +201,12 @@ export function migrateProgress(persisted: unknown, version: number): PersistedP
     state = { ...state, canvas: state.canvas ?? {} };
   }
 
+  // v5 had no board setup. Nobody has finished a stage of something that did
+  // not exist, so everyone starts at the first one.
+  if (version < 6) {
+    state = { ...state, setup: state.setup ?? {} };
+  }
+
   return state;
 }
 
@@ -276,6 +288,7 @@ export const useProgress = create<ProgressStore>()(
             album: { ...s.album, [id]: [] },
             pending: { ...s.pending, [id]: [] },
             canvas: { ...s.canvas, [id]: emptyCanvas },
+            setup: { ...s.setup, [id]: 0 },
           };
         }),
 
@@ -296,6 +309,9 @@ export const useProgress = create<ProgressStore>()(
        * harmless: XP only ever buys stickers, and achievements are one-shot
        * through `earned`, which is untouched here, so none of them can be
        * farmed by replaying.
+       *
+       * Board setup is left where it is too. It is not part of the path, and
+       * the stages she has learned are a skill rather than a level to win.
        */
       replayAll: () =>
         set((s) => {
@@ -336,6 +352,7 @@ export const useProgress = create<ProgressStore>()(
             album: without(s.album),
             pending: without(s.pending),
             canvas: without(s.canvas),
+            setup: without(s.setup),
             activeProfileId:
               s.activeProfileId === id ? (profiles[0]?.id ?? null) : s.activeProfileId,
           };
@@ -480,6 +497,18 @@ export const useProgress = create<ProgressStore>()(
       setCanvasBackground: (backgroundId) =>
         set((s) => editCanvas(s, (c) => canvasEdit.setBackground(c, backgroundId))),
 
+      finishSetupStage: (stage) =>
+        set((s) => {
+          const id = s.activeProfileId;
+          if (!id) return {};
+          const finished = s.setup[id] ?? 0;
+          // `stage` is an index, so finishing it means `stage + 1` are done —
+          // but only if it was the frontier or past it. A replay of stage 0
+          // after reaching stage 4 changes nothing.
+          if (stage + 1 <= finished) return {};
+          return { setup: { ...s.setup, [id]: stage + 1 } };
+        }),
+
       grantAlbum: () =>
         set((s) =>
           s.activeProfileId
@@ -526,6 +555,7 @@ export const useProgress = create<ProgressStore>()(
         album,
         pending,
         canvas,
+        setup,
       }) => ({
         activeProfileId,
         profiles,
@@ -537,6 +567,7 @@ export const useProgress = create<ProgressStore>()(
         album,
         pending,
         canvas,
+        setup,
       }),
       migrate: migrateProgress,
       onRehydrateStorage: () => (state) => state?.markHydrated(),
@@ -619,6 +650,11 @@ export function useCanvasBackground(): string {
       ? (s.canvas[s.activeProfileId]?.backgroundId ?? DEFAULT_BACKGROUND_ID)
       : DEFAULT_BACKGROUND_ID,
   );
+}
+
+/** How many board-setup stages the active player has finished. */
+export function useSetupFinished(): number {
+  return useProgress((s) => (s.activeProfileId ? (s.setup[s.activeProfileId] ?? 0) : 0));
 }
 
 /** Shared so an absent record does not return a fresh array every render. */

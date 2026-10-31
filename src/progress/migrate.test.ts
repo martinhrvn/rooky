@@ -155,6 +155,26 @@ describe('migrating from version 4', () => {
   });
 });
 
+describe('migrating from version 5', () => {
+  const v5 = {
+    ...v1,
+    profiles: v1.profiles.map((p) => ({ ...p, maxTier: 3 as const, avatarId: 'fox' as const })),
+    xp: { p1: 120 },
+    canvas: { p1: { backgroundId: 'hills', placements: [] } },
+  };
+  const migrated = migrateProgress(structuredClone(v5), 5);
+
+  it('starts everyone at the first board-setup stage', () => {
+    expect(migrated.setup).toEqual({});
+  });
+
+  it('leaves everything else as it was', () => {
+    expect(migrated.xp).toEqual(v5.xp);
+    expect(migrated.canvas).toEqual(v5.canvas);
+    expect(migrated.results.p1['rook-t1-01']).toEqual(v1.results.p1['rook-t1-01']);
+  });
+});
+
 describe('migrating from the current version', () => {
   it('passes a current payload through untouched', () => {
     const current = {
@@ -178,6 +198,10 @@ describe('migrating from the current version', () => {
       },
     };
     expect(migrateProgress({ ...v1, canvas }, PROGRESS_VERSION).canvas).toEqual(canvas);
+  });
+
+  it('keeps how far she has got with setting up the board', () => {
+    expect(migrateProgress({ ...v1, setup: { p1: 4 } }, PROGRESS_VERSION).setup).toEqual({ p1: 4 });
   });
 });
 

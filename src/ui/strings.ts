@@ -343,4 +343,32 @@ export const strings = {
     next: 'Next level',
     another: 'Another one',
   },
+
+  /**
+   * Board setup. The board screen itself carries no words — these are the
+   * shelf label, the end-of-stage buttons and what a screen reader says.
+   */
+  setup: {
+    title: 'Set up the board',
+    /** Replays where the piece in her hand goes. */
+    hint: 'Show me where it goes',
+    /** The piece waiting to be put down, read out with its colour. */
+    incoming: (color: 'w' | 'b', piece: string) =>
+      `Next: ${color === 'w' ? 'your' : 'their'} ${piece}. Drag it to a square, or tap the square.`,
+    /** Read out for each mark in the row of stages. */
+    stages: {
+      r: 'Rooks',
+      n: 'Knights',
+      b: 'Bishops',
+      q: 'Queens',
+      k: 'Kings',
+      p: 'Pawns',
+      all: 'Everything',
+    },
+    done: 'finished',
+    locked: 'locked',
+    next: 'Next pieces',
+    again: 'Do it again',
+    home: 'Home',
+  },
 } as const;
