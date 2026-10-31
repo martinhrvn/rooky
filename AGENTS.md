@@ -735,7 +735,33 @@ only "where can this piece go" and "what does the enemy cover".
 npm test          # vitest: chess core, engine, and the level solver gate
 npm run typecheck # tsc --noEmit
 npx expo export --platform android   # catches bundling/native-module breakage
+npm run build:web                    # web bundle into dist/ (gitignored)
 ```
+
+### Web
+
+The web build exists to **develop and preview**, not to ship: `npm run web`
+serves it with fast refresh, and `npm run build:web` writes a static `dist/`
+any file server can host (serve it with SPA fallback, e.g. `npx serve dist
+-s`, or deep links like `/play/rook-t1-01` 404). Progress persists to
+`localStorage` through AsyncStorage's web backend, so a profile survives a
+reload just as it survives an app restart. Haptics go through
+`navigator.vibrate`, so they buzz on Android Chrome and do nothing on desktop or
+iOS Safari.
+
+- **Zustand resolves to its CommonJS build on web**, in `metro.config.js`.
+  Metro matches zustand's `import` condition and serves its ESM build, whose
+  devtools middleware reads `import.meta.env` — a syntax error in Metro's
+  classic-script bundle, so the page is blank with *Cannot use 'import.meta'
+  outside a module*. Native already gets the CJS file through the
+  `react-native` condition. The override is scoped to zustand; adding
+  `react-native` to every web resolution would pull native-only entry points
+  out of other packages. If another dependency blanks the page the same way,
+  grep the bundle for `import.meta` and extend the same check — do not add a
+  `babel.config.js` to transform it (see the note under The drag).
+- **The web build is not a test of anything native.** Gestures, the drag's
+  long-press and Reanimated's UI thread all behave differently in a browser, so
+  a canvas bug that does not reproduce on web has not been disproved.
 
 The solver test is the **content gate**: it proves every level is winnable and
 that its declared `par` is the true optimum. Never hand-tune a `par` to silence
