@@ -5,7 +5,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 
 import type { PieceType } from '../../src/chess/types';
 import { nextLevel, worldOf } from '../../src/content';
-import { isMixOpen, piecesPlayed } from '../../src/progress/selectors';
+import { isMixOpen, isSetupOpen, piecesPlayed } from '../../src/progress/selectors';
 import { useActiveProfile, useCompletedIds, useProgress, useXp } from '../../src/progress/store';
 import { Avatar } from '../../src/ui/Avatar';
 import { Button } from '../../src/ui/Button';
@@ -15,6 +15,7 @@ import { pieceArt } from '../../src/ui/pieces';
 import { strings } from '../../src/ui/strings';
 import { Text } from '../../src/ui/Text';
 import { MixJar } from '../../src/ui/toys/MixJar';
+import { SetupBoard } from '../../src/ui/toys/SetupBoard';
 import { useCatalogue } from '../../src/ui/useCatalogue';
 import { XpBar } from '../../src/ui/XpBar';
 import { colors, elevation, layout } from '../../src/ui/theme';
@@ -74,6 +75,7 @@ export default function HomeScreen() {
   const world = resume ? worldOf(catalogue, resume) : undefined;
   const played = piecesPlayed(catalogue.worlds, completed);
   const mixOpen = isMixOpen(catalogue, completed);
+  const setupOpen = isSetupOpen(catalogue, completed);
 
   // `nextLevel` says nothing in two cases — every level finished, or no content
   // at all — and only the first is worth drawing.
@@ -119,7 +121,17 @@ export default function HomeScreen() {
    * there is enough to mix, so its shape is already familiar by the time it
    * opens. Once everything is finished it leaves the shelf for the hero spot
    * rather than standing in both places.
+   *
+   * The board-setup toy stays on the shelf in both states: it is not "the way
+   * on", so finishing the path does not move it anywhere.
    */
+  const setupToy: Toy = {
+    key: 'setup',
+    label: strings.setup.title,
+    art: <SetupBoard />,
+    locked: !setupOpen,
+    onPress: () => router.push('/setup'),
+  };
   const toys: Toy[] = resume
     ? [
         {
@@ -129,8 +141,9 @@ export default function HomeScreen() {
           locked: !mixOpen,
           onPress: () => router.push('/mix'),
         },
+        setupToy,
       ]
-    : [];
+    : [setupToy];
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>

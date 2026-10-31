@@ -143,6 +143,19 @@ export const isMixOpen = (catalogue: Catalogue, completedIds: ReadonlySet<string
   mixPool(catalogue, completedIds).length >= MIN_FOR_MIX;
 
 /**
+ * Whether the board-setup toy on the home shelf is open.
+ *
+ * Once she has finished a single level — so the first time she sees it lit
+ * she already knows what a rook is, which is what the first stage asks her to
+ * put down. Before that it stands on the shelf dimmed, like the jar, so the
+ * shape is familiar by the time it opens. It reads the filtered catalogue, so
+ * a profile capped at a tier she has not touched does not open it on the
+ * strength of results it cannot see.
+ */
+export const isSetupOpen = (catalogue: Catalogue, completedIds: ReadonlySet<string>): boolean =>
+  catalogue.levels.some((level) => completedIds.has(level.id));
+
+/**
  * The pieces she has finished something with, in world order.
  *
  * Heads the Mix card, where the piece card is headed by a single piece — so

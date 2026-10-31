@@ -85,7 +85,7 @@ describe('the profile that opens on relaunch', () => {
       ...state(),
     } as never) as Record<string, unknown>;
 
-    for (const key of ['xp', 'counters', 'streaks', 'earned', 'album', 'pending', 'canvas']) {
+    for (const key of ['xp', 'counters', 'streaks', 'earned', 'album', 'pending', 'canvas', 'setup']) {
       expect(Object.keys(persisted), key).toContain(key);
     }
   });
@@ -492,5 +492,42 @@ describe('a reset clears the rewards too', () => {
     ]) {
       expect(Object.keys(record)).not.toContain(fox);
     }
+  });
+});
+
+describe('board setup', () => {
+  it('remembers the furthest stage, per player', () => {
+    const fox = state().createProfile('Fox', 'fox');
+    state().finishSetupStage(0);
+    state().finishSetupStage(1);
+    const owl = state().createProfile('Owl', 'owl');
+
+    expect(state().setup[fox]).toBe(2);
+    expect(state().setup[owl]).toBeUndefined();
+  });
+
+  it('never goes backwards when an early stage is played again', () => {
+    const fox = state().createProfile('Fox', 'fox');
+    state().finishSetupStage(3);
+    state().finishSetupStage(0);
+    expect(state().setup[fox]).toBe(4);
+  });
+
+  it('survives replaying everything, and goes with starting over', () => {
+    const fox = state().createProfile('Fox', 'fox');
+    state().finishSetupStage(2);
+
+    state().replayAll();
+    expect(state().setup[fox]).toBe(3);
+
+    state().resetProgress();
+    expect(state().setup[fox]).toBe(0);
+  });
+
+  it('goes with the player when they are removed', () => {
+    const fox = state().createProfile('Fox', 'fox');
+    state().finishSetupStage(2);
+    state().deleteProfile(fox);
+    expect(state().setup[fox]).toBeUndefined();
   });
 });

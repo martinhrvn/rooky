@@ -124,7 +124,7 @@ half is `src/ui/grownUpGate.ts`, tested without React.
 
 ```
 src/chess/      pure move generation and attack maps. No React, no I/O.
-src/game/       engine.ts (pure reducer), solver.ts (BFS), generator.ts, types.ts
+src/game/       engine.ts (pure reducer), solver.ts (BFS), generator.ts, setup.ts, types.ts
 src/content/    level data, world metadata, ordering
 src/progress/   selectors.ts (pure unlock/progress) + zustand store on AsyncStorage
 src/ui/         Board, Celebration, PathNode, TierRank, Shelf, icons, theme, strings
@@ -564,7 +564,53 @@ built from is `mockups/home-shelf.html`.
   moves to the hero spot and leaves the shelf, and a shelf with nothing on it
   is not drawn.
 
-## Worlds
+## Board setup
+
+The second toy on the shelf (`src/ui/toys/SetupBoard.tsx`, a little board
+leaning on the wall) opens `app/setup.tsx`: she puts the pieces where a game
+starts. The rules are pure in `src/game/setup.ts`; the screen is
+`src/ui/SetupPlayer.tsx`.
+
+- **A tutorial in parts, then the whole thing.** Rooks, knights, bishops,
+  queens, kings, pawns, then *everything*. Each part opens with every earlier
+  part already standing and shows where its own pieces go before she places
+  them; the last stage starts from a board with only the two kings on it, and
+  shows nothing. Outside-in along the back rank is the order because each
+  piece is "next to the last one", which she can follow by looking.
+- **Every stage opens with at least one piece of each colour standing**, which
+  is the whole of how she knows which end is whose. The first stage is given a
+  rook in each colour on the a-file for exactly that; `setup.test.ts` asserts it
+  for every stage.
+- **Drag or tap, and a wrong square is answered the same way by both**: the
+  piece goes to the square, shakes, and comes home to the tray. Never red,
+  never counted. The trip is what makes the shake read as "that square said
+  no". The tap is the screen-reader path, so it is not redundant with the drag.
+- **Either of a pair is right.** A white rook goes in either empty white
+  corner; asking her to tell two identical pieces apart would mark her wrong
+  for something that is not wrong.
+- **The pieces come in alternating colours**, so every other one asks which end
+  of the board it belongs at.
+- **The hint shows where the piece in her hand goes, and nothing else.** The
+  opening demonstration of a stage is the "this is the lot" view; the hint is
+  for one piece she is stuck on.
+- **Demonstrations are drawn over the board, never put on it.** `Board` reads a
+  piece that disappears as captured and shrinks it away, which is the wrong
+  picture for "now you do it".
+- **How far she has got is one integer per profile** (`setup`, schema v6), and
+  it only goes up. The screen opens on the stage she is up to; every stage up
+  to it stays reachable from the row of pieces at the top. `replayAll` leaves
+  it alone — the stages are a skill, not part of the path — and
+  `resetProgress` clears it.
+- **A stage pays XP at the three-star rate**, first time through at the
+  first-clear rate and after that at the replay rate, through the same
+  `xpForResult` as a level. Three stars because there is nothing to do badly:
+  a wrong square already cost her the piece's trip home. It does not bump the
+  `levels` tally, because a stage is not a level.
+- **Opens once she has finished one level** (`isSetupOpen`), so the first time
+  she sees it lit she already knows what a rook is. Before that it stands on
+  the shelf dimmed, like the jar. It stays on the shelf when everything is
+  finished, because it is not the way on.
+
 
 Six worlds about a piece, then six about an idea — capture, protect, combat,
 check, escape, mate. Reaching the king, getting out of check and finishing are

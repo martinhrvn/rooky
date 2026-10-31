@@ -8,7 +8,7 @@ export const DEFAULT_MAX_TIER: Tier = 3;
  * `migrate` in store.ts. This ships from day one on purpose: retrofitting
  * migrations later is how you end up wiping a kid's saved progress.
  */
-export const PROGRESS_VERSION = 5;
+export const PROGRESS_VERSION = 6;
 
 /**
  * Avatars, so a profile is recognisable without reading.
@@ -182,6 +182,14 @@ export interface PersistedProgress {
    * stays one line instead of two.
    */
   readonly canvas: ByProfile<CanvasState>;
+
+  /**
+   * How many board-setup stages she has finished, in order. **One integer**,
+   * for the same reason `xp` is one: which stage opens and which are reachable
+   * are both derived from it (`openingStage`, `isStageOpen`), so there is no
+   * second number to disagree with it. It only ever goes up.
+   */
+  readonly setup: ByProfile<number>;
 }
 
 export const emptyProgress: PersistedProgress = {
@@ -195,4 +203,5 @@ export const emptyProgress: PersistedProgress = {
   album: {},
   pending: {},
   canvas: {},
+  setup: {},
 };
