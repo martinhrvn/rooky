@@ -158,6 +158,13 @@ export function LevelPlayer({
   /** Board shown mid-punishment, with the enemy already on her square. */
   const [punished, setPunished] = useState<BoardModel | null>(null);
   /**
+   * Where the rewind put her taken piece back. The board lands it there with
+   * the same squash board setup uses for a piece set down: the taken piece
+   * coming back is "here it is, safe", and a piece that simply reappears says
+   * nothing at all.
+   */
+  const [restored, setRestored] = useState<Square | null>(null);
+  /**
    * The last tap that changed nothing. `tick` rises on every one of them, so
    * pressing the same empty square four times in a row plays the answer four
    * times rather than once.
@@ -247,9 +254,15 @@ export function LevelPlayer({
     onLost?.();
 
     const { from, to } = state.punisher;
+    // The taken piece is usually the one that moved, and goes back to where it
+    // came from. Under `allPieces` it can be a bystander, which never moved
+    // and goes back to the square it was taken on.
+    const moved = state.lastMove;
+    const home = moved && moved.to === to ? moved.from : to;
     const strike = setTimeout(() => setPunished(movePiece(state.board, from, to)), PUNISH_DELAY_MS);
     const back = setTimeout(() => {
       setPunished(null);
+      setRestored(home);
       setState(rewind);
     }, REWIND_DELAY_MS);
 
@@ -257,7 +270,7 @@ export function LevelPlayer({
       clearTimeout(strike);
       clearTimeout(back);
     };
-  }, [state.phase, state.punisher, state.board]);
+  }, [state.phase, state.punisher, state.board, state.lastMove]);
 
   /**
    * Takes back a move that stranded her.
@@ -291,6 +304,9 @@ export function LevelPlayer({
 
   const retry = useCallback(() => {
     setPunished(null);
+    // A restart remounts every piece, and none of them is coming back from
+    // being taken.
+    setRestored(null);
     setState((s) => restart(s));
     setShowHint(false);
     setSkipped(false);
@@ -433,6 +449,7 @@ export function LevelPlayer({
               lastMove={state.lastMove}
               size={boardSize}
               nudge={nudge}
+              arrived={restored}
               onTapSquare={onTapSquare}
             />
 

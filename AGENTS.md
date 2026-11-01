@@ -289,6 +289,28 @@ lower down.
   top of the pieces. The scrim stays thin so the finished position is still
   readable through it, which was the point of the original rule. `Celebration`
   is now only the two moving parts — the confetti and the star that springs in.
+- **The win card rises into place; it does not fade, and nothing on it starts
+  first.** It comes up from below with a few pixels of overshoot and is solid
+  within its first quarter, and the stars, confetti, buttons and bar all wait
+  for it (`STARS_AT_MS`). It used to fade in on a slow spring with everything
+  already playing on a half-transparent card, and that read as the game
+  hanging. Also the trap that caused it: a `withTiming` *inside*
+  `useAnimatedStyle` restarts every frame it is read, so chasing a spring with
+  one never finishes on time.
+- **Three dimmed slots, and the earned stars pop into them.** Every slot is
+  on the card from the moment the card is, so the row is never an empty space
+  waiting to be filled. Each earned star *slams* into its own slot — in place,
+  never dropped in from above: it starts at 2.6× and falls onto the card on an
+  ease-in, so it hits rather than arrives, then squashes and bounces back.
+  The impact (`STAR_IMPACT_MS`) is what everything keys off: a gold ring
+  thrown out, a burst of sparks and a Medium haptic thump. The bar waits
+  until the third has hit, so nothing moves under the slams. A slot she did not fill
+  just stays a slot: dimmed like anything not hers yet, quiet, never a sad
+  beat.
+- **The win card's buttons are not pressable until they have risen in.** They
+  arrive a beat after the first star, and `pointerEvents` is off until they
+  are mostly there, so a tap meant to skip the celebration can never land on a
+  button she could not yet see. Skipping brings them in at once.
 - **"Try again" and "Start over" are different acts and need different
   glyphs.** They sit side by side at the end of a tier and are both coral,
   because both mean "again" — so the circular arrow doing double duty made them
@@ -305,6 +327,14 @@ XP feeds one bar, the bar buys stickers, and achievements are one-shot lumps of
 XP on top — one economy, never two. `src/progress/achievements.ts` holds the
 catalogue and every pure part of it; nothing there imports React or the store.
 
+- **Choosing a sticker is shown before it is saved.** `chooseSticker` clears
+  the offer, and the dialog with it, so calling it on the tap would make the
+  pick vanish the instant she made it. `StickerChoiceDialog` plays the pick —
+  the chosen one jumps and wiggles, the other two step back and go — and only
+  then tells the store. That gap is safe for the same reason the dialog is:
+  the offer is written down, so an app killed mid-celebration reopens on it.
+  The offered three sway slowly once landed, which is the "pick me" a
+  non-reader gets instead of the words under them.
 - **`AchievementIcon` is the only place an achievement is drawn.** The toast and
   the collection both go through it, because two pictures for one achievement
   are two achievements to a non-reader. It takes `{piece, mark}` rather than an
@@ -591,10 +621,20 @@ starts. The rules are pure in `src/game/setup.ts`; the screen is
   can seed it and "do it again" deals a new pawn. Its mark in the stage row is
   a black pawn on one light square: a lone white pawn would be the pawns
   stage's mark, and a black piece only shows on something light.
-- **Drag or tap, and a wrong square is answered the same way by both**: the
-  piece goes to the square, shakes, and comes home to the tray. Never red,
-  never counted. The trip is what makes the shake read as "that square said
-  no". The tap is the screen-reader path, so it is not redundant with the drag.
+- **Drag or tap, and every square is answered the same way by both** — both
+  go through one `answer` in `SetupPlayer`. The piece always *travels* to the
+  square first, shrinking to the board's size on the way, so a tap is never a
+  teleport. A wrong square then rocks it on its foot ("no-no") under the
+  walnut ring and sends it home to the tray. Never red, never counted, never a
+  buzz: the trip is what makes the rock read as "that square said no". The tap
+  is the screen-reader path, so it is not redundant with the drag.
+- **A right square answers too, in the opposite shape.** The board takes the
+  piece with a squash about its foot (`arrived` on `Board`), and a jade disc
+  spreads *out* from the square where the wrong answer's ring closes *in*.
+  Jade because that is "done" on this screen, never gold, because this
+  happens thirty times a stage. The next piece slides in from the queue, and a
+  finished stage lights every square a rank at a time from her side to theirs
+  before the card. Reduced motion keeps every answer and drops the travel.
 - **Either of a pair is right.** A white rook goes in either empty white
   corner; asking her to tell two identical pieces apart would mark her wrong
   for something that is not wrong.
@@ -641,6 +681,11 @@ opponent in `src/game/opponent.ts`, the board screen is `src/ui/ChasePlayer.tsx`
   about a hundred moves.
 - **A pawn that arrives is not promoted.** Arriving is the win, so there is
   nothing to ask her.
+- **The piece that won it cheers** (`cheer` on `Board`): two hops once its
+  move has finished travelling, and a jade ripple out from its square across
+  the whole board, timed to reach the far corner as the card arrives. Her move
+  is always the last one in a won game, so `lastMove.to` is that square however
+  the game was won. A loss gets none of this, and nothing new either.
 - **This is the one board where nothing rewinds.** Losing a pawn is the game,
   not a mistake, which is why it is its own player rather than a mode of
   `LevelPlayer`. Losing a game shows the deciding square in red and a card with
@@ -851,6 +896,10 @@ only "where can this piece go" and "what does the enemy cover".
 - **Getting taken rewinds one move, it does not restart the level.** She
   watches the enemy come and take her piece, then the board steps back and the
   failed move doesn't count. Never flash "wrong" — play the capture out.
+  The taken piece comes back with the same landing squash board setup uses
+  (`arrived`), so the rewind reads as "here it is, safe" rather than as a piece
+  blinking back into existence. Under `allPieces` the taken piece may be a
+  bystander, which goes back to where it was taken, not to the move's `from`.
 - **Tier 3 is tier 2 mirrored**, derived in `src/content/index.ts` rather than
   authored twice. Holding the difficulty identical means "no help" is the only
   variable that changed, while the flip stops her replaying from memory.

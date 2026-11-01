@@ -2,22 +2,50 @@ import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
+  Easing,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
-  withSpring,
+  withDelay,
   withTiming,
 } from 'react-native-reanimated';
 
-import { CONFETTI_COUNT, Confetti, RewardStar } from './Celebration';
+import { CONFETTI_COUNT, Confetti, RewardStar, STAR_IMPACT_MS, STAR_STAGGER_MS } from './Celebration';
 import { XpBar } from './XpBar';
-import { colors, elevation, layout, rewardSpring } from './theme';
+import { colors, elevation, layout } from './theme';
+
+/**
+ * The card arriving: it rises into place rather than fading up, overshoots by
+ * a few pixels and settles back. Ease-out-back — fast off the mark so the win
+ * is answered at once, with the overshoot as the only flourish. It used to
+ * fade in on a slow spring with the stars and confetti already going, and
+ * the half-there card read as the game hanging.
+ */
+const CARD_IN = { duration: 300, easing: Easing.bezier(0.34, 1.35, 0.64, 1) };
+/** How far below its place the card starts. */
+const CARD_RISE = 56;
+/** The dimming behind it. Quick, and a fade, because it is the room going dark, not a thing arriving. */
+const SCRIM_MS = 150;
+
+/**
+ * Nothing on the card moves until the card is there. Starts a touch before
+ * the overshoot finishes settling, so there is no dead beat between them.
+ */
+const STARS_AT_MS = CARD_IN.duration - 40;
 
 /** How long the bar takes to travel to its new value. */
 const FILL_MS = 700;
 
-/** Beat before it starts, so the stars land first and the two do not collide. */
-const FILL_DELAY_MS = 500;
+/**
+ * Once the third star has hit, so the bar is the next beat after the slams
+ * rather than something moving underneath them. Still finishes before the
+ * campaign's auto-advance at 1.8s.
+ */
+const FILL_DELAY_MS = STARS_AT_MS + STAR_STAGGER_MS * 2 + STAR_IMPACT_MS + 100;
+
+/** The buttons: in once the first star has hit, ease-out because they are arriving. */
+const ACTIONS_DELAY_MS = STARS_AT_MS + STAR_IMPACT_MS + 120;
+const ACTIONS_IN = { duration: 240, easing: Easing.bezier(0.165, 0.84, 0.44, 1) };
 
 /**
  * The end of a level: what she earned, on a card over a dimmed board.
@@ -79,14 +107,50 @@ export function WinDialog({
     return () => cancelAnimationFrame(frame);
   }, [skipped, reduced, xpBefore, xpAfter]);
 
-  const card = useSharedValue(0);
+  const card = useSharedValue(reduced ? 1 : 0);
+  const scrim = useSharedValue(reduced ? 1 : 0);
   useEffect(() => {
-    card.value = reduced ? 1 : withSpring(1, rewardSpring);
-  }, [card, reduced]);
+    if (skipped || reduced) {
+      card.value = 1;
+      scrim.value = 1;
+      return;
+    }
+    card.value = withTiming(1, CARD_IN);
+    scrim.value = withTiming(1, { duration: SCRIM_MS });
+  }, [card, reduced, scrim, skipped]);
 
   const cardStyle = useAnimatedStyle(() => ({
-    opacity: withTiming(card.value, { duration: 160 }),
-    transform: [{ scale: 0.94 + card.value * 0.06 }],
+    // Solid within the first quarter of the rise, so what she sees is the
+    // card moving, never the card fading. Clamped: the overshoot takes the
+    // value past 1.
+    opacity: Math.min(1, card.value * 4),
+    transform: [
+      { translateY: (1 - card.value) * CARD_RISE },
+      { scale: 0.92 + Math.min(card.value, 1) * 0.08 },
+    ],
+  }));
+  const scrimStyle = useAnimatedStyle(() => ({ opacity: scrim.value }));
+
+  // The way onward rises in just after the first star lands, so the stars
+  // are the first thing she sees and the buttons arrive as "and now…".
+  // Not pressable until they are there: a tap meant to skip must never land
+  // on a button she could not yet see. Skipping brings them in at once.
+  const actions = useSharedValue(0);
+  const [actionsLive, setActionsLive] = useState(false);
+  useEffect(() => {
+    if (skipped || reduced) {
+      actions.value = 1;
+      setActionsLive(true);
+      return;
+    }
+    actions.value = withDelay(ACTIONS_DELAY_MS, withTiming(1, ACTIONS_IN));
+    const live = setTimeout(() => setActionsLive(true), ACTIONS_DELAY_MS + ACTIONS_IN.duration / 2);
+    return () => clearTimeout(live);
+  }, [actions, reduced, skipped]);
+
+  const actionsStyle = useAnimatedStyle(() => ({
+    opacity: actions.value,
+    transform: [{ translateY: (1 - actions.value) * 14 }],
   }));
 
   return (
@@ -101,14 +165,15 @@ export function WinDialog({
     >
       {/* Thin: the board underneath stays legible, which is the half of the
           old board-anchored design worth keeping. */}
-      <View style={styles.scrim} />
+      <Animated.View style={[styles.scrim, scrimStyle]} />
 
       {/* Confetti falls over the whole screen rather than the card, or it
-          would be a card with glitter in it rather than a celebration. */}
+          would be a card with glitter in it rather than a celebration. It
+          waits for the card, like the stars, so the win lands as one beat. */}
       {reduced
         ? null
         : Array.from({ length: CONFETTI_COUNT }, (_, i) => (
-            <Confetti key={i} index={i} size={size} skipped={skipped} />
+            <Confetti key={i} index={i} size={size} skipped={skipped} startAt={STARS_AT_MS} />
           ))}
 
       <View style={styles.centre} pointerEvents="box-none">
@@ -121,13 +186,21 @@ export function WinDialog({
                 filled={i < earned}
                 size={56}
                 skipped={skipped || reduced}
+                startAt={STARS_AT_MS}
               />
             ))}
           </View>
 
           <XpBar xp={shown} height={16} />
 
-          {children ? <View style={styles.actions}>{children}</View> : null}
+          {children ? (
+            <Animated.View
+              style={[styles.actions, actionsStyle]}
+              pointerEvents={actionsLive ? 'auto' : 'none'}
+            >
+              {children}
+            </Animated.View>
+          ) : null}
         </Animated.View>
       </View>
     </Pressable>

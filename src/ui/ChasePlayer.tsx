@@ -20,6 +20,7 @@ import { chooseMove } from '../game/opponent';
 import { makeRng } from '../game/random';
 import { useXp } from '../progress/store';
 import { Board } from './Board';
+import { BloomWave } from './BoardBloom';
 import { BoardFrame, frameWidthFor } from './BoardFrame';
 import { Halo } from './GoalBadge';
 import { IconButton } from './IconButton';
@@ -36,6 +37,17 @@ import { WinDialog } from './WinDialog';
 const THINK_MS = 650;
 /** A beat to look at the finished board before a card covers it. */
 const END_DELAY_MS = 900;
+
+/**
+ * The win's ripple: it starts as the winning piece leaves the ground and
+ * reaches the far corner, seven rings out, just as the card arrives.
+ */
+const RIPPLE_START_MS = 150;
+const RIPPLE_STEP_MS = 45;
+const ALL_SQUARES: readonly Square[] = Array.from({ length: 64 }, (_, sq) => sq);
+/** How many rings of squares lie between two squares: a king's distance. */
+const ringsFrom = (a: Square, b: Square) =>
+  Math.max(Math.abs((a % 8) - (b % 8)), Math.abs(Math.floor(a / 8) - Math.floor(b / 8)));
 
 const buzz = (style: Haptics.ImpactFeedbackStyle) => {
   Haptics.impactAsync(style).catch(() => {});
@@ -210,6 +222,7 @@ export function ChasePlayer({
   const available = Math.min(width - layout.boardPadding * 2, height * 0.62);
   const cell = Math.floor((available - frameWidthFor(available) * 2) / 8);
   const boardSize = cell * 8;
+  const winSquare = game.phase === 'won' ? (game.lastMove?.to ?? null) : null;
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
@@ -235,8 +248,20 @@ export function ChasePlayer({
               lastMove={game.lastMove}
               size={boardSize}
               nudge={nudge}
+              // The piece that won it hops, and the board answers from there.
+              cheer={winSquare}
               onTapSquare={onTapSquare}
             />
+            {winSquare !== null ? (
+              <BloomWave
+                squares={ALL_SQUARES}
+                cell={cell}
+                // Out in rings from the winning square, so the whole board
+                // is saying where it was won.
+                delayOf={(sq) => RIPPLE_START_MS + ringsFrom(winSquare, sq) * RIPPLE_STEP_MS}
+                strength={0.4}
+              />
+            ) : null}
           </View>
         </BoardFrame>
       </View>

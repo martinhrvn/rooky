@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   type AnimatedRef,
+  Easing,
   measure,
   useAnimatedRef,
   useAnimatedStyle,
@@ -17,6 +18,7 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets';
 
+import { findPieces } from '../chess/board';
 import type { Color, Piece, PieceType, Square } from '../chess/types';
 import {
   STAGES,
@@ -32,6 +34,7 @@ import {
 } from '../game/setup';
 import { useXp } from '../progress/store';
 import { Board } from './Board';
+import { BLOOM_MS, Bloom, BloomWave } from './BoardBloom';
 import { BoardFrame, frameWidthFor } from './BoardFrame';
 import { Halo } from './GoalBadge';
 import { IconButton } from './IconButton';
@@ -44,14 +47,32 @@ import { WinDialog } from './WinDialog';
 const FADE_MS = 260;
 /** How long the demonstration holds once every piece is up. */
 const HOLD_MS = 1300;
-/** Beat between the last piece going down and the end-of-stage card. */
-const DONE_DELAY_MS = 650;
+/**
+ * The piece's trip to a square, right or wrong. Ease-out, because it is her
+ * action being answered: it leaves at once and lands soft. It shrinks to the
+ * board's size on the way, so what arrives is the piece the square would hold.
+ */
+const FLY_MS = 170;
+const FLY = { duration: FLY_MS, easing: Easing.out(Easing.cubic) };
 
-/** The piece's trip to a wrong square, the shake there, and the beat before it goes home. */
-const FLY_MS = 160;
-const SHAKE_STEP_MS = 55;
-const SHAKE_PX = 7;
+/**
+ * The wrong square's answer: the piece rocks on its foot, a toy saying
+ * "no-no", then goes home. A rock rather than a buzz because a buzz reads as
+ * something broken, and this is a square politely declining.
+ */
+const ROCK_DEG = 12;
+const ROCK_STEP_MS = 70;
+const ROCK_MS = ROCK_STEP_MS * 5;
 const SETTLE_MS = 120;
+
+/** The next piece sliding in from the queue beside the slot. */
+const ARRIVE = { duration: 200, easing: Easing.bezier(0.165, 0.84, 0.44, 1) };
+
+/** The finished board lighting up a rank at a time, from her side to theirs. */
+const WAVE_STEP_MS = 55;
+
+/** Beat between the last piece going down and the end-of-stage card: the wave, and a breath after. */
+const DONE_DELAY_MS = WAVE_STEP_MS * 7 + BLOOM_MS + 100;
 
 const PIECE_NAMES: Record<PieceType, string> = {
   k: 'king',
@@ -134,25 +155,32 @@ export function SetupPlayer({
   );
   const [won, setWon] = useState(false);
   const [nudge, setNudge] = useState<{ square: Square; tick: number } | null>(null);
+  const [bloom, setBloom] = useState<{ square: Square; tick: number } | null>(null);
+  const [wave, setWave] = useState(false);
 
   const boardRef = useAnimatedRef<View>();
   const incoming = useRef<IncomingHandle>(null);
+  /** A piece is on its way to the square that will take it; nothing else may start. */
+  const landing = useRef(false);
 
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
-  /** Puts the piece in her hand on `sq` if it goes there. True if it did. */
-  const tryPlace = useCallback(
-    (sq: Square): boolean => {
+  /** Puts the piece in her hand down on `sq`, once it has arrived there. */
+  const commit = useCallback(
+    (sq: Square) => {
+      landing.current = false;
       const before = live.current;
       const after = place(before, sq);
-      if (after === before) return false;
+      if (after === before) return;
 
       live.current = after;
       setState(after);
+      setBloom((b) => ({ square: sq, tick: (b?.tick ?? 0) + 1 }));
       buzz(Haptics.ImpactFeedbackStyle.Light);
 
       if (isComplete(after)) {
+        setWave(true);
         // A beat to look at the finished board before the card covers it.
         timers.current.push(
           setTimeout(() => {
@@ -162,10 +190,26 @@ export function SetupPlayer({
           }, DONE_DELAY_MS),
         );
       }
-      return true;
     },
     [onComplete],
   );
+
+  /**
+   * A drop or a tap on `sq`, answered. Both paths come through here, so a
+   * wrong square says exactly the same thing however she chose it.
+   */
+  const answer = useCallback((sq: Square) => {
+    const s = live.current;
+    if (landing.current || isComplete(s)) return;
+    if (place(s, sq) !== s) {
+      if (!incoming.current) return commit(sq);
+      landing.current = true;
+      incoming.current.accept(sq);
+      return;
+    }
+    setNudge((n) => ({ square: sq, tick: (n?.tick ?? 0) + 1 }));
+    incoming.current?.reject(sq);
+  }, [commit]);
 
   const demo = peek?.kind === 'demo';
 
@@ -178,11 +222,9 @@ export function SetupPlayer({
         setPeek(null);
         return;
       }
-      if (tryPlace(sq)) return;
-      setNudge((n) => ({ square: sq, tick: (n?.tick ?? 0) + 1 }));
-      incoming.current?.reject(sq);
+      answer(sq);
     },
-    [demo, tryPlace, won],
+    [answer, demo, won],
   );
 
   const showHint = useCallback(() => {
@@ -229,8 +271,18 @@ export function SetupPlayer({
               lastMove={state.last === null ? null : { from: state.last, to: state.last }}
               size={boardSize}
               nudge={nudge}
+              arrived={state.last}
               onTapSquare={onTapSquare}
             />
+            {bloom ? <Bloom key={bloom.tick} square={bloom.square} cell={cell} /> : null}
+            {wave ? (
+              // Every piece's square, a rank at a time from her side to theirs.
+              <BloomWave
+                squares={findPieces(state.board)}
+                cell={cell}
+                delayOf={(sq) => Math.floor(sq / 8) * WAVE_STEP_MS}
+              />
+            ) : null}
             {peek ? (
               <Ghosts
                 key={peek.tick}
@@ -254,8 +306,10 @@ export function SetupPlayer({
                 ref={incoming}
                 piece={current}
                 size={pieceSize}
+                cell={cell}
                 boardRef={boardRef}
-                onDrop={tryPlace}
+                onDrop={answer}
+                onLanded={commit}
               />
             </View>
             {/* The ones behind it, small and dim: there are more coming, and
@@ -290,12 +344,18 @@ const DECORATIVE = {
 } as const;
 
 export interface IncomingHandle {
-  /** Fly to `sq`, shake, and come home. For a tap on the wrong square. */
+  /** Fly to `sq` and hand over to the board. For a square that takes the piece. */
+  accept: (sq: Square) => void;
+  /** Fly to `sq`, rock "no-no", and come home. For a square that does not. */
   reject: (sq: Square) => void;
 }
 
 /**
  * The piece in her hand. Drag it to a square, or leave it and tap the square.
+ *
+ * Either way it travels to the square before anything is decided on the
+ * board, so a tap is never a teleport: she sees her piece go there, which is
+ * the same thing a drag shows her.
  *
  * Keyed by piece id, so each piece is a fresh mount with its own position: the
  * one she just put down unmounts in the same render the board gains it, which
@@ -304,15 +364,21 @@ export interface IncomingHandle {
 function IncomingPiece({
   piece,
   size,
+  cell,
   boardRef,
   onDrop,
+  onLanded,
   ref,
 }: {
   piece: Piece;
   size: number;
+  /** The board's square size, which the piece shrinks to on its way there. */
+  cell: number;
   boardRef: AnimatedRef<View>;
-  /** True if the piece went down. False sends it home with a shake. */
-  onDrop: (sq: Square) => boolean;
+  /** Let go over a square. The parent answers with `accept` or `reject`. */
+  onDrop: (sq: Square) => void;
+  /** Arrived on a square that takes it. */
+  onLanded: (sq: Square) => void;
   ref?: Ref<IncomingHandle>;
 }) {
   const reduced = useReducedMotion();
@@ -323,51 +389,96 @@ function IncomingPiece({
   const baseX = useSharedValue(0);
   const baseY = useSharedValue(0);
   const lift = useSharedValue(0);
+  /** 0 in the tray, 1 at the board's size. */
+  const shrink = useSharedValue(0);
+  const tilt = useSharedValue(0);
+  /** 0 still in the queue, 1 in the slot. */
+  const enter = useSharedValue(0);
+  /** On its way to a square that takes it: hands off until the board has it. */
+  const flying = useSharedValue(false);
+
+  useEffect(() => {
+    enter.value = withTiming(1, ARRIVE);
+  }, [enter]);
+
+  /** How far the slot's centre is from `sq`'s, or null if either is unmeasured. */
+  const offsetTo = useCallback(
+    (sq: Square) => {
+      'worklet';
+      const b = measure(boardRef);
+      const h = measure(home);
+      if (!b || !h) return null;
+      const c = squareCentre(sq, { x: b.pageX, y: b.pageY, width: b.width, height: b.height });
+      return { dx: c.x - (h.pageX + h.width / 2), dy: c.y - (h.pageY + h.height / 2) };
+    },
+    [boardRef, home],
+  );
+
+  const accept = useCallback(
+    (sq: Square) => {
+      scheduleOnUI(() => {
+        'worklet';
+        const to = offsetTo(sq);
+        // Reduced motion keeps the answer — the piece on its square — and
+        // drops the trip.
+        if (!to || reduced) {
+          scheduleOnRN(onLanded, sq);
+          return;
+        }
+        flying.value = true;
+        lift.value = withTiming(0, FLY);
+        shrink.value = withTiming(1, FLY);
+        ty.value = withTiming(to.dy, FLY);
+        tx.value = withTiming(to.dx, FLY, () => {
+          scheduleOnRN(onLanded, sq);
+        });
+      });
+    },
+    [flying, lift, offsetTo, onLanded, reduced, shrink, tx, ty],
+  );
 
   const reject = useCallback(
     (sq: Square) => {
       scheduleOnUI(() => {
         'worklet';
-        const b = measure(boardRef);
-        const h = measure(home);
+        const to = offsetTo(sq);
         lift.value = withSpring(0, pieceSpring);
-        if (!b || !h || reduced) {
+        if (!to || reduced) {
           // Reduced motion keeps the answer — the square's ring, and the
           // piece back in the tray — and drops the trip.
           tx.value = withTiming(0, { duration: 150 });
           ty.value = withTiming(0, { duration: 150 });
+          shrink.value = withTiming(0, { duration: 150 });
           return;
         }
-        const c = squareCentre(sq, { x: b.pageX, y: b.pageY, width: b.width, height: b.height });
-        const dx = c.x - (h.pageX + h.width / 2);
-        const dy = c.y - (h.pageY + h.height / 2);
-        const step = { duration: SHAKE_STEP_MS };
-        tx.value = withSequence(
-          withTiming(dx, { duration: FLY_MS }),
-          withTiming(dx + SHAKE_PX, step),
-          withTiming(dx - SHAKE_PX, step),
-          withTiming(dx + SHAKE_PX * 0.6, step),
-          withTiming(dx - SHAKE_PX * 0.3, step),
-          withTiming(dx, step),
-          withDelay(SETTLE_MS, withSpring(0, pieceSpring)),
-        );
-        ty.value = withSequence(
-          withTiming(dy, { duration: FLY_MS }),
-          withDelay(SHAKE_STEP_MS * 5 + SETTLE_MS, withSpring(0, pieceSpring)),
+        const away = ROCK_MS + SETTLE_MS;
+        const step = { duration: ROCK_STEP_MS };
+        tx.value = withSequence(withTiming(to.dx, FLY), withDelay(away, withSpring(0, pieceSpring)));
+        ty.value = withSequence(withTiming(to.dy, FLY), withDelay(away, withSpring(0, pieceSpring)));
+        shrink.value = withSequence(withTiming(1, FLY), withDelay(away, withSpring(0, pieceSpring)));
+        // Each swing smaller than the last, so it comes to rest rather than
+        // stopping dead.
+        tilt.value = withSequence(
+          withDelay(FLY_MS, withTiming(ROCK_DEG, step)),
+          withTiming(-ROCK_DEG * 0.8, step),
+          withTiming(ROCK_DEG * 0.5, step),
+          withTiming(-ROCK_DEG * 0.25, step),
+          withTiming(0, step),
         );
       });
     },
-    [boardRef, home, lift, reduced, tx, ty],
+    [lift, offsetTo, reduced, shrink, tilt, tx, ty],
   );
 
-  useImperativeHandle(ref, () => ({ reject }), [reject]);
+  useImperativeHandle(ref, () => ({ accept, reject }), [accept, reject]);
 
-  const dropped = useCallback(
-    (sq: Square) => {
-      if (!onDrop(sq)) reject(sq);
-    },
-    [onDrop, reject],
-  );
+  const goHome = () => {
+    'worklet';
+    tx.value = withSpring(0, pieceSpring);
+    ty.value = withSpring(0, pieceSpring);
+    lift.value = withSpring(0, pieceSpring);
+    shrink.value = withSpring(0, pieceSpring);
+  };
 
   const gesture = useMemo(
     () =>
@@ -378,19 +489,25 @@ function IncomingPiece({
         .minDistance(4)
         .shouldCancelWhenOutside(false)
         .onStart((e) => {
+          if (flying.value) return;
           // Centre the piece on her finger, so what she is aiming with is the
-          // piece and not wherever on it she happened to grab.
+          // piece and not wherever on it she happened to grab. Grabbing it on
+          // its way home is allowed, so it starts from wherever it is.
           baseX.value = tx.value + e.x - size / 2 - e.translationX;
           baseY.value = ty.value + e.y - size / 2 - e.translationY;
           tx.value = baseX.value + e.translationX;
           ty.value = baseY.value + e.translationY;
           lift.value = withSpring(1, pieceSpring);
+          shrink.value = withSpring(0, pieceSpring);
+          tilt.value = withTiming(0, { duration: 120 });
         })
         .onUpdate((e) => {
+          if (flying.value) return;
           tx.value = baseX.value + e.translationX;
           ty.value = baseY.value + e.translationY;
         })
         .onEnd((e) => {
+          if (flying.value) return;
           const b = measure(boardRef);
           const sq = squareAtPoint(
             e.absoluteX,
@@ -399,32 +516,37 @@ function IncomingPiece({
           );
           if (sq < 0) {
             // Let go off the board: nothing to say no, so just come home.
-            tx.value = withSpring(0, pieceSpring);
-            ty.value = withSpring(0, pieceSpring);
-            lift.value = withSpring(0, pieceSpring);
+            goHome();
             return;
           }
-          scheduleOnRN(dropped, sq);
+          scheduleOnRN(onDrop, sq);
         })
         .onFinalize((_e, success) => {
           // A cancelled pan never reaches `onEnd`; without this the piece
           // would be stranded wherever the finger was.
-          if (!success) {
-            tx.value = withSpring(0, pieceSpring);
-            ty.value = withSpring(0, pieceSpring);
-            lift.value = withSpring(0, pieceSpring);
-          }
+          if (!success && !flying.value) goHome();
         }),
-    [baseX, baseY, boardRef, dropped, lift, size, tx, ty],
+    // `goHome` closes over the same shared values listed here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [baseX, baseY, boardRef, flying, lift, onDrop, shrink, size, tilt, tx, ty],
   );
 
+  // A rotation about the piece's foot rather than its middle, so the rock
+  // reads as a piece standing on a square, not one spinning in the air: the
+  // scale stays about the centre, which is what lands it square-on.
+  const foot = size * 0.35;
   const style = useAnimatedStyle(() => ({
+    opacity: enter.value,
     transform: [
-      { translateX: tx.value },
+      { translateX: tx.value + (reduced ? 0 : (1 - enter.value) * size * 0.6) },
       { translateY: ty.value },
-      { scale: 1 + lift.value * 0.15 },
+      { scale: (1 + lift.value * 0.15) * (1 + shrink.value * (cell / size - 1)) },
+      { translateY: foot },
+      { rotate: `${tilt.value}deg` },
+      { translateY: -foot },
     ],
   }));
+  const haloStyle = useAnimatedStyle(() => ({ opacity: enter.value }));
 
   const Art = pieceArt(piece.color, piece.type);
 
@@ -433,7 +555,11 @@ function IncomingPiece({
       {/* The Cburnett black set is black on black and vanishes on the plum
           chrome. The halo stays home while the piece travels, so it reads as
           light in the tray rather than as part of the piece. */}
-      {piece.color === 'b' ? <Halo size={size * 1.35} id={`halo-${piece.id}`} /> : null}
+      {piece.color === 'b' ? (
+        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, haloStyle]}>
+          <Halo size={size * 1.35} id={`halo-${piece.id}`} />
+        </Animated.View>
+      ) : null}
       <GestureDetector gesture={gesture}>
         <Animated.View
           accessible

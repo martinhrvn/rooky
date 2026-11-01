@@ -7,6 +7,7 @@ import Animated, {
   useSharedValue,
   withDelay,
   withRepeat,
+  withSequence,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
@@ -53,6 +54,15 @@ export interface BoardProps {
    * every such tap so a repeat replays the answer rather than being swallowed.
    */
   nudge?: { square: Square; tick: number } | null;
+  /**
+   * The square a piece has just been put down on from off the board — placed
+   * in board setup, or handed back by a rewind after being taken. A piece that
+   * appears there settles in with a squash rather than simply being there.
+   * Read only when a piece mounts, so a piece already standing never reacts.
+   */
+  arrived?: Square | null;
+  /** The square of the piece that just won the game, which hops for it. */
+  cheer?: Square | null;
   onTapSquare: (sq: Square) => void;
 }
 
@@ -129,6 +139,8 @@ export function Board({
   lastMove,
   size,
   nudge,
+  arrived,
+  cheer,
   onTapSquare,
 }: BoardProps) {
   const cell = size / 8;
@@ -216,7 +228,14 @@ export function Board({
       ))}
 
       {findPieces(board).map((sq) => (
-        <PieceView key={board[sq]!.id} piece={board[sq]!} square={sq} cell={cell} />
+        <PieceView
+          key={board[sq]!.id}
+          piece={board[sq]!}
+          square={sq}
+          cell={cell}
+          settle={sq === arrived}
+          cheer={sq === cheer}
+        />
       ))}
 
       {/* Move hints go above the pieces so a capture target still reads. */}
@@ -572,9 +591,66 @@ function CapturedPiece({ piece, square, cell }: { piece: Piece; square: Square; 
   );
 }
 
-function PieceView({ piece, square, cell }: { piece: Piece; square: Square; cell: number }) {
+/**
+ * A put-down piece's landing: squashed on arrival, sprung back with a little
+ * wobble. Underdamped on purpose — this is a toy being set down, and the
+ * overshoot is the "it fits" — but settled inside a third of a second, because
+ * it happens thirty times a stage.
+ */
+const SETTLE_SPRING = { damping: 9, stiffness: 320, mass: 0.6 };
+const SETTLE_SQUASH = 0.16;
+
+/**
+ * The winning piece's two hops. Held back long enough for the move that won
+ * to finish travelling, so it is a piece arriving and then cheering rather
+ * than a piece bouncing along its own line.
+ */
+const CHEER_DELAY_MS = 260;
+const HOP_UP = { duration: 150, easing: Easing.out(Easing.quad) };
+const HOP_DOWN = { duration: 130, easing: Easing.in(Easing.quad) };
+/** Pressed into the square on landing, then sprung back. */
+const landing = () => withSequence(withTiming(0.8, { duration: 50 }), withSpring(0, SETTLE_SPRING));
+
+function PieceView({
+  piece,
+  square,
+  cell,
+  settle = false,
+  cheer = false,
+}: {
+  piece: Piece;
+  square: Square;
+  cell: number;
+  /** Land with a squash. Only read on mount. */
+  settle?: boolean;
+  /** Hop twice, when this becomes true. */
+  cheer?: boolean;
+}) {
+  const reduced = useReducedMotion();
   const x = useSharedValue(xOf(square, cell));
   const y = useSharedValue(yOf(square, cell));
+  // Reduced motion lands it flat: the piece being on the square is the
+  // answer, the squash was only ever the flourish.
+  const squash = useSharedValue(settle && !reduced ? 1 : 0);
+  const hop = useSharedValue(0);
+
+  useEffect(() => {
+    // Reduced motion skips the hops outright: the win is said by the card,
+    // and nothing here carries meaning of its own.
+    if (!cheer || reduced) return;
+    const high = -cell * 0.32;
+    hop.value = withDelay(
+      CHEER_DELAY_MS,
+      withSequence(
+        withTiming(high, HOP_UP),
+        withTiming(0, HOP_DOWN),
+        withTiming(high * 0.5, HOP_UP),
+        withTiming(0, HOP_DOWN),
+      ),
+    );
+    // One squash, on the final landing: the full stop after the cheer.
+    squash.value = withDelay(CHEER_DELAY_MS + (HOP_UP.duration + HOP_DOWN.duration) * 2, landing());
+  }, [cheer, cell, hop, reduced, squash]);
 
   useEffect(() => {
     // Springs to the new square so the piece visibly travels its line. The
@@ -583,8 +659,19 @@ function PieceView({ piece, square, cell }: { piece: Piece; square: Square; cell
     y.value = withSpring(yOf(square, cell), pieceSpring);
   }, [square, cell, x, y]);
 
+  useEffect(() => {
+    if (squash.value) squash.value = withSpring(0, SETTLE_SPRING);
+    // Mount only: a piece that later moves is travelling, not landing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const style = useAnimatedStyle(() => ({
-    transform: [{ translateX: x.value }, { translateY: y.value }],
+    transform: [
+      { translateX: x.value },
+      { translateY: y.value + hop.value },
+      { scaleX: 1 + squash.value * SETTLE_SQUASH },
+      { scaleY: 1 - squash.value * SETTLE_SQUASH },
+    ],
   }));
 
   const Art = pieceArt(piece.color, piece.type);
@@ -593,7 +680,14 @@ function PieceView({ piece, square, cell }: { piece: Piece; square: Square; cell
     <Animated.View
       pointerEvents="none"
       {...DECORATIVE}
-      style={[{ position: 'absolute', width: cell, height: cell }, styles.centre, style]}
+      style={[
+        { position: 'absolute', width: cell, height: cell },
+        styles.centre,
+        // Squash about the piece's foot, where the Cburnett art stands, so it
+        // presses into the square rather than shrinking in mid-air.
+        (settle || cheer) && styles.foot,
+        style,
+      ]}
     >
       {/* Fills the square. The Cburnett artwork already carries its own
           margin — its ink covers about 60% of the 45-unit box — so scaling it
@@ -630,4 +724,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  foot: { transformOrigin: '50% 85%' },
 });
