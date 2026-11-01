@@ -175,6 +175,23 @@ describe('migrating from version 5', () => {
   });
 });
 
+describe('migrating from version 6', () => {
+  const v6 = {
+    ...v1,
+    profiles: v1.profiles.map((p) => ({ ...p, maxTier: 3 as const, avatarId: 'fox' as const })),
+    setup: { p1: 3 },
+  };
+  const migrated = migrateProgress(structuredClone(v6), 6);
+
+  it('starts everyone at the first round of the chase', () => {
+    expect(migrated.chase).toEqual({});
+  });
+
+  it('leaves board setup as it was', () => {
+    expect(migrated.setup).toEqual({ p1: 3 });
+  });
+});
+
 describe('migrating from the current version', () => {
   it('passes a current payload through untouched', () => {
     const current = {
@@ -202,6 +219,11 @@ describe('migrating from the current version', () => {
 
   it('keeps how far she has got with setting up the board', () => {
     expect(migrateProgress({ ...v1, setup: { p1: 4 } }, PROGRESS_VERSION).setup).toEqual({ p1: 4 });
+  });
+
+  it('keeps how far she has got in the chase', () => {
+    const chase = { p1: { race: 2, hunt: 1 } };
+    expect(migrateProgress({ ...v1, chase }, PROGRESS_VERSION).chase).toEqual(chase);
   });
 });
 

@@ -13,6 +13,7 @@ import {
   currentWorld,
   firstPlayableOfTier,
   isLevelUnlocked,
+  isChaseOpen,
   isMixOpen,
   isSetupOpen,
   isWorldUnlocked,
@@ -270,5 +271,21 @@ describe('isSetupOpen', () => {
     const starsOnly = catalogueFor(1);
     const hidden = FULL_CATALOGUE.levels.find((l) => l.tier === 3)!;
     expect(isSetupOpen(starsOnly, new Set([hidden.id]))).toBe(false);
+  });
+});
+
+describe('isChaseOpen', () => {
+  const pawn = worldByKey('pawn')!;
+
+  it('stays shut until she has finished a pawn level, then opens', () => {
+    expect(isChaseOpen(FULL_CATALOGUE, new Set())).toBe(false);
+    expect(isChaseOpen(FULL_CATALOGUE, new Set(rook.levels.map((l) => l.id)))).toBe(false);
+    expect(isChaseOpen(FULL_CATALOGUE, new Set([pawn.levels[0].id]))).toBe(true);
+  });
+
+  it('ignores results the ceiling is hiding', () => {
+    const starsOnly = catalogueFor(1);
+    const hidden = pawn.levels.find((l) => l.tier === 3)!;
+    expect(isChaseOpen(starsOnly, new Set([hidden.id]))).toBe(false);
   });
 });
