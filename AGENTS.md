@@ -573,15 +573,24 @@ starts. The rules are pure in `src/game/setup.ts`; the screen is
 `src/ui/SetupPlayer.tsx`.
 
 - **A tutorial in parts, then the whole thing.** Rooks, knights, bishops,
-  queens, kings, pawns, then *everything*. Each part opens with every earlier
-  part already standing and shows where its own pieces go before she places
-  them; the last stage starts from a board with only the two kings on it, and
-  shows nothing. Outside-in along the back rank is the order because each
+  queens, kings, pawns, then *everything* twice. Each part opens with every
+  earlier part already standing and shows where its own pieces go before she
+  places them; *everything* starts from a board with only the two kings on it,
+  and shows nothing. Outside-in along the back rank is the order because each
   piece is "next to the last one", which she can follow by looking.
-- **Every stage opens with at least one piece of each colour standing**, which
-  is the whole of how she knows which end is whose. The first stage is given a
-  rook in each colour on the a-file for exactly that; `setup.test.ts` asserts it
-  for every stage.
+- **Every stage but the last opens with at least one piece of each colour
+  standing**, which is the whole of how she knows which end is whose. The
+  first stage is given a rook in each colour on the a-file for exactly that;
+  `setup.test.ts` asserts it for every stage before the last.
+- **The last stage takes that away, and that is the whole of what makes it
+  harder.** The lot again, from a single pawn on a random square of its own
+  home rank, in a random colour, so she has to read the far side off one
+  piece. It must stay on its home rank: anywhere else a pawn says nothing about
+  which end is whose, and its square would not be one the game starts with.
+  `startStage` takes an `Rng` for this (default `Math.random`), so the tests
+  can seed it and "do it again" deals a new pawn. Its mark in the stage row is
+  a black pawn on one light square: a lone white pawn would be the pawns
+  stage's mark, and a black piece only shows on something light.
 - **Drag or tap, and a wrong square is answered the same way by both**: the
   piece goes to the square, shakes, and comes home to the tray. Never red,
   never counted. The trip is what makes the shake read as "that square said

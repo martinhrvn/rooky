@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { findPieces, parseFen } from '../chess/board';
 import { parseSquare } from '../chess/types';
+import { makeRng } from './random';
 import {
   LAST_STAGE,
   STAGES,
@@ -55,27 +56,51 @@ describe('the starting position', () => {
 });
 
 describe('the stages', () => {
-  it('ends with all of them, from an almost empty board', () => {
+  const ALL = STAGES.findIndex((s) => s.key === 'all');
+
+  it('asks for all of them from the two kings, then from one pawn', () => {
+    const all = startStage(ALL);
+    expect(findPieces(all.board)).toHaveLength(2);
+    expect(all.queue).toHaveLength(30);
+
     const last = startStage(LAST_STAGE);
-    expect(STAGES[LAST_STAGE].key).toBe('all');
-    expect(findPieces(last.board)).toHaveLength(2);
-    expect(last.queue).toHaveLength(30);
+    expect(STAGES[LAST_STAGE].key).toBe('lone');
+    expect(findPieces(last.board)).toHaveLength(1);
+    expect(last.queue).toHaveLength(31);
   });
 
-  it('opens every stage with at least one piece of each colour standing', () => {
-    // That is the whole of how she knows which side is whose.
-    STAGES.forEach((_, i) => {
+  it('opens every stage but the last with a piece of each colour standing', () => {
+    // That is the whole of how she knows which side is whose, until the last
+    // stage takes it away on purpose.
+    STAGES.slice(0, LAST_STAGE).forEach((_, i) => {
       const s = startStage(i);
       expect(findPieces(s.board, 'w').length, `stage ${i}`).toBeGreaterThan(0);
       expect(findPieces(s.board, 'b').length, `stage ${i}`).toBeGreaterThan(0);
     });
   });
 
+  it('stands the lone pawn on its own home rank, either colour, any file', () => {
+    // Off its home rank a pawn would say nothing about which end is whose.
+    const seen = new Set<string>();
+    for (let seed = 0; seed < 200; seed++) {
+      const s = startStage(LAST_STAGE, makeRng(seed));
+      const [sq] = findPieces(s.board);
+      const pawn = s.board[sq]!;
+      expect(pawn.type).toBe('p');
+      expect(homeSquares(pawn.color, 'p')).toContain(sq);
+      seen.add(`${pawn.color}${sq}`);
+    }
+    expect(seen.size).toBe(16);
+  });
+
   it('builds a real starting position at the end of every stage', () => {
     // Each part stands on the ones before, so finishing the pawns *is* a full
-    // board, and finishing "all" is too.
+    // board, and finishing either of the last two is too.
     expect(sameAsStart(solve(startStage(STAGES.findIndex((s) => s.key === 'p'))))).toBe(true);
-    expect(sameAsStart(solve(startStage(LAST_STAGE)))).toBe(true);
+    expect(sameAsStart(solve(startStage(ALL)))).toBe(true);
+    for (let seed = 0; seed < 20; seed++) {
+      expect(sameAsStart(solve(startStage(LAST_STAGE, makeRng(seed))))).toBe(true);
+    }
   });
 
   it('only ever asks for the kind of piece the stage is about', () => {

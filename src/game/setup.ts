@@ -7,8 +7,8 @@
  * It is a tutorial in parts rather than one big puzzle. Thirty-two pieces on
  * an empty board is far too much to ask of someone who has never done it, so
  * each stage teaches one kind of piece (shown first, then placed) with
- * everything from earlier stages already standing, and only the last stage
- * asks for the lot.
+ * everything from earlier stages already standing, and only the last two
+ * stages ask for the lot.
  */
 
 import { type Board, emptyBoard, setPiece } from '../chess/board';
@@ -20,7 +20,9 @@ import {
   fileOf,
   parseSquare,
   rankOf,
+  squareName,
 } from '../chess/types';
+import { type Rng, randInt } from './random';
 
 /** Where each kind of piece starts, for white. Black is the same files on the far side. */
 const HOME_FILES: Record<PieceType, readonly number[]> = {
@@ -51,7 +53,9 @@ export function startingPieceOn(sq: Square): { color: Color; type: PieceType } |
   return { color, type };
 }
 
-export type StageKey = 'r' | 'n' | 'b' | 'q' | 'k' | 'p' | 'all';
+export type StageKey = 'r' | 'n' | 'b' | 'q' | 'k' | 'p' | 'all' | 'lone';
+
+type Given = readonly (readonly [square: string, color: Color, type: PieceType])[];
 
 export interface SetupStage {
   readonly key: StageKey;
@@ -62,12 +66,15 @@ export interface SetupStage {
    * stages placed. They are what tells her which side is whose: with a white
    * piece at the bottom and a black one at the top, "the other colour goes over
    * there" needs no words.
+   *
+   * A function for a stage whose opening is drawn at random, so "do it again"
+   * is a different board rather than the same one remembered.
    */
-  readonly given: readonly (readonly [square: string, color: Color, type: PieceType])[];
+  readonly given: Given | ((rng: Rng) => Given);
   /**
-   * Whether this stage stands on the earlier ones. The final stage does not —
-   * it is the whole thing from an empty board, which is what makes it the test
-   * rather than one more part.
+   * Whether this stage stands on the earlier ones. The final two do not —
+   * they are the whole thing from an almost empty board, which is what makes
+   * them the test rather than one more part.
    */
   readonly cumulative: boolean;
   /** Whether the pieces are shown on their squares before she places them. */
@@ -117,6 +124,21 @@ export const STAGES: readonly SetupStage[] = [
     cumulative: false,
     demo: false,
   },
+  {
+    key: 'lone',
+    pieces: ['r', 'n', 'b', 'q', 'k', 'p'],
+    // The lot again, from one pawn of one colour on a random square of its
+    // home rank. This is the harder version, and on purpose the one stage
+    // without a piece of each colour standing: she has to read which end is
+    // whose from where that pawn is, and send the other colour to the far end.
+    given: (rng) => {
+      const color: Color = randInt(rng, 2) === 0 ? 'w' : 'b';
+      const squares = homeSquares(color, 'p');
+      return [[squareName(squares[randInt(rng, squares.length)]), color, 'p']];
+    },
+    cumulative: false,
+    demo: false,
+  },
 ];
 
 export const LAST_STAGE = STAGES.length - 1;
@@ -150,8 +172,10 @@ const mint = (color: Color, type: PieceType, n: number): Piece => ({
  *
  * The queue alternates white and black, so every second piece asks "which end
  * of the board is this one's?" — that is half of what setting up is.
+ *
+ * `rng` only matters to a stage whose opening is drawn at random.
  */
-export function startStage(stage: number): SetupState {
+export function startStage(stage: number, rng: Rng = Math.random): SetupState {
   const spec = STAGES[stage];
   let board = emptyBoard();
   let n = 0;
@@ -168,7 +192,8 @@ export function startStage(stage: number): SetupState {
       }
     }
   }
-  for (const [name, color, type] of spec.given) stand(parseSquare(name), color, type);
+  const given = typeof spec.given === 'function' ? spec.given(rng) : spec.given;
+  for (const [name, color, type] of given) stand(parseSquare(name), color, type);
 
   const queue: Piece[] = [];
   for (const type of spec.pieces) {

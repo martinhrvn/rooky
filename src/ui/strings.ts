@@ -373,6 +373,7 @@ export const strings = {
       k: 'Kings',
       p: 'Pawns',
       all: 'Everything',
+      lone: 'Everything, from one pawn',
     },
     done: 'finished',
     locked: 'locked',

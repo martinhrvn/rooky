@@ -589,8 +589,33 @@ function StageRow({
   );
 }
 
-/** A stage's mark: its piece, or for the last stage a pair standing together. */
+/**
+ * A stage's mark: its piece, for "everything" a pair standing together, and
+ * for the lone pawn a pawn on one board square.
+ */
 export function StageGlyph({ stage, size }: { stage: StageKey; size: number }) {
+  if (stage === 'lone') {
+    // The square is what tells it from the pawns stage — a pawn on its own on
+    // the board — and a light square is the one place a black piece shows.
+    const Pawn = pieceArt('b', 'p');
+    const tile = Math.round(size * 0.8);
+    return (
+      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+        <View
+          style={{
+            width: tile,
+            height: tile,
+            borderRadius: 3,
+            backgroundColor: colors.lightSquare,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Pawn width={tile * 0.9} height={tile * 0.9} />
+        </View>
+      </View>
+    );
+  }
   if (stage === 'all') {
     // Both white: a black piece would vanish on the dark circle.
     const King = pieceArt('w', 'k');
@@ -610,7 +635,8 @@ export function StageGlyph({ stage, size }: { stage: StageKey; size: number }) {
   return <Art width={size} height={size} />;
 }
 
-const STAGE_SIZE = 40;
+// Eight of these and their gaps have to fit across a 360-wide phone.
+const STAGE_SIZE = 38;
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
@@ -625,7 +651,7 @@ const styles = StyleSheet.create({
   stages: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 6,
+    gap: 4,
     paddingHorizontal: layout.boardPadding,
     paddingBottom: 4,
   },
