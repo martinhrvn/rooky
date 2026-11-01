@@ -5,7 +5,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 
 import type { PieceType } from '../../src/chess/types';
 import { nextLevel, worldOf } from '../../src/content';
-import { isMixOpen, isSetupOpen, piecesPlayed } from '../../src/progress/selectors';
+import { isChaseOpen, isMixOpen, isSetupOpen, piecesPlayed } from '../../src/progress/selectors';
 import { useActiveProfile, useCompletedIds, useProgress, useXp } from '../../src/progress/store';
 import { Avatar } from '../../src/ui/Avatar';
 import { Button } from '../../src/ui/Button';
@@ -14,6 +14,7 @@ import { Shelf, type Toy } from '../../src/ui/Shelf';
 import { pieceArt } from '../../src/ui/pieces';
 import { strings } from '../../src/ui/strings';
 import { Text } from '../../src/ui/Text';
+import { ChaseToy } from '../../src/ui/toys/ChaseToy';
 import { MixJar } from '../../src/ui/toys/MixJar';
 import { SetupBoard } from '../../src/ui/toys/SetupBoard';
 import { useCatalogue } from '../../src/ui/useCatalogue';
@@ -76,6 +77,7 @@ export default function HomeScreen() {
   const played = piecesPlayed(catalogue.worlds, completed);
   const mixOpen = isMixOpen(catalogue, completed);
   const setupOpen = isSetupOpen(catalogue, completed);
+  const chaseOpen = isChaseOpen(catalogue, completed);
 
   // `nextLevel` says nothing in two cases — every level finished, or no content
   // at all — and only the first is worth drawing.
@@ -122,8 +124,8 @@ export default function HomeScreen() {
    * opens. Once everything is finished it leaves the shelf for the hero spot
    * rather than standing in both places.
    *
-   * The board-setup toy stays on the shelf in both states: it is not "the way
-   * on", so finishing the path does not move it anywhere.
+   * The board-setup toy and the chase stay on the shelf in both states:
+   * neither is "the way on", so finishing the path does not move them.
    */
   const setupToy: Toy = {
     key: 'setup',
@@ -131,6 +133,13 @@ export default function HomeScreen() {
     art: <SetupBoard />,
     locked: !setupOpen,
     onPress: () => router.push('/setup'),
+  };
+  const chaseToy: Toy = {
+    key: 'chase',
+    label: strings.chase.title,
+    art: <ChaseToy />,
+    locked: !chaseOpen,
+    onPress: () => router.push('/chase'),
   };
   const toys: Toy[] = resume
     ? [
@@ -142,8 +151,9 @@ export default function HomeScreen() {
           onPress: () => router.push('/mix'),
         },
         setupToy,
+        chaseToy,
       ]
-    : [setupToy];
+    : [setupToy, chaseToy];
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>

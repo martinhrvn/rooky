@@ -8,7 +8,7 @@ export const DEFAULT_MAX_TIER: Tier = 3;
  * `migrate` in store.ts. This ships from day one on purpose: retrofitting
  * migrations later is how you end up wiping a kid's saved progress.
  */
-export const PROGRESS_VERSION = 6;
+export const PROGRESS_VERSION = 7;
 
 /**
  * Avatars, so a profile is recognisable without reading.
@@ -190,7 +190,23 @@ export interface PersistedProgress {
    * second number to disagree with it. It only ever goes up.
    */
   readonly setup: ByProfile<number>;
+
+  /**
+   * The chase: how many rounds of each side she has won, in order. One integer
+   * a side for the same reason `setup` is one — which round opens and which
+   * are reachable both fall out of it (`openingRound`, `isRoundOpen`), and it
+   * only ever goes up.
+   */
+  readonly chase: ByProfile<ChaseWon>;
 }
+
+/** Rounds won on each side of the chase. */
+export interface ChaseWon {
+  readonly race: number;
+  readonly hunt: number;
+}
+
+export const NO_CHASE: ChaseWon = { race: 0, hunt: 0 };
 
 export const emptyProgress: PersistedProgress = {
   activeProfileId: null,
@@ -204,4 +220,5 @@ export const emptyProgress: PersistedProgress = {
   pending: {},
   canvas: {},
   setup: {},
+  chase: {},
 };

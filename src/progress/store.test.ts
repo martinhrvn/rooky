@@ -85,7 +85,7 @@ describe('the profile that opens on relaunch', () => {
       ...state(),
     } as never) as Record<string, unknown>;
 
-    for (const key of ['xp', 'counters', 'streaks', 'earned', 'album', 'pending', 'canvas', 'setup']) {
+    for (const key of ['xp', 'counters', 'streaks', 'earned', 'album', 'pending', 'canvas', 'setup', 'chase']) {
       expect(Object.keys(persisted), key).toContain(key);
     }
   });
@@ -529,5 +529,43 @@ describe('board setup', () => {
     state().finishSetupStage(2);
     state().deleteProfile(fox);
     expect(state().setup[fox]).toBeUndefined();
+  });
+});
+
+describe('the chase', () => {
+  it('remembers the furthest round of each side, per player', () => {
+    const fox = state().createProfile('Fox', 'fox');
+    state().winChaseRound('race', 0);
+    state().winChaseRound('race', 1);
+    state().winChaseRound('hunt', 0);
+    const owl = state().createProfile('Owl', 'owl');
+
+    expect(state().chase[fox]).toEqual({ race: 2, hunt: 1 });
+    expect(state().chase[owl]).toBeUndefined();
+  });
+
+  it('never goes backwards when an early round is won again', () => {
+    const fox = state().createProfile('Fox', 'fox');
+    state().winChaseRound('hunt', 2);
+    state().winChaseRound('hunt', 0);
+    expect(state().chase[fox]).toEqual({ race: 0, hunt: 3 });
+  });
+
+  it('survives replaying everything, and goes with starting over', () => {
+    const fox = state().createProfile('Fox', 'fox');
+    state().winChaseRound('race', 0);
+
+    state().replayAll();
+    expect(state().chase[fox]?.race).toBe(1);
+
+    state().resetProgress();
+    expect(state().chase[fox]).toEqual({ race: 0, hunt: 0 });
+  });
+
+  it('goes with the player when they are removed', () => {
+    const fox = state().createProfile('Fox', 'fox');
+    state().winChaseRound('race', 0);
+    state().deleteProfile(fox);
+    expect(state().chase[fox]).toBeUndefined();
   });
 });

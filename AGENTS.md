@@ -124,7 +124,8 @@ half is `src/ui/grownUpGate.ts`, tested without React.
 
 ```
 src/chess/      pure move generation and attack maps. No React, no I/O.
-src/game/       engine.ts (pure reducer), solver.ts (BFS), generator.ts, setup.ts, types.ts
+src/game/       engine.ts (pure reducer), solver.ts (BFS), generator.ts, setup.ts,
+                chase.ts + opponent.ts (the chase and its computer side), types.ts
 src/content/    level data, world metadata, ordering
 src/progress/   selectors.ts (pure unlock/progress) + zustand store on AsyncStorage
 src/ui/         Board, Celebration, PathNode, TierRank, Shelf, icons, theme, strings
@@ -524,8 +525,8 @@ thread and in vitest.
 ## The home shelf
 
 Home is Play on top and a **shelf** underneath: a walnut plank on the wall with
-an object standing on it for each activity she can do on her own — the Mix jar
-today, a board-setup exercise next. `src/ui/Shelf.tsx` draws it, the toys live
+an object standing on it for each activity she can do on her own — the Mix jar,
+the board-setup board and the pawn chase. `src/ui/Shelf.tsx` draws it, the toys live
 in `src/ui/toys/`, and the pure layout is `src/ui/shelf.ts`. The design it was
 built from is `mockups/home-shelf.html`.
 
@@ -611,6 +612,56 @@ starts. The rules are pure in `src/game/setup.ts`; the screen is
   the shelf dimmed, like the jar. It stays on the shelf when everything is
   finished, because it is not the way on.
 
+
+## The chase
+
+The third toy on the shelf (`src/ui/toys/ChaseToy.tsx`, pawns marching up to a
+black queen) opens `app/chase/index.tsx`: a row of pawns against one piece,
+played **against the computer**. The rules are pure in `src/game/chase.ts`, the
+opponent in `src/game/opponent.ts`, the board screen is `src/ui/ChasePlayer.tsx`.
+
+- **Two sides, two ladders, and she is always white.** *Race*: her eight pawns
+  against a knight, then a bishop, a rook, a queen — the order a lone piece gets
+  better at stopping pawns. *Hunt*: her queen against two, then four, then
+  eight pawns. A round opens when the one before it is won.
+- **A pawn on its last rank wins for the pawns; no pawns left wins for the
+  piece**; a pawn taking the piece wins for the pawns; a side with no move has
+  lost (in practice, every pawn stood blocked). There is no draw and no move
+  limit, and that is arithmetic rather than hope: the pawns must move every
+  other turn and every pawn move advances or captures, so a game ends within
+  about a hundred moves.
+- **A pawn that arrives is not promoted.** Arriving is the win, so there is
+  nothing to ask her.
+- **This is the one board where nothing rewinds.** Losing a pawn is the game,
+  not a mistake, which is why it is its own player rather than a mode of
+  `LevelPlayer`. Losing a game shows the deciding square in red and a card with
+  "again" and "back" — no stars, no cross.
+- **The danger overlay is always on, with `dangerFrom` once a piece is
+  picked up** — the same rule as the levels. Which squares the hunter covers is
+  the whole lesson of both sides; the ladder turns up the computer, not the
+  absence of help.
+- **The opponent is our own small alpha-beta, not an engine, on purpose.**
+  Real engines refuse kingless positions, would play a different game (to them
+  a pawn arriving is a promotion worth some points), and are hard to make lose
+  convincingly. `Strength` is search depth plus *slack*: it picks at random
+  among moves within `slack` of its best, so a gentle computer misses chances
+  but never throws a game in a way that looks thrown — a finishing move always
+  wins the pick and a move that loses on the spot never does. When full games
+  need a real engine, the licence rule above still applies: `stockfish` on npm
+  is GPL-3.0.
+- **`chase.test.ts` is the fairness gate**, the chase's version of the solver:
+  it plays every round out against a player looking three moves ahead and fails
+  if that player cannot win nearly every game. Tune a round's strength against
+  it rather than by feel.
+- **A win pays XP like a setup stage** (three-star rate, first clear then
+  replay) and does not bump the `levels` tally. How far she has got is
+  `chase` in the store (schema v7), one integer per side per profile, only ever
+  up; `replayAll` leaves it, `resetProgress` clears it.
+- **Opens once she has finished a Pawn-world level** (`isChaseOpen`), because
+  both sides turn on how a pawn moves. Read from the filtered catalogue.
+- The side picker shows each side as **its starting position drawn small**,
+  the round she is up to, with a pip per round under it; a race round is
+  marked by the piece it is against, a hunt round by its pawns as pips.
 
 Six worlds about a piece, then six about an idea — capture, protect, combat,
 check, escape, mate. Reaching the king, getting out of check and finishing are

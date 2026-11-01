@@ -156,6 +156,20 @@ export const isSetupOpen = (catalogue: Catalogue, completedIds: ReadonlySet<stri
   catalogue.levels.some((level) => completedIds.has(level.id));
 
 /**
+ * Whether the chase toy on the home shelf is open.
+ *
+ * Once she has finished a level of the Pawn world. Both sides of the chase are
+ * about how pawns move — straight on, taking crossways, two at the start — and
+ * a game she loses because nobody told her a pawn cannot go backwards is not
+ * a game. The queen she hunts with is an earlier world, so she has met that by
+ * then too. Read from the filtered catalogue, like everything here.
+ */
+export const isChaseOpen = (catalogue: Catalogue, completedIds: ReadonlySet<string>): boolean =>
+  catalogue.worlds.some(
+    (world) => world.key === 'pawn' && world.levels.some((level) => completedIds.has(level.id)),
+  );
+
+/**
  * The pieces she has finished something with, in world order.
  *
  * Heads the Mix card, where the piece card is headed by a single piece — so

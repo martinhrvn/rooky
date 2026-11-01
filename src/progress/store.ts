@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { STICKERS } from '../content/stickers';
+import type { ChaseSide } from '../game/chase';
 import type { Tier } from '../game/types';
 import { type Achievement, newlyEarned, xpFor } from './achievements';
 import * as canvasEdit from './canvas';
@@ -15,6 +16,7 @@ import {
   AVATARS,
   type AvatarId,
   type CanvasState,
+  type ChaseWon,
   DEFAULT_BACKGROUND_ID,
   DEFAULT_MAX_TIER,
   type LevelResult,
@@ -23,6 +25,7 @@ import {
   type Placement,
   type Profile,
   emptyCanvas,
+  NO_CHASE,
   emptyProgress,
 } from './schema';
 import { stickersFor } from './xp';
@@ -113,6 +116,12 @@ interface ProgressStore extends PersistedProgress {
    * replaying an early stage can never lock a later one again.
    */
   finishSetupStage: (stage: number) => void;
+
+  /**
+   * The chase: round `index` of `side` is won. Keeps the furthest she has got,
+   * like `finishSetupStage`, so winning an early round again locks nothing.
+   */
+  winChaseRound: (side: ChaseSide, index: number) => void;
 
   /** Developer panel only. */
   grantAlbum: () => void;
@@ -207,6 +216,11 @@ export function migrateProgress(persisted: unknown, version: number): PersistedP
     state = { ...state, setup: state.setup ?? {} };
   }
 
+  // v6 had no chase. Nobody has won a round of a game that did not exist.
+  if (version < 7) {
+    state = { ...state, chase: state.chase ?? {} };
+  }
+
   return state;
 }
 
@@ -289,6 +303,7 @@ export const useProgress = create<ProgressStore>()(
             pending: { ...s.pending, [id]: [] },
             canvas: { ...s.canvas, [id]: emptyCanvas },
             setup: { ...s.setup, [id]: 0 },
+            chase: { ...s.chase, [id]: NO_CHASE },
           };
         }),
 
@@ -312,6 +327,7 @@ export const useProgress = create<ProgressStore>()(
        *
        * Board setup is left where it is too. It is not part of the path, and
        * the stages she has learned are a skill rather than a level to win.
+       * The chase likewise: its rounds are games, not levels on the path.
        */
       replayAll: () =>
         set((s) => {
@@ -353,6 +369,7 @@ export const useProgress = create<ProgressStore>()(
             pending: without(s.pending),
             canvas: without(s.canvas),
             setup: without(s.setup),
+            chase: without(s.chase),
             activeProfileId:
               s.activeProfileId === id ? (profiles[0]?.id ?? null) : s.activeProfileId,
           };
@@ -509,6 +526,15 @@ export const useProgress = create<ProgressStore>()(
           return { setup: { ...s.setup, [id]: stage + 1 } };
         }),
 
+      winChaseRound: (side, index) =>
+        set((s) => {
+          const id = s.activeProfileId;
+          if (!id) return {};
+          const won = s.chase[id] ?? NO_CHASE;
+          if (index + 1 <= won[side]) return {};
+          return { chase: { ...s.chase, [id]: { ...won, [side]: index + 1 } } };
+        }),
+
       grantAlbum: () =>
         set((s) =>
           s.activeProfileId
@@ -556,6 +582,7 @@ export const useProgress = create<ProgressStore>()(
         pending,
         canvas,
         setup,
+        chase,
       }) => ({
         activeProfileId,
         profiles,
@@ -568,6 +595,7 @@ export const useProgress = create<ProgressStore>()(
         pending,
         canvas,
         setup,
+        chase,
       }),
       migrate: migrateProgress,
       onRehydrateStorage: () => (state) => state?.markHydrated(),
@@ -655,6 +683,11 @@ export function useCanvasBackground(): string {
 /** How many board-setup stages the active player has finished. */
 export function useSetupFinished(): number {
   return useProgress((s) => (s.activeProfileId ? (s.setup[s.activeProfileId] ?? 0) : 0));
+}
+
+/** Rounds of each side of the chase the active player has won. */
+export function useChaseWon(): ChaseWon {
+  return useProgress((s) => (s.activeProfileId ? (s.chase[s.activeProfileId] ?? NO_CHASE) : NO_CHASE));
 }
 
 /** Shared so an absent record does not return a fresh array every render. */

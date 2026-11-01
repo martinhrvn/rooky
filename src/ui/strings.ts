@@ -6,6 +6,15 @@
  * and never let a word be the only thing carrying a meaning.
  */
 
+const PIECE_WORDS: Readonly<Record<string, string>> = {
+  k: 'king',
+  q: 'queen',
+  r: 'rook',
+  b: 'bishop',
+  n: 'knight',
+  p: 'pawn',
+};
+
 export const strings = {
   appName: 'Rooky',
 
@@ -370,5 +379,34 @@ export const strings = {
     next: 'Next pieces',
     again: 'Do it again',
     home: 'Home',
+  },
+
+  /**
+   * The chase. Like board setup, the board screen carries no words — these
+   * are the shelf label, the two sides on the picker, the cards at the end
+   * and what a screen reader says.
+   */
+  chase: {
+    title: 'Pawn chase',
+    pick: 'Pawn chase',
+    sides: {
+      race: 'Race',
+      hunt: 'Hunt',
+    },
+    /** Under each side, for whoever is helping. */
+    sideHelp: {
+      race: 'Get a pawn to the other side',
+      hunt: 'Catch every pawn',
+    },
+    /** Read out for each mark in the row of rounds. */
+    roundName: (side: 'race' | 'hunt', opponent: string, pawns: number) =>
+      side === 'race' ? `Against the ${PIECE_WORDS[opponent] ?? opponent}` : `${pawns} pawns`,
+    /** How many rounds of a side she has won, read out with the pips. */
+    progress: (won: number, total: number) => `${won} of ${total} won`,
+    done: 'won',
+    locked: 'locked',
+    next: 'Next round',
+    again: 'Play again',
+    back: 'Back',
   },
 } as const;
