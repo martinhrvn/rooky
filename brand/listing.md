@@ -1,7 +1,10 @@
-# Play Store listing
+# Store listings
 
 The settled facts, so nobody has to remember them, and the copy in one place
 where it can be edited like text rather than typed into a web form once.
+
+Google Play comes first because it ships first. The App Store section is at
+the end, and reuses the Play copy rather than keeping a second version of it.
 
 ## App details
 
@@ -82,14 +85,14 @@ words on the one true differentiator — pre-literacy — rather than on "fun" o
 
 ### Full description — 4000 characters max
 
-1561 characters. Short on purpose: the opening two lines are what shows before
+1989 characters. Short on purpose: the opening two lines are what shows before
 "Read more" is tapped, and almost nobody taps it.
 
 > Rooky teaches chess to children who are too young to read.
 >
 > Every control is a picture. Nothing on the playing screen needs a word to
-> make sense of it, so a four-year-old can pick it up and start playing without
-> an adult reading the buttons out.
+> make sense of it, so a four-year-old can pick it up and start playing
+> without an adult reading the buttons out.
 >
 > One piece at a time
 > Six worlds teach a single piece each — how a knight hops, why a bishop never
@@ -100,13 +103,21 @@ words on the one true differentiator — pre-literacy — rather than on "fun" o
 > Getting it wrong costs nothing
 > When a piece is taken, the board plays it out and quietly steps back one
 > move. There is no losing screen and no scolding, and trying again earns
-> rewards of its own, because a child who is frightened of being wrong will not
-> attempt the harder puzzle.
+> rewards of its own, because a child who is frightened of being wrong will
+> not attempt the harder puzzle.
+>
+> More than puzzles
+> A board to set up, a few pieces at a time, until every piece stands where a
+> real game begins. A chase against a gentle computer: a row of pawns racing
+> past a single piece, or a queen hunting the pawns down. And Mix, which
+> shuffles every puzzle a child has already solved and makes up a fresh one
+> every few rounds.
 >
 > Stars, stickers, and things you have done
 > Finishing a level earns stars, stars fill a bar, and a full bar buys a
-> sticker chosen from three. Achievements reward the pieces a child likes
-> playing with, not only forward progress.
+> sticker chosen from three. Stickers go onto a picture of the child's own
+> making, to be dragged about, turned and resized. Achievements reward the
+> pieces a child likes playing with, not only forward progress.
 >
 > Room for more than one child
 > Each profile keeps its own progress, its own stickers, and its own
@@ -170,3 +181,109 @@ The densities are picked to land one in each of Play's buckets (7-inch is
 sw600–719dp, 10-inch is sw720dp and up). `screencap` writes **RGBA**, and Play
 wants 24-bit with no alpha, so every capture needs
 `magick shot.png -background '#221A26' -alpha remove -alpha off -strip PNG24:out.png`.
+
+## App Store
+
+Nothing here is submitted yet, and there has been no iOS build. The facts below
+are settled where they are written as facts; the list after the table is what
+still has to change in the repo before a first submission.
+
+| | |
+|---|---|
+| **App name** | Rooky — 5 of 30 |
+| **Subtitle** | Chess, before they can read — 27 of 30 |
+| **Bundle ID** | **not set** — see below |
+| **SKU** | `rooky` — private, never shown, cannot change |
+| **Primary language** | English (U.K.) |
+| **Primary category** | Education |
+| **Secondary category** | Games → Board, optional |
+| **Kids Category** | Ages 5 and Under |
+| **Price** | Free, no in-app purchases |
+| **Age rating** | 4+ — the questionnaire answers none to everything |
+| **App Privacy** | Data Not Collected |
+| **Copyright** | 2026 Martin Harvan |
+| **Support URL** | <https://github.com/martinhrvn/rooky/issues> |
+| **Privacy policy URL** | the same `PRIVACY.md` URL as on Play |
+
+**The Kids Category takes one age band, not two.** Play lets the target
+audience be "under 5 and 6–8"; App Store Connect asks for exactly one of
+5 and under, 6–8 or 9–11. *5 and Under* is the honest pick, because the
+listing's whole claim is a child who cannot read yet. Like Teacher Approved,
+the band is what Apple's reviewers judge the app against.
+
+**What the Kids Category asks, and why Rooky already meets it**
+(guideline 1.3): no third-party analytics or ads, and a parental gate in front
+of any link out of the app, purchase or permission request. Rooky has none of
+the three — there is no URL anywhere in `src/` or `app/` — so nothing needs
+gating. A Credits link or a "rate us" button added later would change that.
+
+### Description, keywords, promotional text
+
+- **Description** — paste the Play full description above unchanged. Both
+  stores take plain text, and one copy kept in one place cannot drift.
+- **Keywords** — 100 bytes max, commas with no spaces. Apple already indexes
+  the name and subtitle, so words in either are wasted here (*chess* most of
+  all):
+
+  ```
+  kids,children,learn,pieces,knight,bishop,queen,pawn,checkmate,puzzle,preschool,beginner,board
+  ```
+
+  93 bytes.
+- **Promotional text** — 170 max, shown above the description and editable
+  without a review, so it is where a seasonal line would go later:
+
+  > No adverts, no purchases, no sign-in, and nothing collected. The pieces one
+  > at a time, for a child who cannot read yet, with stickers to earn along the
+  > way.
+
+  156 characters.
+
+### Review notes
+
+App Review gets the app cold, and two things in it look like problems to
+someone who has not been told about them:
+
+> Rooky has no accounts and no network access; everything is stored on the
+> device.
+>
+> Settings are behind the small gear on the home screen. "Start over" and
+> "Remove this player" are behind a grown-up gate that spells a number out in
+> words — type the digits to continue. It keeps a child who knows their numbers
+> but cannot read from wiping their own progress.
+>
+> Tapping the version line in Settings seven times opens a developer panel
+> for setting progress by hand. It is not linked from anywhere a child can
+> reach.
+
+The last paragraph is there because **guideline 2.3.1 rejects hidden,
+undocumented features**, and a panel behind seven taps is exactly that. Saying
+so in the notes is the minimum. The cleaner answer is to leave `app/dev.tsx`
+out of production builds altogether, at which point the paragraph goes too.
+
+### Graphics
+
+| Asset | Size | Notes |
+|---|---|---|
+| App icon | 1024×1024 | `assets/icon.png`, already RGB with no alpha, which Apple requires |
+| iPhone screenshots | 1320×2868 (6.9-inch) | 1–10; Apple scales them down for smaller iPhones |
+| iPad screenshots | 2064×2752 (13-inch) | **mandatory** while `ios.supportsTablet` is `true` |
+
+The iPad set is the difference from Play, where the tablet slots were left
+empty on purpose. Apple will not accept an iPad build without iPad
+screenshots, so the choice is to take them or to set `supportsTablet: false`
+and ship iPhone-only.
+
+### Before the first submission
+
+- **Set `ios.bundleIdentifier` in `app.json`.** `eu.hrvn.rooky`, to match the
+  Android package. Permanent once registered, like the package name.
+- **Set `ios.config.usesNonExemptEncryption: false`.** Rooky uses no
+  encryption of its own, and without this every build stops in App Store
+  Connect to ask the export-compliance question again.
+- **`PRIVACY.md` names Android only** — "for Android" in the opening line, and
+  deletion steps through Android Settings. It needs an iOS line (delete the
+  app, or Settings → General → iPhone Storage → Rooky) before its URL goes into
+  App Store Connect.
+- **The developer panel** — compile it out, or describe it in the review notes
+  as above.
