@@ -92,11 +92,13 @@ interface ProgressStore extends PersistedProgress {
   /**
    * Her picture. Coordinates are fractions of the canvas, never pixels.
    *
-   * There is no `clearCanvas`, and that is a rule rather than an omission:
-   * a one-tap wipe of an afternoon's work is exactly what "nothing she can
-   * reach may destroy progress" forbids, and there is no confirm dialog she
-   * could read. Removal is one placement at a time, by a deliberate drag onto
-   * the tray, and it is undone by dragging back.
+   * Nothing on the canvas screen clears it, and that is a rule rather than
+   * an omission: a one-tap wipe of an afternoon's work is exactly what
+   * "nothing she can reach may destroy progress" forbids, and there is no
+   * confirm dialog she could read. Removal there is one placement at a time,
+   * by a deliberate drag onto the tray, and it is undone by dragging back.
+   * `clearCanvas` exists for the grown-ups and is called from one place:
+   * settings, behind `GrownUpGate`.
    */
   placeSticker: (stickerId: string, x: number, y: number) => void;
   movePlacement: (key: string, x: number, y: number) => void;
@@ -109,6 +111,8 @@ interface ProgressStore extends PersistedProgress {
     y: number,
   ) => void;
   removePlacement: (key: string) => void;
+  /** Settings only, behind the grown-up gate. Keeps the album and the ground. */
+  clearCanvas: () => void;
   setCanvasBackground: (backgroundId: string) => void;
 
   /**
@@ -497,7 +501,7 @@ export const useProgress = create<ProgressStore>()(
           };
         }),
 
-      // The four canvas edits, all through one guard. `editCanvas` returns `{}`
+      // The canvas edits, all through one guard. `editCanvas` returns `{}`
       // rather than a rebuilt record when the pure reducer changed nothing, so
       // a stray commit at the end of a gesture cannot spin a re-render.
       placeSticker: (stickerId, x, y) =>
@@ -510,6 +514,8 @@ export const useProgress = create<ProgressStore>()(
         set((s) => editCanvas(s, (c) => canvasEdit.transform(c, key, scale, rotation, x, y))),
 
       removePlacement: (key) => set((s) => editCanvas(s, (c) => canvasEdit.remove(c, key))),
+
+      clearCanvas: () => set((s) => editCanvas(s, canvasEdit.clear)),
 
       setCanvasBackground: (backgroundId) =>
         set((s) => editCanvas(s, (c) => canvasEdit.setBackground(c, backgroundId))),

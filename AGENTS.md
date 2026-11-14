@@ -104,13 +104,13 @@ re-earns XP from levels already beaten, which is harmless — XP only buys
 stickers, and achievements are one-shot through `earned`, so nothing can be
 farmed by replaying.
 
-**The two acts that destroy something are behind `GrownUpGate`, and the
+**The three acts that destroy something are behind `GrownUpGate`, and the
 challenge is spelled in words because that is the whole mechanism.** She knows
 her numbers — the reading rule says so — so a keypad showing `157` would stop
 nobody; written as *one five seven* it becomes a reading test, the one test
 every adult passes and the player does not. "Show the digits, it's clearer"
-would remove the guard while looking like a fix. It gates "Start over" and
-"Delete profile" only: "Replay all" keeps a plain `Alert`, because it destroys
+would remove the guard while looking like a fix. It gates "Start over", "Clear
+the picture" and "Delete profile" only: "Replay all" keeps a plain `Alert`, because it destroys
 nothing she earned and a keypad there is friction with no risk behind it. The
 gate carries its own warning text, so there is one dialog rather than a confirm
 behind a confirm — the second of which gets tapped through by anyone who just
@@ -400,11 +400,17 @@ a week, and over the corner it costs a thumbnail.
   cost her the move every time her finger crossed the edge — which is exactly
   where a finger is when she is placing something against that edge. The only
   drop with no answer, a canvas not yet measured, still uses the fallback.
-  A `clearCanvas` would be a one-tap
-  wipe of an afternoon's work with no confirm she could read; if one is ever
-  wanted it goes on `app/dev.tsx`. Taking a placement off never touches
+  A clear button on this screen would be a one-tap wipe of an afternoon's
+  work with no confirm she could read. Taking a placement off never touches
   `album`, which `store.test.ts` asserts — that is what makes the tray safe to
   use as a bin.
+- **`clearCanvas` exists, and is the parents'.** It is "Clear the picture" in
+  settings, behind `GrownUpGate` — not a plain `Alert`, because the picture is
+  the one thing in the app she *made*, and an afternoon's work is not something
+  to lose to a tap-through. It takes the placements and nothing else: every
+  sticker goes back to the tray, and the ground she chose stays, because that
+  is a choice about the page rather than something stuck on it. Never add a
+  shortcut to it from the Stickers tab.
 - **`resetProgress` does wipe the picture**, wholesale. It is behind the gear
   and a confirm, so nothing she can reach is affected, and a picture surviving
   a wiped album would leave her looking at a dozen stickers with an empty tray

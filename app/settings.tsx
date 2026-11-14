@@ -18,6 +18,15 @@ import { colors, elevation, layout, type as typeScale } from '../src/ui/theme';
 /** Taps on the version line that reveal the developer panel. */
 const TAPS_TO_UNLOCK = 7;
 
+/** The acts that wait on the grown-up gate. */
+type Gated = 'reset' | 'canvas' | 'delete';
+
+const GATE_COPY: Record<Gated, { title: string; warning: string }> = {
+  reset: { title: strings.settings.startOver, warning: strings.settings.startOverConfirm },
+  canvas: { title: strings.settings.clearPicture, warning: strings.settings.clearPictureConfirm },
+  delete: { title: strings.profiles.remove, warning: strings.profiles.removeConfirm },
+};
+
 /**
  * Parent-facing settings.
  *
@@ -34,6 +43,7 @@ export default function SettingsScreen() {
   const setProfileAvatar = useProgress((s) => s.setProfileAvatar);
   const resetProgress = useProgress((s) => s.resetProgress);
   const replayAll = useProgress((s) => s.replayAll);
+  const clearCanvas = useProgress((s) => s.clearCanvas);
   const deleteProfile = useProgress((s) => s.deleteProfile);
 
   const [taps, setTaps] = useState(0);
@@ -41,12 +51,13 @@ export default function SettingsScreen() {
   /**
    * Which destructive act is waiting on the grown-up gate, if any.
    *
-   * Only the two that take something away are gated. "Replay all" keeps its
+   * Only the acts that take something away are gated — clearing the picture
+   * among them, because it is the one thing in the app she *made*. "Replay all" keeps its
    * plain confirm below: it locks the path back to the beginning but destroys
    * nothing she earned, so a keypad there would be friction with no risk
    * behind it.
    */
-  const [gated, setGated] = useState<'reset' | 'delete' | null>(null);
+  const [gated, setGated] = useState<Gated | null>(null);
 
   const confirmReplay = () =>
     Alert.alert(strings.settings.replayAll, strings.settings.replayAllConfirm, [
@@ -134,6 +145,20 @@ export default function SettingsScreen() {
           />
         </Section>
 
+        {/* Between the two because it is the middle of the scale: it takes
+            something she made, but none of what she earned — every sticker
+            goes back to the tray. Gated rather than a plain confirm for that
+            reason; an afternoon's picture is not something to lose to a
+            tap-through. */}
+        <Section title={strings.settings.clearPicture} help={strings.settings.clearPictureHelp}>
+          <Button
+            icon="retry"
+            label={strings.settings.clearPicture}
+            kind="again"
+            onPress={() => setGated('canvas')}
+          />
+        </Section>
+
         <Section title={strings.settings.startOver} help={strings.settings.startOverHelp}>
           <Button
             icon="retry"
@@ -177,15 +202,17 @@ export default function SettingsScreen() {
           would need its own, which is the trap `app/_layout.tsx` documents. */}
       {gated ? (
         <GrownUpGate
-          title={gated === 'reset' ? strings.settings.startOver : strings.profiles.remove}
-          warning={
-            gated === 'reset' ? strings.settings.startOverConfirm : strings.profiles.removeConfirm
-          }
+          title={GATE_COPY[gated].title}
+          warning={GATE_COPY[gated].warning}
           onCancel={() => setGated(null)}
           onConfirm={() => {
             setGated(null);
             if (gated === 'reset') {
               resetProgress();
+              return;
+            }
+            if (gated === 'canvas') {
+              clearCanvas();
               return;
             }
             if (profile) {

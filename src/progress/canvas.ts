@@ -112,6 +112,19 @@ export function remove(state: CanvasState, key: string): CanvasState {
   return placements.length === state.placements.length ? state : { ...state, placements };
 }
 
+/**
+ * Takes every sticker off at once — the parents' clear, behind the grown-up
+ * gate in settings and nowhere she can reach.
+ *
+ * Like `remove`, **nothing here touches `album`**: every sticker goes back to
+ * the tray, so the picture is lost and nothing she paid for is. The ground
+ * stays too; it is a choice she made about the page, not something stuck on
+ * it, and a cleared page is still her page.
+ */
+export function clear(state: CanvasState): CanvasState {
+  return state.placements.length === 0 ? state : { ...state, placements: [] };
+}
+
 /** Changes the ground. Leaves the placements array reference-identical. */
 export function setBackground(state: CanvasState, backgroundId: string): CanvasState {
   return backgroundId === state.backgroundId ? state : { ...state, backgroundId };

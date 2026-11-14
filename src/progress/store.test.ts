@@ -377,6 +377,30 @@ describe('her picture', () => {
     expect(state().album[fox]).toEqual([sticker]);
   });
 
+  it('clears the picture without touching the album, the ground or another player', () => {
+    // The grown-ups' clear. Every sticker goes back to the tray, so the
+    // picture is lost and nothing she paid for is.
+    reset();
+    const owl = state().createProfile('Owl', 'owl');
+    state().placeSticker('1F438', 0.5, 0.5);
+    const fox = state().createProfile('Fox', 'fox');
+    state().settle(XP_PER_STICKER);
+    const sticker = state().pending[fox][0];
+    state().chooseSticker(sticker);
+    state().placeSticker(sticker, 0.3, 0.4);
+    state().placeSticker(sticker, 0.6, 0.7);
+    state().setCanvasBackground('night');
+    const xp = state().xp[fox];
+
+    state().clearCanvas();
+
+    expect(state().canvas[fox].placements).toEqual([]);
+    expect(state().canvas[fox].backgroundId).toBe('night');
+    expect(state().album[fox]).toEqual([sticker]);
+    expect(state().xp[fox]).toBe(xp);
+    expect(state().canvas[owl].placements).toHaveLength(1);
+  });
+
   it('is one picture per player', () => {
     reset();
     const fox = state().createProfile('Fox', 'fox');
@@ -398,6 +422,11 @@ describe('her picture', () => {
     state().removePlacement('no-such-key');
 
     expect(state().canvas).toBe(before);
+
+    state().removePlacement(state().canvas[state().activeProfileId!].placements[0].key);
+    const empty = state().canvas;
+    state().clearCanvas();
+    expect(state().canvas).toBe(empty);
   });
 
   it('does nothing at all with no profile selected', () => {

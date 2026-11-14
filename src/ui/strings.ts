@@ -293,6 +293,11 @@ export const strings = {
       'Clears every level, every sticker and the picture for this player. Cannot be undone.',
     startOverConfirm:
       'This clears every level, every sticker and the picture for this player. It cannot be undone.',
+    clearPicture: 'Clear the picture',
+    clearPictureHelp:
+      'Takes every sticker off the picture for this player. The stickers stay in the tray to use again; the picture itself cannot be brought back.',
+    clearPictureConfirm:
+      'This takes every sticker off the picture. The stickers are kept, but the picture cannot be brought back.',
     confirm: 'Clear it',
     cancel: 'Cancel',
     /**

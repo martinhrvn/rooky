@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { move, nextPlacementKey, place, remove, setBackground, transform } from './canvas';
+import { clear, move, nextPlacementKey, place, remove, setBackground, transform } from './canvas';
 import { type CanvasState, emptyCanvas } from './schema';
 
 const withTwo = (): CanvasState => place(place(emptyCanvas, '1F438', 0.2, 0.3), '1F98A', 0.7, 0.8);
@@ -112,6 +112,23 @@ describe('taking one off', () => {
   it('changes nothing for a key that is not there', () => {
     const before = withTwo();
     expect(remove(before, 's99')).toBe(before);
+  });
+});
+
+describe('clearing the picture', () => {
+  it('takes every placement off and keeps the ground', () => {
+    const before = setBackground(withTwo(), 'night');
+    const after = clear(before);
+    expect(after.placements).toEqual([]);
+    expect(after.backgroundId).toBe('night');
+  });
+
+  it('changes nothing on a picture that is already empty', () => {
+    expect(clear(emptyCanvas)).toBe(emptyCanvas);
+  });
+
+  it('starts numbering again from the first key', () => {
+    expect(place(clear(withTwo()), '1F438', 0.5, 0.5).placements[0].key).toBe('s1');
   });
 });
 
