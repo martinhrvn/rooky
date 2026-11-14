@@ -105,7 +105,7 @@ export const checkLevels: readonly LevelData[] = [
     world: 'check',
     tier: 2,
     teaches: 'The pawn in the way is the check — take it, and the line is already open',
-    fen: '7k/8/8/7p/8/8/8/7R w - -',
+    fen: '6k1/5p2/8/6p1/8/8/8/6R1 w - -',
     goal: 'check',
     par: 1,
   },

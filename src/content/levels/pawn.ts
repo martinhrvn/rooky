@@ -181,7 +181,7 @@ export const pawnLevels: readonly LevelData[] = [
     world: 'pawn',
     tier: 2,
     teaches: 'Three pawns but one staircase — only the pawn at the bottom of it can climb',
-    fen: '8/8/8/4n3/3n4/2n5/1P3P1P/8 w - -',
+    fen: '8/8/8/4n3/3n4/2n5/1P3PP1/8 w - -',
     goal: 'captureAll',
     par: 3,
   },
@@ -205,7 +205,7 @@ export const pawnLevels: readonly LevelData[] = [
     // The two halves of the world in one position: one pawn is stuck because
     // pawns cannot take forwards, and the answer is the pawn beside it, which
     // is attacking that very square.
-    fen: '8/8/8/2n5/1p6/PP6/8/8 w - -',
+    fen: '8/8/8/3n4/2p5/1PP5/8/8 w - -',
     goal: 'captureAll',
     par: 2,
   },

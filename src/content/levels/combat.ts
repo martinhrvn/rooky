@@ -43,7 +43,7 @@ export const combatLevels: readonly LevelData[] = [
     teaches: 'Grabbing the pawn walks onto the bishop’s diagonal — take the bishop and it is free',
     // The greedy move is available on move one and looks like progress. It is
     // the same square the bishop is watching, so it costs the rook.
-    fen: '8/p7/8/1N6/3b4/8/8/R7 w - -',
+    fen: '8/1p6/8/2N5/4b3/8/8/1R6 w - -',
     goal: 'captureAll',
     danger: 'allPieces',
     par: 2,
@@ -102,7 +102,7 @@ export const combatLevels: readonly LevelData[] = [
     // A knight always attacks the opposite colour to the square it stands on,
     // so a bishop it is attacking is on a colour the bishop can never reach.
     // The rook has to answer it.
-    fen: '8/7p/8/4n3/8/3B4/8/4R3 w - -',
+    fen: '8/8/6p1/4n3/8/3B4/8/4R3 w - -',
     goal: 'captureAll',
     danger: 'allPieces',
     par: 2,

@@ -167,16 +167,16 @@ export const queenLevels: readonly LevelData[] = [
     id: 'queen-t2-03',
     world: 'queen',
     tier: 2,
-    teaches: 'Neither pawn is guarded, but the obvious corner to turn on is covered — go round the other way',
-    // Both enemies are loose. The knight on f2 covers h1 and d1, so the whole
-    // bottom-row route to the h-pawn is mined; the top route through a7 is
-    // clean and costs the same.
-    fen: '8/7p/8/8/8/8/5n2/Q7 w - -',
+    teaches: 'The pawn is loose, but the obvious corner to turn on is covered — go round the other way',
+    // Both enemies are loose. The knight on e3 covers f1 (and d1), so the
+    // route along her own row and up the f-file is mined; the top route
+    // through a7 is clean and costs the same.
+    fen: '8/5p2/8/8/8/4n3/8/Q7 w - -',
     goal: 'captureAll',
     par: 4,
     hint: [
       ['a1', 'a7'],
-      ['a7', 'h7'],
+      ['a7', 'f7'],
     ],
   },
   {
@@ -184,23 +184,24 @@ export const queenLevels: readonly LevelData[] = [
     world: 'queen',
     tier: 2,
     teaches: 'One loose pawn and one guarded — the trap is sweeping along the rank and taking the guarded one on the way',
-    fen: '8/8/p4p2/3n4/8/8/8/Q7 w - -',
+    fen: '8/8/4pp2/3n4/8/8/8/Q7 w - -',
     goal: 'captureAll',
     par: 5,
     hint: [
-      ['a1', 'd1'],
-      ['d1', 'd5'],
+      ['a1', 'e1'],
+      ['e1', 'e6'],
     ],
   },
   {
     id: 'queen-t2-05',
     world: 'queen',
     tier: 2,
-    teaches: 'Everything at once: the free pawn is on the way, its neighbour is guarded, and the knight is a detour',
-    // a4 falls in one move, and the rank she lands on runs straight into h4 —
-    // which the knight on g6 covers. The knight has to die first, and it sits
-    // nowhere near either pawn, so the route is the puzzle.
-    fen: '8/8/6n1/8/p6p/8/8/Q7 w - -',
+    teaches: 'Everything at once: one pawn is free, its neighbour is guarded, and the knight is a detour',
+    // e5 sits on her long diagonal and looks like a free first move — but the
+    // knight on g6 covers it, and d5 beside it is the free one. The knight has
+    // to die first, and it sits nowhere near either pawn, so the route is the
+    // puzzle.
+    fen: '8/8/6n1/3pp3/8/8/8/Q7 w - -',
     goal: 'captureAll',
     par: 5,
   },
@@ -235,8 +236,8 @@ export const queenLevels: readonly LevelData[] = [
     id: 'queen-t2-09',
     world: 'queen',
     tier: 2,
-    teaches: 'One pawn in the far corner and a knight sitting on every sensible way to it',
-    fen: '8/7p/8/8/3n4/8/8/Q7 w - -',
+    teaches: 'The knight sits in the middle of her way out — take it first and the pawn is still two moves off',
+    fen: '8/5p2/8/8/3n4/8/8/Q7 w - -',
     goal: 'captureAll',
     par: 3,
   },
@@ -244,8 +245,8 @@ export const queenLevels: readonly LevelData[] = [
     id: 'queen-t2-10',
     world: 'queen',
     tier: 2,
-    teaches: 'Two corners and a guard in the middle — the order is the whole puzzle',
-    fen: '8/p6p/8/3n4/8/8/8/Q7 w - -',
+    teaches: 'A pawn chain with a knight at the front — start at the back, and the order is the whole puzzle',
+    fen: '8/4p3/3p4/4n3/8/8/8/Q7 w - -',
     goal: 'captureAll',
     par: 4,
   },

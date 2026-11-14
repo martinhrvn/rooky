@@ -122,7 +122,7 @@ export const protectLevels: readonly LevelData[] = [
     // The pair of protect-t2-05: the same rook, the same pawn, and the answer
     // is the opposite one, because this time the attack comes along the rank
     // and one step forward leaves it.
-    fen: '8/8/8/P6r/8/8/8/1NB5 w - -',
+    fen: '8/8/8/8/4P2r/8/8/1NB5 w - -',
     goal: 'protect',
     danger: 'allPieces',
     par: 1,

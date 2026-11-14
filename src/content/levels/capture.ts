@@ -37,7 +37,7 @@ export const captureLevels: readonly LevelData[] = [
     world: 'capture',
     tier: 2,
     teaches: 'The guard has to go first, and only one of her pieces can reach it',
-    fen: '8/8/8/p7/2n5/8/4B3/R7 w - -',
+    fen: '1n6/8/2p5/8/5B2/8/8/2R5 w - -',
     goal: 'captureAll',
     danger: 'allPieces',
     par: 2,
